@@ -274,12 +274,12 @@ function formatTime(ts: number): string {
 .page-header h2 {
   font-size: 24px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   margin: 0 0 4px;
 }
 
 .subtitle {
-  color: #666;
+  color: var(--text-muted);
   font-size: 14px;
   margin: 0;
 }
@@ -293,13 +293,13 @@ function formatTime(ts: number): string {
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: var(--card-gradient);
   border-radius: 12px;
   padding: 20px;
   display: flex;
   align-items: center;
   gap: 16px;
-  border: 1px solid #2a2a3e;
+  border: 1px solid var(--border);
 }
 
 .stat-icon {
@@ -318,33 +318,33 @@ function formatTime(ts: number): string {
 
 .stat-icon.blue {
   background: rgba(68, 136, 255, 0.2);
-  color: #4488ff;
+  color: var(--accent-blue);
 }
 
 .stat-icon.green {
   background: rgba(0, 255, 136, 0.2);
-  color: #00ff88;
+  color: var(--accent-green);
 }
 
 .stat-icon.red {
   background: rgba(255, 68, 68, 0.2);
-  color: #ff4444;
+  color: var(--danger);
 }
 
 .stat-icon.orange {
   background: rgba(255, 170, 0, 0.2);
-  color: #ffaa00;
+  color: var(--accent-yellow);
 }
 
 .stat-value {
   font-size: 28px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .stat-label {
   font-size: 12px;
-  color: #666;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -357,9 +357,9 @@ function formatTime(ts: number): string {
 }
 
 .card {
-  background: #141428;
+  background: var(--bg-elevated);
   border-radius: 12px;
-  border: 1px solid #2a2a3e;
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 
@@ -368,26 +368,26 @@ function formatTime(ts: number): string {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #2a2a3e;
+  border-bottom: 1px solid var(--border);
 }
 
 .card-header h3 {
   font-size: 14px;
   font-weight: 600;
-  color: #ccc;
+  color: var(--text-secondary);
   margin: 0;
 }
 
 .btn-text {
   background: none;
   border: none;
-  color: #4488ff;
+  color: var(--accent-blue);
   font-size: 12px;
   cursor: pointer;
 }
 
 .btn-text:hover {
-  color: #66aaff;
+  color: var(--accent-blue);
 }
 
 /* Threat Overview */
@@ -405,14 +405,14 @@ function formatTime(ts: number): string {
 .bar-label {
   width: 70px;
   font-size: 11px;
-  color: #888;
+  color: var(--text-dim);
   text-transform: uppercase;
 }
 
 .bar-track {
   flex: 1;
   height: 8px;
-  background: #0a0a0f;
+  background: var(--bg-primary);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -423,15 +423,15 @@ function formatTime(ts: number): string {
   transition: width 0.3s ease;
 }
 
-.bar-fill.critical { background: #ff4444; }
-.bar-fill.high { background: #ff8844; }
-.bar-fill.medium { background: #ffaa00; }
-.bar-fill.low { background: #4488ff; }
+.bar-fill.critical { background: var(--danger); }
+.bar-fill.high { background: var(--accent-orange); }
+.bar-fill.medium { background: var(--accent-yellow); }
+.bar-fill.low { background: var(--accent-blue); }
 
 .bar-count {
   width: 40px;
   font-size: 12px;
-  color: #888;
+  color: var(--text-dim);
   text-align: right;
 }
 
@@ -447,15 +447,15 @@ function formatTime(ts: number): string {
   padding: 10px 12px;
   border-radius: 8px;
   margin-bottom: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-subtle);
 }
 
 .alert-item.alert-block {
-  border-left: 3px solid #ff4444;
+  border-left: 3px solid var(--danger);
 }
 
 .alert-item.alert-escalate {
-  border-left: 3px solid #ffaa00;
+  border-left: 3px solid var(--accent-yellow);
 }
 
 .alert-icon {
@@ -469,13 +469,13 @@ function formatTime(ts: number): string {
 
 .alert-method {
   font-size: 13px;
-  color: #ccc;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
 .alert-reason {
   font-size: 11px;
-  color: #666;
+  color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -483,13 +483,13 @@ function formatTime(ts: number): string {
 
 .alert-time {
   font-size: 11px;
-  color: #555;
+  color: var(--text-dim);
 }
 
 .empty-state {
   text-align: center;
   padding: 40px;
-  color: #444;
+  color: var(--text-disabled);
   font-style: italic;
 }
 
@@ -503,7 +503,7 @@ function formatTime(ts: number): string {
   justify-content: space-between;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px solid #1a1a2e;
+  border-bottom: 1px solid var(--bg-surface);
 }
 
 .engine-item:last-child {
@@ -512,7 +512,7 @@ function formatTime(ts: number): string {
 
 .engine-name {
   font-size: 13px;
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .engine-indicator {
@@ -520,22 +520,22 @@ function formatTime(ts: number): string {
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .engine-indicator .dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #666;
+  background: var(--text-muted);
 }
 
 .engine-indicator.active .dot {
-  background: #00ff88;
+  background: var(--accent-green);
 }
 
 .engine-indicator.active {
-  color: #00ff88;
+  color: var(--accent-green);
 }
 
 /* Quick Actions */
@@ -551,18 +551,18 @@ function formatTime(ts: number): string {
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid #2a2a3e;
+  background: var(--border-subtle);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  color: #ccc;
+  color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .action-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: #3a3a4e;
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
 }
 
 .action-icon {

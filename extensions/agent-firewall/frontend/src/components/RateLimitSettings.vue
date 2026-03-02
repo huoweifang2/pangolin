@@ -153,8 +153,8 @@ function saveRateLimit() {
 }
 
 .page-header { margin-bottom: 24px; }
-.page-header h2 { font-size: 24px; font-weight: 600; color: #fff; margin: 0 0 4px; }
-.subtitle { color: #666; font-size: 14px; margin: 0; }
+.page-header h2 { font-size: 24px; font-weight: 600; color: var(--text-primary); margin: 0 0 4px; }
+.subtitle { color: var(--text-muted); font-size: 14px; margin: 0; }
 
 .rl-grid {
   display: grid;
@@ -163,22 +163,22 @@ function saveRateLimit() {
 }
 
 .rl-card {
-  background: #141428;
-  border: 1px solid #2a2a3e;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
   border-radius: 12px;
 }
 
 .card-header {
   padding: 16px 20px;
-  border-bottom: 1px solid #2a2a3e;
+  border-bottom: 1px solid var(--border);
 }
 
-.card-header h3 { font-size: 15px; font-weight: 600; color: #ccc; margin: 0; }
+.card-header h3 { font-size: 15px; font-weight: 600; color: var(--text-secondary); margin: 0; }
 .card-body { padding: 20px; }
 
 .form-group { margin-bottom: 20px; }
-.form-group label { display: block; font-size: 13px; color: #888; margin-bottom: 8px; }
-.form-hint { font-size: 11px; color: #555; margin-top: 6px; display: block; }
+.form-group label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+.form-hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; display: block; }
 
 .range-group {
   display: flex;
@@ -190,7 +190,7 @@ function saveRateLimit() {
   flex: 1;
   -webkit-appearance: none;
   height: 6px;
-  background: #2a2a3e;
+  background: var(--border);
   border-radius: 3px;
   outline: none;
 }
@@ -200,17 +200,17 @@ function saveRateLimit() {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #e94560;
+  background: var(--accent-red);
   cursor: pointer;
-  border: 2px solid #fff;
+  border: 2px solid var(--toggle-knob);
 }
 
 .form-input-sm {
   width: 80px;
-  background: #0a0a12;
-  border: 1px solid #2a2a3e;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  color: #ccc;
+  color: var(--text-secondary);
   padding: 6px 10px;
   font-size: 13px;
   text-align: center;
@@ -218,15 +218,15 @@ function saveRateLimit() {
 
 .form-input-sm:focus {
   outline: none;
-  border-color: #4488ff;
+  border-color: var(--accent-blue);
 }
 
 .btn-primary {
   padding: 10px 24px;
-  background: linear-gradient(135deg, #e94560 0%, #c73450 100%);
+  background: var(--btn-primary-bg);
   border: none;
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -249,7 +249,7 @@ function saveRateLimit() {
 .bucket {
   width: 80px;
   height: 140px;
-  border: 2px solid #4488ff;
+  border: 2px solid var(--accent-blue);
   border-radius: 0 0 16px 16px;
   border-top: none;
   position: relative;
@@ -263,7 +263,7 @@ function saveRateLimit() {
   left: -6px;
   right: -6px;
   height: 4px;
-  background: #4488ff;
+  background: var(--accent-blue);
   border-radius: 2px;
 }
 
@@ -284,7 +284,7 @@ function saveRateLimit() {
   justify-content: center;
   font-size: 14px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary);
   z-index: 1;
 }
 
@@ -294,15 +294,15 @@ function saveRateLimit() {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid #1a1a2e;
+  border-bottom: 1px solid var(--bg-surface);
 }
 
-.info-label { color: #666; font-size: 13px; }
-.info-value { color: #ccc; font-size: 13px; font-weight: 500; }
+.info-label { color: var(--text-muted); font-size: 13px; }
+.info-value { color: var(--text-secondary); font-size: 13px; font-weight: 500; }
 
 .scenarios h4 {
   font-size: 13px;
-  color: #888;
+  color: var(--text-dim);
   margin: 0 0 12px;
 }
 
@@ -310,16 +310,16 @@ function saveRateLimit() {
   display: flex;
   justify-content: space-between;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-subtle);
   border-radius: 6px;
   margin-bottom: 6px;
 }
 
-.scenario-label { font-size: 12px; color: #888; }
+.scenario-label { font-size: 12px; color: var(--text-dim); }
 .scenario-value { font-size: 12px; font-weight: 600; }
-.scenario-value.ok { color: #00ff88; }
-.scenario-value.warn { color: #ffaa00; }
-.scenario-value.error { color: #ff4444; }
+.scenario-value.ok { color: var(--accent-green); }
+.scenario-value.warn { color: var(--accent-yellow); }
+.scenario-value.error { color: var(--danger); }
 
 @media (max-width: 1200px) {
   .rl-grid { grid-template-columns: 1fr; }

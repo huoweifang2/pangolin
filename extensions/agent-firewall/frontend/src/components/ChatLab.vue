@@ -959,7 +959,7 @@ function clearChat() {
 
 .btn-send {
   padding: 10px 20px;
-  background: linear-gradient(135deg, var(--accent-red), #c43a50);
+  background: var(--btn-primary-bg);
   color: white;
   border: none;
   border-radius: 8px;
