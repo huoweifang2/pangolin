@@ -13,6 +13,13 @@ import type {
   TestResult,
   AuditEntry,
   NavSection,
+  SkillStatusReport,
+  SkillStatusEntry,
+  AgentsListResult,
+  GatewayAgentRow,
+  AgentFileEntry,
+  GatewayConfigSnapshot,
+  GatewayConfigSchema,
 } from "./types";
 
 // ── API Base ────────────────────────────────────────────────────────
@@ -397,7 +404,7 @@ export function useTheme() {
 // ── Navigation ──────────────────────────────────────────────────────
 
 export function useNavigation() {
-  const currentSection = ref<NavSection>("dashboard");
+  const currentSection = ref<NavSection>("chat");
 
   function navigateTo(section: NavSection) {
     currentSection.value = section;
@@ -425,4 +432,307 @@ export function useNavigation() {
   });
 
   return { currentSection, navigateTo };
+}
+
+// ── Gateway WebSocket RPC Client ────────────────────────────────────
+
+const GATEWAY_WS_URL =
+  localStorage.getItem("af-gateway-url") || `ws://${window.location.hostname}:18789/ws`;
+
+let gwSocket: WebSocket | null = null;
+let gwReqId = 0;
+const gwPendingRequests = new Map<
+  number,
+  { resolve: (val: any) => void; reject: (err: Error) => void }
+>();
+const gwConnected = ref(false);
+const gwReconnectTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+
+function gwConnect() {
+  if (gwSocket?.readyState === WebSocket.OPEN) return;
+
+  try {
+    gwSocket = new WebSocket(GATEWAY_WS_URL);
+  } catch {
+    console.warn("[Gateway] Failed to create WebSocket");
+    scheduleGwReconnect();
+    return;
+  }
+
+  gwSocket.onopen = () => {
+    gwConnected.value = true;
+    console.log("[Gateway] WebSocket connected");
+  };
+
+  gwSocket.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+
+      // Handle challenge — auto-respond with connect
+      if (msg.type === "event" && msg.event === "connect.challenge") {
+        gwSocket?.send(
+          JSON.stringify({
+            type: "req",
+            id: ++gwReqId,
+            method: "connect",
+            params: {
+              protocol: 1,
+              clientType: "web-dashboard",
+              clientVersion: "1.0.0",
+              nonce: msg.payload?.nonce,
+              token: localStorage.getItem("af-gateway-token") || undefined,
+            },
+          }),
+        );
+        return;
+      }
+
+      // Handle RPC responses
+      if (msg.type === "res" && msg.id != null) {
+        const pending = gwPendingRequests.get(msg.id);
+        if (pending) {
+          gwPendingRequests.delete(msg.id);
+          if (msg.ok) {
+            pending.resolve(msg.payload);
+          } else {
+            pending.reject(new Error(msg.error?.message || "RPC failed"));
+          }
+        }
+        return;
+      }
+
+      // Handle hello-ok (auth success)
+      if (msg.type === "res" && msg.payload?.token) {
+        localStorage.setItem("af-gateway-token", msg.payload.token);
+      }
+    } catch (err) {
+      console.error("[Gateway] Parse error:", err);
+    }
+  };
+
+  gwSocket.onclose = () => {
+    gwConnected.value = false;
+    scheduleGwReconnect();
+  };
+
+  gwSocket.onerror = () => {
+    console.warn("[Gateway] WebSocket error");
+  };
+}
+
+function scheduleGwReconnect() {
+  if (gwReconnectTimer.value) clearTimeout(gwReconnectTimer.value);
+  gwReconnectTimer.value = setTimeout(gwConnect, 5000);
+}
+
+function gwDisconnect() {
+  if (gwReconnectTimer.value) clearTimeout(gwReconnectTimer.value);
+  gwSocket?.close();
+  gwSocket = null;
+}
+
+function gwRequest<T = unknown>(method: string, params: Record<string, unknown> = {}): Promise<T> {
+  return new Promise((resolve, reject) => {
+    if (!gwSocket || gwSocket.readyState !== WebSocket.OPEN) {
+      reject(new Error("Gateway not connected"));
+      return;
+    }
+    const id = ++gwReqId;
+    gwPendingRequests.set(id, { resolve, reject });
+    gwSocket.send(JSON.stringify({ type: "req", id, method, params }));
+
+    // Timeout after 30s
+    setTimeout(() => {
+      if (gwPendingRequests.has(id)) {
+        gwPendingRequests.delete(id);
+        reject(new Error(`RPC timeout: ${method}`));
+      }
+    }, 30000);
+  });
+}
+
+export function useGateway() {
+  onMounted(gwConnect);
+  onUnmounted(gwDisconnect);
+
+  const gatewayUrl = ref(GATEWAY_WS_URL);
+
+  function updateGatewayUrl(url: string) {
+    localStorage.setItem("af-gateway-url", url);
+    gatewayUrl.value = url;
+    gwDisconnect();
+    gwConnect();
+  }
+
+  return { connected: gwConnected, gatewayUrl, updateGatewayUrl, request: gwRequest };
+}
+
+// ── Skills API (via Gateway RPC) ────────────────────────────────────
+
+export function useGatewaySkills() {
+  const skills = ref<SkillStatusEntry[]>([]);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+
+  async function loadSkills(agentId?: string) {
+    try {
+      loading.value = true;
+      error.value = null;
+      const report = await gwRequest<SkillStatusReport>(
+        "skills.status",
+        agentId ? { agentId } : {},
+      );
+      skills.value = report.skills;
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Failed to load skills";
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function toggleSkill(skillKey: string, enabled: boolean) {
+    try {
+      error.value = null;
+      await gwRequest("skills.update", { skillKey, enabled });
+      await loadSkills();
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Failed to toggle skill";
+    }
+  }
+
+  async function setSkillApiKey(skillKey: string, apiKey: string) {
+    try {
+      error.value = null;
+      await gwRequest("skills.update", { skillKey, apiKey });
+      await loadSkills();
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Failed to save API key";
+    }
+  }
+
+  async function installSkill(name: string, installId: string) {
+    try {
+      error.value = null;
+      await gwRequest("skills.install", { name, installId, timeoutMs: 120000 });
+      await loadSkills();
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Failed to install skill";
+    }
+  }
+
+  return { skills, loading, error, loadSkills, toggleSkill, setSkillApiKey, installSkill };
+}
+
+// ── Agents API (via Gateway RPC) ────────────────────────────────────
+
+export function useGatewayAgents() {
+  const agents = ref<GatewayAgentRow[]>([]);
+  const defaultAgentId = ref("");
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+
+  async function loadAgents() {
+    try {
+      loading.value = true;
+      error.value = null;
+      const result = await gwRequest<AgentsListResult>("agents.list", {});
+      agents.value = result.agents;
+      defaultAgentId.value = result.defaultId;
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Failed to load agents";
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function loadAgentFiles(agentId: string): Promise<AgentFileEntry[]> {
+    try {
+      const result = await gwRequest<{ files: AgentFileEntry[] }>("agents.files.list", { agentId });
+      return result.files;
+    } catch {
+      return [];
+    }
+  }
+
+  async function saveAgentFile(agentId: string, name: string, content: string) {
+    try {
+      error.value = null;
+      await gwRequest("agents.files.set", { agentId, name, content });
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Failed to save file";
+    }
+  }
+
+  return { agents, defaultAgentId, loading, error, loadAgents, loadAgentFiles, saveAgentFile };
+}
+
+// ── Gateway Config API (via Gateway RPC) ────────────────────────────
+
+export function useGatewayConfig() {
+  const configSnapshot = ref<GatewayConfigSnapshot | null>(null);
+  const configSchema = ref<GatewayConfigSchema | null>(null);
+  const loading = ref(false);
+  const saving = ref(false);
+  const error = ref<string | null>(null);
+
+  async function loadGwConfig() {
+    try {
+      loading.value = true;
+      error.value = null;
+      const [snapshot, schema] = await Promise.all([
+        gwRequest<GatewayConfigSnapshot>("config.get", {}),
+        gwRequest<GatewayConfigSchema>("config.schema", {}).catch(() => null),
+      ]);
+      configSnapshot.value = snapshot;
+      if (schema) configSchema.value = schema;
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Failed to load gateway config";
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function saveGwConfig(raw: string) {
+    try {
+      saving.value = true;
+      error.value = null;
+      await gwRequest("config.set", {
+        raw,
+        baseHash: configSnapshot.value?.hash,
+      });
+      await loadGwConfig();
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Failed to save gateway config";
+    } finally {
+      saving.value = false;
+    }
+  }
+
+  async function applyGwConfig(raw: string) {
+    try {
+      saving.value = true;
+      error.value = null;
+      await gwRequest("config.apply", {
+        raw,
+        baseHash: configSnapshot.value?.hash,
+        sessionKey: "web-dashboard",
+      });
+      await loadGwConfig();
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Failed to apply gateway config";
+    } finally {
+      saving.value = false;
+    }
+  }
+
+  return {
+    configSnapshot,
+    configSchema,
+    loading,
+    saving,
+    error,
+    loadGwConfig,
+    saveGwConfig,
+    applyGwConfig,
+  };
 }
