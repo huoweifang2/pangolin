@@ -85,6 +85,7 @@ import {
   useAuditLog,
   useNavigation,
   useTheme,
+  useGateway,
 } from './composables'
 
 // Components
@@ -105,6 +106,7 @@ import GatewayConfig from './components/GatewayConfig.vue'
 
 const { connected, events, clearEvents, sendVerdict } = useWebSocket()
 const { stats } = useStats()
+useGateway() // Establish Gateway WS connection for Skills/Agents/Config pages
 const { config, saving: configSaving, loadConfig, saveConfig } = useConfig()
 const { rules: rulesData, loadRules, saveRule, deleteRule, toggleRule } = useRules()
 const { results: testResults, running: testRunning, runTest, runBatch, clearResults: clearTestResults } = useSecurityTest()
