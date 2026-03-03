@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 import orjson
 
@@ -35,7 +35,6 @@ from ..models import (
     JsonRpcError,
     JsonRpcRequest,
     JsonRpcResponse,
-    McpToolCall,
     SessionContext,
     ThreatLevel,
     Verdict,
@@ -156,7 +155,7 @@ async def intercept_and_analyze(
     *,
     emit_dashboard_event: Any | None = None,
     emit_audit_entry: Any | None = None,
-) -> tuple[JsonRpcRequest, AnalysisResult, Optional[JsonRpcResponse]]:
+) -> tuple[JsonRpcRequest, AnalysisResult, JsonRpcResponse | None]:
     """
     The central interception pipeline for ALL inbound MCP traffic.
 
@@ -305,7 +304,7 @@ async def intercept_and_analyze(
             logger.error("Dashboard event emission failed: %s", exc)
 
     # ── Step 9: Build blocking response if needed ────────────────
-    block_response: Optional[JsonRpcResponse] = None
+    block_response: JsonRpcResponse | None = None
     if verdict == Verdict.BLOCK:
         block_response = JsonRpcResponse(
             id=request.id,

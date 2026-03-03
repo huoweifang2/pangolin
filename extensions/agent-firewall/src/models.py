@@ -15,11 +15,10 @@ from __future__ import annotations
 import time
 import uuid
 from enum import Enum
-from typing import Any, Literal, Optional, Sequence, Union
+from typing import Any, Literal
 
 import orjson
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-
 
 # ────────────────────────────────────────────────────────────────────
 # JSON-RPC 2.0 Packets
@@ -39,7 +38,7 @@ class JsonRpcRequest(BaseModel):
     jsonrpc: Literal["2.0"] = "2.0"
     method: str
     params: Any = None
-    id: Union[str, int, None] = None  # notifications have no id
+    id: str | int | None = None  # notifications have no id
 
     @model_validator(mode="before")
     @classmethod
@@ -65,8 +64,8 @@ class JsonRpcResponse(BaseModel):
 
     jsonrpc: Literal["2.0"] = "2.0"
     result: Any = None
-    error: Optional[JsonRpcError] = None
-    id: Union[str, int, None] = None
+    error: JsonRpcError | None = None
+    id: str | int | None = None
 
     def to_bytes(self) -> bytes:
         """Serialize to bytes via orjson for minimal allocation."""
@@ -185,7 +184,7 @@ class McpToolCall(BaseModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
 
     @classmethod
-    def from_jsonrpc_params(cls, params: Any) -> Optional["McpToolCall"]:
+    def from_jsonrpc_params(cls, params: Any) -> McpToolCall | None:
         """
         Extract tool call info from raw JSON-RPC params.
 
@@ -209,7 +208,7 @@ class DashboardEvent(BaseModel):
     agent_id: str = ""
     method: str = ""
     payload_preview: str = ""
-    analysis: Optional[AnalysisResult] = None
+    analysis: AnalysisResult | None = None
     is_alert: bool = False
 
     def to_bytes(self) -> bytes:

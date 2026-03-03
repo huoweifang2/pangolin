@@ -29,7 +29,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, AsyncIterator, Callable, Coroutine, Optional
+from collections.abc import AsyncIterator, Callable, Coroutine
+from typing import Any
 from urllib.parse import urljoin
 
 import httpx
@@ -39,7 +40,7 @@ from fastapi.responses import StreamingResponse
 from ..engine.interceptor import intercept_and_analyze
 from ..engine.semantic_analyzer import SemanticAnalyzer
 from ..engine.static_analyzer import StaticAnalyzer
-from ..models import JsonRpcResponse, Verdict
+from ..models import JsonRpcResponse
 from .session_manager import SessionManager
 
 logger = logging.getLogger("agent_firewall.sse")
@@ -61,8 +62,8 @@ class SseAdapter:
         static_analyzer: StaticAnalyzer,
         semantic_analyzer: SemanticAnalyzer,
         *,
-        emit_dashboard_event: Optional[Callable[..., Coroutine[Any, Any, None]]] = None,
-        emit_audit_entry: Optional[Callable[..., Coroutine[Any, Any, None]]] = None,
+        emit_dashboard_event: Callable[..., Coroutine[Any, Any, None]] | None = None,
+        emit_audit_entry: Callable[..., Coroutine[Any, Any, None]] | None = None,
     ) -> None:
         self._upstream = upstream_base_url.rstrip("/")
         self._sessions = session_manager
@@ -184,7 +185,7 @@ class SseAdapter:
         self,
         event_bytes: bytes,
         session: Any,
-    ) -> Optional[bytes]:
+    ) -> bytes | None:
         """
         Inspect a single SSE event for threats.
 
@@ -257,8 +258,8 @@ class WebSocketAdapter:
         static_analyzer: StaticAnalyzer,
         semantic_analyzer: SemanticAnalyzer,
         *,
-        emit_dashboard_event: Optional[Callable[..., Coroutine[Any, Any, None]]] = None,
-        emit_audit_entry: Optional[Callable[..., Coroutine[Any, Any, None]]] = None,
+        emit_dashboard_event: Callable[..., Coroutine[Any, Any, None]] | None = None,
+        emit_audit_entry: Callable[..., Coroutine[Any, Any, None]] | None = None,
     ) -> None:
         self._upstream_ws = upstream_ws_url
         self._sessions = session_manager

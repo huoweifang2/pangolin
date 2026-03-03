@@ -161,8 +161,8 @@ function formatTime(ts: number): string {
 /* Header */
 .panel-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--bg-secondary);
-  flex-shrink: 0; min-height: 36px;
+  padding: 0 10px; border-bottom: 1px solid var(--border); background: var(--bg-secondary);
+  flex-shrink: 0; height: 36px;
 }
 .ph-left { display: flex; align-items: center; gap: 6px; }
 .ph-title { font-size: 11px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.01em; }

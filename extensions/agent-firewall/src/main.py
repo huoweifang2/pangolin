@@ -28,11 +28,13 @@ from __future__ import annotations
 
 import json
 import logging
+import mimetypes
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
 # Load .env file before importing config
 from dotenv import load_dotenv
@@ -50,10 +52,12 @@ from .config import FirewallConfig
 from .dashboard.ws_handler import DashboardHub
 from .engine.semantic_analyzer import LlmClassifier, MockClassifier, SemanticAnalyzer
 from .engine.static_analyzer import StaticAnalyzer
+from .gateway_tools import GatewayToolRegistry, get_gateway_tool_registry
 from .models import AuditEntry, DashboardEvent
 from .proxy.openai_adapter import OpenAIAdapter
 from .proxy.session_manager import SessionManager
 from .proxy.sse_adapter import SseAdapter, WebSocketAdapter
+from .skills import SkillRegistry, get_skill_registry
 
 logger = logging.getLogger("agent_firewall")
 
@@ -231,8 +235,6 @@ async def health() -> dict[str, str]:
 
 
 # ── Local File Serve (for audio/image/doc rendered in ChatLab) ──
-
-import mimetypes
 
 _ALLOWED_EXTENSIONS = {
     # Audio
@@ -867,9 +869,6 @@ async def dashboard_websocket(ws: WebSocket) -> None:
 # ── Red Team Chat Lab ─────────────────────────────────────────────
 
 # ── Dynamic tool discovery (skills + gateway) ────────────────────
-
-from .skills import SkillRegistry, get_skill_registry
-from .gateway_tools import GatewayToolRegistry, get_gateway_tool_registry
 
 # Tavily web search (replaces Brave for web_search)
 TAVILY_API_KEY = "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"

@@ -10,7 +10,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import FrozenSet
 
 
 class TransportMode(str, Enum):
@@ -75,7 +74,7 @@ class FirewallConfig:
     dashboard_ws_path: str = "/ws/dashboard"
 
     # ── Static analyzer high-risk patterns ───────────────────────────
-    blocked_commands: FrozenSet[str] = field(
+    blocked_commands: frozenset[str] = field(
         default_factory=lambda: frozenset(
             os.getenv(
                 "AF_BLOCKED_COMMANDS",

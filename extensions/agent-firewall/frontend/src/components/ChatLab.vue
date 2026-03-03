@@ -386,7 +386,7 @@ function renderMarkdown(text: string): string {
   try {
     // Replace MEDIA:/path/to/file or bare absolute paths for known extensions
     const allExts = [...AUDIO_EXTS, ...IMAGE_EXTS, ...VIDEO_EXTS, 'txt', 'pdf', 'docx', 'xlsx', 'csv', 'json', 'md', 'html'].join('|')
-    const fileRegex = new RegExp(`(?:MEDIA:)?(\/[^\\s"'<>]+\\.(?:${allExts}))`, 'gi')
+    const fileRegex = new RegExp(`(?:MEDIA:)?(/[^\\s"'<>]+\\.(?:${allExts}))`, 'gi')
 
     const processed = text.replace(fileRegex, (_match, filePath: string) => {
       const ext = getFileExt(filePath)
@@ -663,7 +663,7 @@ function formatDate(ts: number) {
 
 // Close history dropdown on outside click
 function onDocClick(e: MouseEvent) {
-  if (histDropRef.value && !histDropRef.value.contains(e.target as Node)) {
+  if (histDropRef.value && !histDropRef.value.contains(e.target as globalThis.Node)) {
     showHistoryMenu.value = false
   }
 }

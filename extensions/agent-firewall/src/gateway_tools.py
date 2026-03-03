@@ -217,7 +217,9 @@ class GatewayToolRegistry:
                         "properties": {
                             "tool_name": {
                                 "type": "string",
-                                "description": f"Gateway tool to invoke. One of: {', '.join(tool_names)}",
+                                "description": (
+                                    f"Gateway tool to invoke. One of: {', '.join(tool_names)}"
+                                ),
                                 "enum": tool_names,
                             },
                             "arguments": {
@@ -309,7 +311,10 @@ class GatewayToolRegistry:
                         return json.dumps(result, ensure_ascii=False)[:2000]
                     else:
                         err = data.get("error", {})
-                        return f"[Gateway error] {err.get('type', 'unknown')}: {err.get('message', str(err))}"
+                        return (
+                            f"[Gateway error] {err.get('type', 'unknown')}: "
+                            f"{err.get('message', str(err))}"
+                        )
                 elif resp.status_code == 401:
                     return "[Gateway auth error]: Invalid or missing token"
                 else:

@@ -13,15 +13,15 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, AsyncIterator
+from typing import Any
 
 import httpx
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from ..models import AuditEntry, Verdict, ThreatLevel
 from ..engine.semantic_analyzer import SemanticAnalyzer
 from ..engine.static_analyzer import StaticAnalyzer
+from ..models import ThreatLevel
 
 logger = logging.getLogger("agent_firewall.openai")
 

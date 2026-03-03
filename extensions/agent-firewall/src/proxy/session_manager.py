@@ -24,7 +24,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Optional
 
 from ..config import FirewallConfig
 from ..models import SessionContext
@@ -47,7 +46,7 @@ class SessionManager:
         self._buffer_size = cfg.session_ring_buffer_size
         self._ttl = cfg.session_ttl_seconds
         self._gc_lock = asyncio.Lock()
-        self._gc_task: Optional[asyncio.Task[None]] = None
+        self._gc_task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         """Start the background GC sweep task."""
@@ -103,7 +102,7 @@ class SessionManager:
         logger.debug("Created new session: %s (agent=%s)", session_id[:8], agent_id)
         return session
 
-    def get(self, session_id: str) -> Optional[SessionContext]:
+    def get(self, session_id: str) -> SessionContext | None:
         """Look up a session without creating it."""
         return self._sessions.get(session_id)
 
