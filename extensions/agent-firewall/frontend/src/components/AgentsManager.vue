@@ -681,8 +681,12 @@ watch(agents, (list) => {
 }
 
 .btn-primary {
-  background: var(--btn-primary-bg);
+  background: var(--accent-red, #ef4444);
   color: #fff;
+}
+
+.btn-primary:hover {
+  opacity: 0.85;
 }
 
 .btn-secondary {
