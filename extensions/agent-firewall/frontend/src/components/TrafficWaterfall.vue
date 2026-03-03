@@ -1,176 +1,114 @@
 <template>
-  <div class="traffic-page">
-    <div class="page-header">
-      <h2>Traffic Waterfall</h2>
-      <div class="header-actions">
-        <div class="filter-group">
-          <select v-model="verdictFilter" class="filter-select">
-            <option value="">All Verdicts</option>
-            <option value="ALLOW">ALLOW</option>
-            <option value="BLOCK">BLOCK</option>
-            <option value="ESCALATE">ESCALATE</option>
-          </select>
-          <select v-model="methodFilter" class="filter-select">
-            <option value="">All Methods</option>
-            <option v-for="m in uniqueMethods" :key="m" :value="m">{{ m }}</option>
-          </select>
-          <input
-            v-model="searchQuery"
-            type="text"
-            class="filter-input"
-            placeholder="Search payloads..."
-          />
-        </div>
-        <div class="action-group">
-          <button class="btn-icon" :class="{ active: autoScroll }" @click="autoScroll = !autoScroll" title="Auto-scroll">
-            ↓
-          </button>
-          <button class="btn-secondary" @click="$emit('clear')">Clear</button>
-        </div>
+  <div class="traffic-panel">
+    <!-- Panel header -->
+    <div class="panel-header">
+      <div class="ph-left">
+        <span class="ph-title">Traffic</span>
+        <span class="ph-count">{{ filteredEvents.length }}</span>
+      </div>
+      <div class="ph-right">
+        <select v-model="verdictFilter" class="ph-filter">
+          <option value="">All</option>
+          <option value="ALLOW">Allow</option>
+          <option value="BLOCK">Block</option>
+          <option value="ESCALATE">Escalate</option>
+        </select>
+        <input v-model="searchQuery" class="ph-search" placeholder="Filter..." />
+        <button class="ph-btn" :class="{ active: autoScroll }" @click="autoScroll = !autoScroll" title="Auto-scroll">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <button class="ph-btn" @click="$emit('clear')" title="Clear">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
       </div>
     </div>
 
-    <!-- Waterfall + Detail Split Layout -->
-    <div class="split-layout">
-      <!-- Waterfall List -->
-      <div class="waterfall-panel">
-        <div class="waterfall-header">
-          <span class="col-time">Time</span>
-          <span class="col-verdict">Verdict</span>
-          <span class="col-method">Method</span>
-          <span class="col-agent">Agent</span>
-          <span class="col-threat">Threat</span>
-          <span class="col-preview">Payload</span>
-        </div>
-        <div class="waterfall-list" ref="waterfallList">
-          <div
-            v-for="event in filteredEvents"
-            :key="event.timestamp + event.session_id + event.method"
-            class="waterfall-row"
-            :class="{
-              'row-alert': event.is_alert,
-              'row-blocked': event.analysis?.verdict === 'BLOCK',
-              'row-escalated': event.analysis?.verdict === 'ESCALATE',
-              'row-selected': selectedEvent === event,
-            }"
-            @click="selectedEvent = event"
-          >
-            <span class="col-time">{{ formatTime(event.timestamp) }}</span>
-            <span class="col-verdict" :class="'verdict-' + (event.analysis?.verdict || 'ALLOW').toLowerCase()">
-              {{ event.analysis?.verdict || 'ALLOW' }}
-            </span>
-            <span class="col-method">{{ event.method }}</span>
-            <span class="col-agent">{{ event.agent_id || '—' }}</span>
-            <span class="col-threat" :class="'threat-' + (event.analysis?.threat_level || 'NONE').toLowerCase()">
-              {{ event.analysis?.threat_level || 'NONE' }}
-            </span>
-            <span class="col-preview">{{ event.payload_preview?.slice(0, 80) }}</span>
-          </div>
-          <div v-if="filteredEvents.length === 0" class="waterfall-empty">
-            <span class="empty-icon">📡</span>
-            <span>Waiting for traffic...</span>
-          </div>
-        </div>
-        <div class="waterfall-footer">
-          <span class="event-count">{{ filteredEvents.length }} events</span>
-          <span v-if="verdictFilter || methodFilter || searchQuery" class="filter-active">
-            (filtered from {{ events.length }})
+    <!-- Waterfall list -->
+    <div class="waterfall" ref="waterfallEl">
+      <div
+        v-for="(event, idx) in filteredEvents"
+        :key="idx"
+        class="wf-row"
+        :class="{
+          alert: event.is_alert,
+          blocked: event.analysis?.verdict === 'BLOCK',
+          escalated: event.analysis?.verdict === 'ESCALATE',
+          selected: selectedEvent === event,
+        }"
+        @click="selectedEvent = selectedEvent === event ? null : event"
+      >
+        <div class="wf-main">
+          <span class="wf-time">{{ formatTime(event.timestamp) }}</span>
+          <span class="wf-verdict" :class="(event.analysis?.verdict || 'ALLOW').toLowerCase()">
+            {{ (event.analysis?.verdict || 'ALLOW').charAt(0) }}
+          </span>
+          <span class="wf-method">{{ event.method }}</span>
+          <span class="wf-threat" :class="(event.analysis?.threat_level || 'NONE').toLowerCase()">
+            {{ event.analysis?.threat_level || '—' }}
           </span>
         </div>
-      </div>
+        <div class="wf-preview">{{ event.payload_preview?.slice(0, 120) }}</div>
 
-      <!-- Detail Panel -->
-      <div class="detail-panel" :class="{ open: selectedEvent }">
-        <template v-if="selectedEvent">
-          <div class="detail-header">
-            <h3>Request Detail</h3>
-            <button class="btn-close" @click="selectedEvent = null">✕</button>
+        <!-- Expanded detail -->
+        <div v-if="selectedEvent === event" class="wf-detail" @click.stop>
+          <div class="detail-section">
+            <div class="dl"><span class="dk">Session</span><span class="dv mono">{{ event.session_id }}</span></div>
+            <div class="dl"><span class="dk">Agent</span><span class="dv">{{ event.agent_id || '—' }}</span></div>
+            <div class="dl"><span class="dk">Type</span><span class="dv">{{ event.event_type }}</span></div>
           </div>
 
-          <!-- Alert Banner -->
-          <div v-if="selectedEvent.is_alert" class="alert-banner">
-            <div class="alert-icon">⚠️</div>
-            <div class="alert-text">
-              <strong>THREAT DETECTED</strong>
-              <p>{{ selectedEvent.analysis?.blocked_reason }}</p>
+          <div v-if="event.analysis" class="detail-section">
+            <div class="dl">
+              <span class="dk">Verdict</span>
+              <span class="verdict-chip" :class="event.analysis.verdict.toLowerCase()">{{ event.analysis.verdict }}</span>
             </div>
-          </div>
-
-          <!-- Tabs -->
-          <div class="detail-tabs">
-            <button
-              v-for="tab in detailTabs"
-              :key="tab"
-              class="detail-tab"
-              :class="{ active: activeDetailTab === tab }"
-              @click="activeDetailTab = tab"
-            >{{ tab }}</button>
-          </div>
-
-          <!-- Metadata Tab -->
-          <div v-if="activeDetailTab === 'Metadata'" class="detail-content">
-            <div class="detail-grid">
-              <div class="detail-label">Method</div>
-              <div class="detail-value">{{ selectedEvent.method }}</div>
-              <div class="detail-label">Session</div>
-              <div class="detail-value mono">{{ selectedEvent.session_id }}</div>
-              <div class="detail-label">Agent</div>
-              <div class="detail-value">{{ selectedEvent.agent_id || '—' }}</div>
-              <div class="detail-label">Timestamp</div>
-              <div class="detail-value">{{ new Date(selectedEvent.timestamp * 1000).toISOString() }}</div>
-              <div class="detail-label">Event Type</div>
-              <div class="detail-value">{{ selectedEvent.event_type }}</div>
+            <div class="dl">
+              <span class="dk">Threat</span>
+              <span class="threat-chip" :class="event.analysis.threat_level.toLowerCase()">{{ event.analysis.threat_level }}</span>
             </div>
-          </div>
-
-          <!-- Analysis Tab -->
-          <div v-if="activeDetailTab === 'Analysis'" class="detail-content">
-            <template v-if="selectedEvent.analysis">
-              <div class="detail-grid">
-                <div class="detail-label">Verdict</div>
-                <div class="detail-value verdict-badge" :class="'verdict-' + selectedEvent.analysis.verdict.toLowerCase()">
-                  {{ selectedEvent.analysis.verdict }}
-                </div>
-                <div class="detail-label">Threat Level</div>
-                <div class="detail-value threat-badge" :class="'threat-' + selectedEvent.analysis.threat_level.toLowerCase()">
-                  {{ selectedEvent.analysis.threat_level }}
-                </div>
-                <div class="detail-label">L1 Patterns</div>
-                <div class="detail-value">
-                  <span v-if="selectedEvent.analysis.l1_matched_patterns?.length" class="pattern-tags">
-                    <span v-for="p in selectedEvent.analysis.l1_matched_patterns" :key="p" class="tag danger">{{ p }}</span>
-                  </span>
-                  <span v-else class="muted">None</span>
-                </div>
-                <div class="detail-label">L2 Injection</div>
-                <div class="detail-value">
-                  {{ selectedEvent.analysis.l2_is_injection
-                    ? `Yes (${(selectedEvent.analysis.l2_confidence * 100).toFixed(0)}%)`
-                    : 'No' }}
-                </div>
-                <div class="detail-label">L2 Reasoning</div>
-                <div class="detail-value">{{ selectedEvent.analysis.l2_reasoning || '—' }}</div>
+            <div v-if="event.analysis.l1_matched_patterns?.length" class="dl">
+              <span class="dk">L1</span>
+              <div class="pattern-tags">
+                <span v-for="p in event.analysis.l1_matched_patterns" :key="p" class="ptag">{{ p }}</span>
               </div>
-            </template>
-            <div v-else class="empty-state">No analysis data</div>
+            </div>
+            <div class="dl">
+              <span class="dk">L2</span>
+              <span class="dv">{{ event.analysis.l2_is_injection ? `Injection (${(event.analysis.l2_confidence * 100).toFixed(0)}%)` : 'Clean' }}</span>
+            </div>
+            <div v-if="event.analysis.l2_reasoning" class="dl">
+              <span class="dk">Reason</span>
+              <span class="dv reasoning">{{ event.analysis.l2_reasoning }}</span>
+            </div>
           </div>
 
-          <!-- Payload Tab -->
-          <div v-if="activeDetailTab === 'Payload'" class="detail-content">
-            <pre class="payload-block">{{ selectedEvent.payload_preview }}</pre>
+          <div v-if="event.payload_preview" class="detail-section">
+            <div class="dk">Payload</div>
+            <pre class="payload-pre">{{ event.payload_preview }}</pre>
           </div>
 
-          <!-- Human-in-the-Loop Actions -->
-          <div v-if="selectedEvent.analysis?.verdict === 'ESCALATE'" class="action-bar">
-            <button class="btn-allow" @click="$emit('verdict', selectedEvent.analysis!.request_id, 'allow')">
-              ✓ Allow Request
-            </button>
-            <button class="btn-block" @click="$emit('verdict', selectedEvent.analysis!.request_id, 'block')">
-              ✕ Block Request
-            </button>
+          <div v-if="event.analysis?.verdict === 'ESCALATE'" class="detail-actions">
+            <button class="da-btn allow" @click="$emit('verdict', event.analysis!.request_id, 'allow')">Allow</button>
+            <button class="da-btn block" @click="$emit('verdict', event.analysis!.request_id, 'block')">Block</button>
           </div>
-        </template>
+        </div>
       </div>
+
+      <div v-if="filteredEvents.length === 0" class="wf-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <span>Waiting for traffic...</span>
+      </div>
+    </div>
+
+    <!-- Panel footer -->
+    <div class="panel-footer">
+      <span>{{ filteredEvents.length }}<span v-if="verdictFilter || searchQuery"> / {{ events.length }}</span> events</span>
     </div>
   </div>
 </template>
@@ -181,6 +119,7 @@ import type { FirewallEvent } from '../types'
 
 const props = defineProps<{
   events: FirewallEvent[]
+  compact?: boolean
 }>()
 
 defineEmits<{
@@ -190,458 +129,148 @@ defineEmits<{
 
 const selectedEvent = ref<FirewallEvent | null>(null)
 const verdictFilter = ref('')
-const methodFilter = ref('')
 const searchQuery = ref('')
 const autoScroll = ref(true)
-const activeDetailTab = ref('Metadata')
-const waterfallList = ref<HTMLElement | null>(null)
-
-const detailTabs = ['Metadata', 'Analysis', 'Payload']
-
-const uniqueMethods = computed(() => {
-  const methods = new Set(props.events.map((e) => e.method))
-  return [...methods].sort()
-})
+const waterfallEl = ref<HTMLElement | null>(null)
 
 const filteredEvents = computed(() => {
   return props.events.filter((e) => {
     if (verdictFilter.value && (e.analysis?.verdict || 'ALLOW') !== verdictFilter.value) return false
-    if (methodFilter.value && e.method !== methodFilter.value) return false
     if (searchQuery.value) {
       const q = searchQuery.value.toLowerCase()
-      return (
-        e.method.toLowerCase().includes(q) ||
-        e.payload_preview?.toLowerCase().includes(q) ||
-        e.agent_id?.toLowerCase().includes(q) ||
-        e.session_id?.toLowerCase().includes(q)
-      )
+      return e.method.toLowerCase().includes(q) || e.payload_preview?.toLowerCase().includes(q) || e.agent_id?.toLowerCase().includes(q)
     }
     return true
   })
 })
 
-// Auto-scroll when new events come in
-watch(
-  () => props.events.length,
-  () => {
-    if (autoScroll.value) {
-      nextTick(() => {
-        if (waterfallList.value) {
-          waterfallList.value.scrollTop = waterfallList.value.scrollHeight
-        }
-      })
-    }
+watch(() => props.events.length, () => {
+  if (autoScroll.value) {
+    nextTick(() => { if (waterfallEl.value) waterfallEl.value.scrollTop = waterfallEl.value.scrollHeight })
   }
-)
+})
 
 function formatTime(ts: number): string {
-  return new Date(ts * 1000).toLocaleTimeString('en-US', {
-    hour12: false,
-    fractionalSecondDigits: 1,
-  })
+  return new Date(ts * 1000).toLocaleTimeString('en-US', { hour12: false, fractionalSecondDigits: 1 } as any)
 }
 </script>
 
 <style scoped>
-.traffic-page {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+.traffic-panel { display: flex; flex-direction: column; height: 100%; background: var(--bg-primary); }
+
+/* Header */
+.panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--bg-secondary);
+  flex-shrink: 0; min-height: 36px;
+}
+.ph-left { display: flex; align-items: center; gap: 6px; }
+.ph-title { font-size: 11px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.01em; }
+.ph-count { font-size: 9px; padding: 1px 5px; border-radius: 8px; background: var(--bg-surface); color: var(--text-dim); font-family: var(--font-mono); }
+.ph-right { display: flex; align-items: center; gap: 4px; }
+.ph-filter {
+  background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-muted);
+  padding: 2px 6px; border-radius: var(--radius-sm); font-size: 10px;
+}
+.ph-search {
+  width: 100px; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary);
+  padding: 2px 6px; border-radius: var(--radius-sm); font-size: 10px; outline: none;
+}
+.ph-search:focus { border-color: var(--accent); }
+.ph-btn {
+  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent;
+  color: var(--text-dim); cursor: pointer; transition: all 0.1s;
+}
+.ph-btn:hover { border-color: var(--border-hover); color: var(--text-secondary); }
+.ph-btn.active { color: var(--accent); border-color: var(--accent); }
+
+/* Waterfall */
+.waterfall { flex: 1; overflow-y: auto; font-size: 11px; }
+
+.wf-row {
+  padding: 5px 10px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; transition: background 0.1s;
+}
+.wf-row:hover { background: var(--bg-hover); }
+.wf-row.selected { background: var(--bg-active); }
+.wf-row.blocked { border-left: 2px solid var(--accent-red); padding-left: 8px; }
+.wf-row.escalated { border-left: 2px solid var(--accent-yellow); padding-left: 8px; }
+.wf-row.alert { background: var(--accent-red-muted); }
+
+.wf-main { display: flex; align-items: center; gap: 6px; }
+.wf-time { font-size: 9px; color: var(--text-dim); font-family: var(--font-mono); white-space: nowrap; min-width: 65px; }
+.wf-verdict {
+  width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 800; flex-shrink: 0;
+}
+.wf-verdict.allow { background: var(--accent-green-muted); color: var(--accent-green); }
+.wf-verdict.block { background: var(--accent-red-muted); color: var(--accent-red); }
+.wf-verdict.escalate { background: var(--accent-yellow-muted); color: var(--accent-yellow); }
+.wf-method { font-weight: 500; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.wf-threat { font-size: 9px; font-weight: 600; flex-shrink: 0; }
+.wf-threat.none { color: var(--text-disabled); }
+.wf-threat.low { color: var(--accent); }
+.wf-threat.medium { color: var(--accent-yellow); }
+.wf-threat.high { color: var(--accent-orange); }
+.wf-threat.critical { color: var(--accent-red); }
+
+.wf-preview {
+  font-size: 10px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 1px; padding-left: 87px;
 }
 
-.page-header {
-  padding: 20px 24px 16px;
+/* Detail (expanded) */
+.wf-detail {
+  margin-top: 6px; padding: 8px; background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-md); font-size: 10px;
+}
+.detail-section { margin-bottom: 8px; }
+.detail-section:last-child { margin-bottom: 0; }
+.dl { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 3px; }
+.dk { color: var(--text-dim); font-weight: 600; min-width: 50px; text-transform: uppercase; font-size: 9px; flex-shrink: 0; }
+.dv { color: var(--text-secondary); word-break: break-all; }
+.dv.mono { font-family: var(--font-mono); font-size: 9px; }
+.dv.reasoning { line-height: 1.4; }
+
+.verdict-chip, .threat-chip {
+  font-size: 9px; padding: 1px 6px; border-radius: 3px; font-weight: 700; text-transform: uppercase;
+}
+.verdict-chip.allow { background: var(--accent-green-muted); color: var(--accent-green); }
+.verdict-chip.block, .verdict-chip.escalate { background: var(--accent-red-muted); color: var(--accent-red); }
+.threat-chip.none { background: var(--accent-green-muted); color: var(--accent-green); }
+.threat-chip.low { background: var(--accent-muted); color: var(--accent); }
+.threat-chip.medium { background: var(--accent-yellow-muted); color: var(--accent-yellow); }
+.threat-chip.high, .threat-chip.critical { background: var(--accent-red-muted); color: var(--accent-red); }
+
+.pattern-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.ptag { font-size: 9px; padding: 1px 4px; border-radius: 2px; background: var(--accent-red-muted); color: var(--accent-red); font-family: var(--font-mono); }
+
+.payload-pre {
+  margin-top: 4px; padding: 6px 8px; background: var(--bg-primary); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 9px; color: var(--text-muted);
+  white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto;
+  font-family: var(--font-mono);
 }
 
-.page-header h2 {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0 0 12px;
+.detail-actions { display: flex; gap: 6px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.da-btn {
+  flex: 1; padding: 5px 0; border: none; border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 10px; font-weight: 700; transition: all 0.15s;
+}
+.da-btn.allow { background: var(--accent-green); color: white; }
+.da-btn.block { background: var(--accent-red); color: white; }
+.da-btn.allow:hover { filter: brightness(1.15); }
+.da-btn.block:hover { filter: brightness(1.15); }
+
+/* Empty */
+.wf-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 48px 16px;
+  color: var(--text-disabled); font-size: 11px;
 }
 
-.header-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.filter-group {
-  display: flex;
-  gap: 8px;
-}
-
-.filter-select,
-.filter-input {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-secondary);
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
-.filter-input {
-  width: 200px;
-}
-
-.filter-select:focus,
-.filter-input:focus {
-  outline: none;
-  border-color: var(--accent-blue);
-}
-
-.action-group {
-  display: flex;
-  gap: 8px;
-}
-
-.btn-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg-surface);
-  color: var(--text-dim);
-  cursor: pointer;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-icon.active {
-  background: rgba(68, 136, 255, 0.2);
-  color: var(--accent-blue);
-  border-color: var(--accent-blue);
-}
-
-.btn-secondary {
-  padding: 6px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--bg-surface);
-  color: var(--text-dim);
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.btn-secondary:hover {
-  border-color: var(--border-hover);
-  color: var(--text-secondary);
-}
-
-/* Split Layout */
-.split-layout {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-
-.waterfall-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.waterfall-header {
-  display: grid;
-  grid-template-columns: 90px 80px 160px 100px 80px 1fr;
-  gap: 8px;
-  padding: 8px 24px;
-  font-size: 11px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-secondary);
-}
-
-.waterfall-list {
-  flex: 1;
-  overflow-y: auto;
-  font-size: 12px;
-}
-
-.waterfall-row {
-  display: grid;
-  grid-template-columns: 90px 80px 160px 100px 80px 1fr;
-  gap: 8px;
-  padding: 7px 24px;
-  border-bottom: 1px solid var(--border-subtle);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.waterfall-row:hover {
-  background: var(--bg-surface);
-}
-
-.waterfall-row.row-selected {
-  background: var(--bg-surface);
-  border-left: 3px solid var(--accent-blue);
-  padding-left: 21px;
-}
-
-.waterfall-row.row-blocked {
-  border-left: 3px solid var(--danger);
-  padding-left: 21px;
-}
-
-.waterfall-row.row-escalated {
-  border-left: 3px solid var(--accent-yellow);
-  padding-left: 21px;
-}
-
-.waterfall-row.row-alert {
-  background: rgba(233, 69, 96, 0.06);
-}
-
-.col-time { color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
-.col-method { color: var(--accent-blue); font-weight: 500; }
-.col-agent { color: var(--text-dim); }
-.col-preview { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.col-verdict { font-weight: 700; font-size: 11px; text-transform: uppercase; }
-.verdict-allow { color: var(--accent-green); }
-.verdict-block { color: var(--danger); }
-.verdict-escalate { color: var(--accent-yellow); }
-
-.col-threat { font-size: 10px; font-weight: 600; }
-.threat-none { color: var(--text-disabled); }
-.threat-low { color: var(--accent-blue); }
-.threat-medium { color: var(--accent-yellow); }
-.threat-high { color: var(--accent-orange); }
-.threat-critical { color: var(--danger); }
-
-.waterfall-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 60px;
-  color: var(--text-disabled);
-  font-style: italic;
-}
-
-.empty-icon {
-  font-size: 32px;
-}
-
-.waterfall-footer {
-  padding: 8px 24px;
-  border-top: 1px solid var(--border);
-  font-size: 11px;
-  color: var(--text-dim);
-  background: var(--bg-secondary);
-}
-
-.filter-active {
-  color: var(--accent-blue);
-}
-
-/* Detail Panel */
-.detail-panel {
-  width: 0;
-  overflow: hidden;
-  transition: width 0.3s ease;
-  border-left: 1px solid var(--border);
-  background: var(--bg-secondary);
-}
-
-.detail-panel.open {
-  width: 480px;
-}
-
-.detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-}
-
-.detail-header h3 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.btn-close {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.btn-close:hover {
-  border-color: var(--text-muted);
-  color: var(--text-secondary);
-}
-
-/* Alert Banner */
-.alert-banner {
-  display: flex;
-  gap: 12px;
-  padding: 16px;
-  background: linear-gradient(135deg, rgba(255, 0, 0, 0.12) 0%, rgba(255, 68, 68, 0.06) 100%);
-  border: 1px solid var(--danger);
-  border-radius: 8px;
-  margin: 12px 16px;
-  animation: alert-flash 1.5s ease-in-out 3;
-}
-
-.alert-icon { font-size: 24px; }
-.alert-text strong { color: var(--danger); font-size: 13px; display: block; margin-bottom: 4px; }
-.alert-text p { color: var(--text-secondary); font-size: 12px; margin: 0; line-height: 1.5; }
-
-@keyframes alert-flash {
-  0%, 100% { border-color: var(--danger); }
-  50% { border-color: var(--danger); box-shadow: 0 0 20px rgba(255, 0, 0, 0.3); }
-}
-
-/* Tabs */
-.detail-tabs {
-  display: flex;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.detail-tab {
-  padding: 10px 16px;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 12px;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
-}
-
-.detail-tab:hover {
-  color: var(--text-secondary);
-}
-
-.detail-tab.active {
-  color: var(--accent-blue);
-  border-bottom-color: var(--accent-blue);
-}
-
-/* Detail Content */
-.detail-content {
-  padding: 16px;
-  overflow-y: auto;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: 100px 1fr;
-  gap: 6px 12px;
-  font-size: 12px;
-}
-
-.detail-label {
-  color: var(--text-muted);
-}
-
-.detail-value {
-  color: var(--text-secondary);
-  word-break: break-all;
-}
-
-.detail-value.mono {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-}
-
-.verdict-badge {
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.threat-badge {
-  font-weight: 600;
-}
-
-.muted {
-  color: var(--text-dim);
-}
-
-.pattern-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.tag {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-.tag.danger {
-  background: rgba(255, 68, 68, 0.15);
-  color: var(--danger);
-}
-
-.payload-block {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 16px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  overflow-x: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 400px;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* Action Bar */
-.action-bar {
-  display: flex;
-  gap: 12px;
-  padding: 16px;
-  border-top: 1px solid var(--border);
-  margin-top: auto;
-}
-
-.btn-allow, .btn-block {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.2s;
-}
-
-.btn-allow {
-  background: var(--accent-green);
-  color: var(--text-primary);
-}
-
-.btn-block {
-  background: var(--danger);
-  color: var(--text-primary);
-}
-
-.btn-allow:hover { transform: scale(1.02); box-shadow: 0 0 16px rgba(0, 204, 102, 0.4); }
-.btn-block:hover { transform: scale(1.02); box-shadow: 0 0 16px rgba(255, 68, 68, 0.4); }
-
-.empty-state {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-disabled);
+/* Footer */
+.panel-footer {
+  padding: 4px 10px; border-top: 1px solid var(--border); background: var(--bg-secondary);
+  font-size: 9px; color: var(--text-dim); flex-shrink: 0;
 }
 </style>
