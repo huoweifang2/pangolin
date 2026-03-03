@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stop all Agent Firewall services
+# Stop Agent Firewall services
 # Usage: ./scripts/stop-all.sh
 
 set -euo pipefail
@@ -33,7 +33,7 @@ if [[ -d "$RUN_DIR" ]]; then
 fi
 
 # Also kill by port as a safety net
-for port in 9090 9091 5173; do
+for port in 9090 9091; do
   pids=$(lsof -ti :"$port" 2>/dev/null || true)
   if [[ -n "$pids" ]]; then
     log "Killing process on port $port..."
