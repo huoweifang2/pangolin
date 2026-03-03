@@ -231,6 +231,47 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "service": "agent-firewall"}
 
 
+# ── Gateway Info (auto-discover token from local config) ────────
+
+
+@app.get("/api/gateway-info")
+async def gateway_info() -> dict[str, Any]:
+    """Read the local OpenClaw gateway config to auto-provide connection details.
+
+    This endpoint reads ~/.openclaw/openclaw.json to extract the gateway port and
+    auth token, so the browser frontend can connect without manual configuration.
+    Only works when the firewall backend runs on the same machine as the gateway.
+    """
+    import json as _json
+
+    config_path = Path.home() / ".openclaw" / "openclaw.json"
+    result: dict[str, Any] = {"configured": False}
+    if not config_path.exists():
+        return result
+    try:
+        raw = config_path.read_text(encoding="utf-8")
+        data = _json.loads(raw)
+        gw = data.get("gateway", {})
+        if not gw:
+            return result
+        result["configured"] = True
+        result["port"] = gw.get("port", 18789)
+        result["bind"] = gw.get("bind", "loopback")
+        result["mode"] = gw.get("mode", "local")
+        # Pass auth info so the frontend can auto-connect
+        auth = gw.get("auth", {})
+        if auth.get("token"):
+            result["token"] = auth["token"]
+        if auth.get("password"):
+            result["hasPassword"] = True
+        # Pass allowed origins so frontend can self-register
+        control_ui = gw.get("controlUi", {})
+        result["allowedOrigins"] = control_ui.get("allowedOrigins", [])
+    except Exception:
+        logging.getLogger(__name__).warning("Failed to read gateway config", exc_info=True)
+    return result
+
+
 # ── Configuration ───────────────────────────────────────────────
 
 

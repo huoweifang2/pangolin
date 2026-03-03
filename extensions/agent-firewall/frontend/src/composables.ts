@@ -436,8 +436,7 @@ export function useNavigation() {
 
 // ── Gateway WebSocket RPC Client ────────────────────────────────────
 
-const GATEWAY_WS_URL =
-  localStorage.getItem("af-gateway-url") || `ws://${window.location.hostname}:18789/ws`;
+let gwWsUrl = localStorage.getItem("af-gateway-url") || `ws://${window.location.hostname}:18789/ws`;
 
 let gwSocket: WebSocket | null = null;
 const gwPendingRequests = new Map<
@@ -447,12 +446,40 @@ const gwPendingRequests = new Map<
 const gwConnected = ref(false);
 const gwConnectError = ref<string | null>(null);
 const gwReconnectTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+let gwTokenFetched = false;
+
+/** Auto-discover gateway token from the backend, then connect. */
+async function gwAutoConnect() {
+  if (!gwTokenFetched) {
+    gwTokenFetched = true;
+    try {
+      const resp = await fetch(`${API_BASE}/api/gateway-info`);
+      if (resp.ok) {
+        const info = await resp.json();
+        if (info.configured) {
+          // Auto-store token for connect handshake
+          if (info.token && !localStorage.getItem("af-gateway-token")) {
+            localStorage.setItem("af-gateway-token", info.token);
+            console.log("[Gateway] Auto-configured token from backend");
+          }
+          // Update WS URL if port differs
+          if (info.port && !localStorage.getItem("af-gateway-url")) {
+            gwWsUrl = `ws://${window.location.hostname}:${info.port}/ws`;
+          }
+        }
+      }
+    } catch {
+      console.warn("[Gateway] Could not fetch gateway info from backend");
+    }
+  }
+  gwConnect();
+}
 
 function gwConnect() {
   if (gwSocket?.readyState === WebSocket.OPEN) return;
 
   try {
-    gwSocket = new WebSocket(GATEWAY_WS_URL);
+    gwSocket = new WebSocket(gwWsUrl);
   } catch {
     console.warn("[Gateway] Failed to create WebSocket");
     scheduleGwReconnect();
@@ -541,7 +568,7 @@ function gwConnect() {
 
 function scheduleGwReconnect() {
   if (gwReconnectTimer.value) clearTimeout(gwReconnectTimer.value);
-  gwReconnectTimer.value = setTimeout(gwConnect, 5000);
+  gwReconnectTimer.value = setTimeout(gwAutoConnect, 5000);
 }
 
 function gwDisconnect() {
@@ -571,14 +598,15 @@ function gwRequest<T = unknown>(method: string, params: Record<string, unknown> 
 }
 
 export function useGateway() {
-  onMounted(gwConnect);
+  onMounted(gwAutoConnect);
   onUnmounted(gwDisconnect);
 
-  const gatewayUrl = ref(GATEWAY_WS_URL);
+  const gatewayUrl = ref(gwWsUrl);
 
   function updateGatewayUrl(url: string) {
     localStorage.setItem("af-gateway-url", url);
     gatewayUrl.value = url;
+    gwWsUrl = url;
     gwDisconnect();
     gwConnect();
   }
