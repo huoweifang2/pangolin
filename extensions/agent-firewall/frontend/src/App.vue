@@ -76,8 +76,8 @@
       <div class="content-split">
         <!-- Left: Active page -->
         <div class="content-main" :class="{ 'full-width': !showTraffic }">
-          <ChatLab v-if="currentSection === 'chat'" :events="events" />
-          <Dashboard v-else-if="currentSection === 'dashboard'" :stats="stats" :events="events" @navigate="(s: string) => navigateTo(s as NavSection)" />
+          <ChatLab v-show="currentSection === 'chat'" :events="events" />
+          <Dashboard v-if="currentSection === 'dashboard'" :stats="stats" :events="events" @navigate="(s: string) => navigateTo(s as NavSection)" />
           <RulesConfig v-else-if="currentSection === 'rules'" :rules="rulesData" @save="handleSaveRule" @delete="handleDeleteRule" @toggle="handleToggleRule" @updateMethodAction="handleUpdateMethodAction" @updateDefaultAction="(a: string) => handleUpdateDefaultAction(a as RuleAction)" />
           <EngineSettings v-else-if="currentSection === 'engine'" :config="config" :saving="configSaving" @save="handleSaveConfig" />
           <RateLimitSettings v-else-if="currentSection === 'rate-limit'" :config="config?.rate_limit ?? { requests_per_sec: 10, burst: 20 }" @save="handleSaveRateLimit" />
@@ -328,6 +328,9 @@ function formatUptime(s: number): string {
   --accent-purple: #a855f7;
   --accent-cyan: #06b6d4;
   --danger: #ef4444;
+  --toggle-bg: #3f3f46;
+  --toggle-bg-active: #22c55e;
+  --toggle-knob: #ffffff;
   --rail-bg: #09090b;
   --rail-border: rgba(255,255,255,0.06);
   --scrollbar-thumb: rgba(255,255,255,0.08);
@@ -373,6 +376,9 @@ function formatUptime(s: number): string {
   --accent-purple: #9333ea;
   --accent-cyan: #0891b2;
   --danger: #dc2626;
+  --toggle-bg: #d4d4d8;
+  --toggle-bg-active: #16a34a;
+  --toggle-knob: #ffffff;
   --rail-bg: #f4f4f5;
   --rail-border: rgba(0,0,0,0.08);
   --scrollbar-thumb: rgba(0,0,0,0.1);

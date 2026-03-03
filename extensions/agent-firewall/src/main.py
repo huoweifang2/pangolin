@@ -637,16 +637,24 @@ async def list_mcp_tools(request: Request) -> JSONResponse:
     # Skill tools info
     skill_registry = _get_skill_registry()
     skills_info = [
-        {"name": s.name, "description": s.description, "emoji": s.emoji, "bins": s.required_bins, "source": "skill"}
+        {
+            "name": s.name,
+            "description": s.description,
+            "emoji": s.emoji,
+            "bins": s.required_bins,
+            "source": "skill",
+        }
         for s in skill_registry.ready_skills.values()
     ]
 
-    return JSONResponse({
-        "tools": tools,
-        "count": len(tools),
-        "gateway_tools": gateway_info,
-        "skills": skills_info,
-    })
+    return JSONResponse(
+        {
+            "tools": tools,
+            "count": len(tools),
+            "gateway_tools": gateway_info,
+            "skills": skills_info,
+        }
+    )
 
 
 @app.post("/mcp/{path:path}")
@@ -715,6 +723,45 @@ async def dashboard_websocket(ws: WebSocket) -> None:
 
 from .skills import SkillRegistry, get_skill_registry
 from .gateway_tools import GatewayToolRegistry, get_gateway_tool_registry
+
+# Tavily web search (replaces Brave for web_search)
+TAVILY_API_KEY = "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"
+TAVILY_SEARCH_URL = "https://api.tavily.com/search"
+
+
+async def _tavily_web_search(query: str, max_results: int = 5) -> str:
+    """Execute a web search via Tavily API."""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                TAVILY_SEARCH_URL,
+                json={
+                    "api_key": TAVILY_API_KEY,
+                    "query": query,
+                    "max_results": max_results,
+                    "include_answer": True,
+                    "search_depth": "basic",
+                },
+            )
+            if resp.status_code != 200:
+                return f"[Tavily error] HTTP {resp.status_code}: {resp.text[:300]}"
+            data = resp.json()
+            parts = []
+            # Include AI-generated answer if available
+            if data.get("answer"):
+                parts.append(f"**Answer:** {data['answer']}\n")
+            # Include search results
+            for i, r in enumerate(data.get("results", [])[:max_results], 1):
+                title = r.get("title", "")
+                url = r.get("url", "")
+                content = r.get("content", "")[:300]
+                parts.append(f"{i}. [{title}]({url})\n   {content}")
+            return "\n\n".join(parts) if parts else "No results found."
+    except Exception as e:
+        return f"[Tavily search error]: {e}"
+
 
 _skill_registry: SkillRegistry | None = None
 _gateway_tool_registry: GatewayToolRegistry | None = None
@@ -1116,9 +1163,17 @@ async def chat_send(request: Request) -> JSONResponse:
                                         gw_tool_name,
                                         json.dumps(gw_arguments, ensure_ascii=False)[:200],
                                     )
-                                    tool_result = await GatewayToolRegistry.execute(
-                                        gw_host, gw_port, gw_token, gw_tool_name, gw_arguments
-                                    )
+                                    # Intercept web_search → use Tavily instead of gateway Brave
+                                    if gw_tool_name == "web_search":
+                                        search_query = gw_arguments.get("query", "")
+                                        search_count = gw_arguments.get("count", 5)
+                                        tool_result = await _tavily_web_search(
+                                            search_query, search_count
+                                        )
+                                    else:
+                                        tool_result = await GatewayToolRegistry.execute(
+                                            gw_host, gw_port, gw_token, gw_tool_name, gw_arguments
+                                        )
                                 else:
                                     # Fallback: try as direct gateway tool invocation
                                     tool_result = await GatewayToolRegistry.execute(
