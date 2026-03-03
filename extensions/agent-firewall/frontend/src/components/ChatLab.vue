@@ -31,6 +31,10 @@
           <input type="checkbox" v-model="forceForward" />
           <span class="toggle-label">Force</span>
         </label>
+        <label class="toolbar-toggle" title="Enable gateway tools (web_search, message, tts, etc.)">
+          <input type="checkbox" v-model="useGateway" />
+          <span class="toggle-label">Tools</span>
+        </label>
         <button class="toolbar-btn" @click="clearChat" title="Clear chat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -305,6 +309,7 @@ const inputMessage = ref('')
 const sending = ref(false)
 const autoIntercept = ref(false)
 const forceForward = ref(false)
+const useGateway = ref(true)
 const selectedModel = ref(localStorage.getItem(CHAT_MODEL_KEY) || 'deepseek/deepseek-chat')
 const messagesEl = ref<HTMLElement | null>(null)
 const inputEl = ref<HTMLTextAreaElement | null>(null)
@@ -425,6 +430,7 @@ async function sendMessage(content: string, modifiedContent: string | null, anal
         messages: apiMessages, model: selectedModel.value,
         modified_content: wasModified ? modifiedContent : undefined,
         force_forward: forceForward.value, analyze_only: analyzeOnlyFlag,
+        use_gateway: useGateway.value,
       }),
     })
     const data = await res.json()

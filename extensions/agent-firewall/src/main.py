@@ -624,11 +624,21 @@ async def stats(request: Request) -> JSONResponse:
 
 @app.get("/api/mcp/tools")
 async def list_mcp_tools(request: Request) -> JSONResponse:
-    """List available MCP tools from the upstream gateway."""
+    """List available tools from the upstream gateway."""
     s = _state(request)
-    upstream_base = f"http://{s.config.upstream_host}:{s.config.upstream_port}"
-    tools = await _fetch_mcp_tools(upstream_base)
-    return JSONResponse({"tools": tools, "count": len(tools)})
+    gateway_base = f"http://{s.config.upstream_host}:{s.config.upstream_port}"
+    token = _read_gateway_token()
+    tools = await _discover_gateway_tools(gateway_base, token)
+    tool_names = [t["function"]["name"] for t in tools]
+    return JSONResponse(
+        {
+            "tools": tools,
+            "count": len(tools),
+            "tool_names": tool_names,
+            "gateway_url": gateway_base,
+            "has_token": token is not None,
+        }
+    )
 
 
 @app.post("/mcp/{path:path}")
@@ -694,84 +704,244 @@ async def dashboard_websocket(ws: WebSocket) -> None:
 # ── Red Team Chat Lab ─────────────────────────────────────────────
 
 
-async def _fetch_mcp_tools(upstream_base: str) -> list[dict[str, Any]]:
-    """Fetch available MCP tools from the upstream gateway via tools/list."""
-    import httpx
-
+def _read_gateway_token() -> str | None:
+    """Read gateway auth token from ~/.openclaw/openclaw.json."""
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.post(
-                f"{upstream_base}/mcp",
-                json={"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1},
-                headers={"content-type": "application/json"},
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                # Handle both direct result and JSON-RPC wrapper
-                tools = (
-                    data.get("result", {}).get("tools", [])
-                    if "result" in data
-                    else data.get("tools", [])
-                )
-                return tools
-    except Exception as e:
-        logger.debug(f"Failed to fetch MCP tools: {e}")
-    return []
+        config_path = Path.home() / ".openclaw" / "openclaw.json"
+        if config_path.exists():
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+            return data.get("gateway", {}).get("auth", {}).get("token")
+    except Exception:
+        logger.debug("Failed to read gateway token from ~/.openclaw/openclaw.json")
+    return None
 
 
-def _mcp_tools_to_openai_tools(mcp_tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Convert MCP tool definitions to OpenAI function-calling format."""
-    openai_tools: list[dict[str, Any]] = []
-    for tool in mcp_tools:
-        name = tool.get("name", "")
-        desc = tool.get("description", "")
-        schema = tool.get("inputSchema", {"type": "object", "properties": {}})
-        openai_tools.append(
-            {
-                "type": "function",
-                "function": {
-                    "name": name,
-                    "description": desc,
-                    "parameters": schema,
-                },
-            }
-        )
-    return openai_tools
-
-
-async def _execute_mcp_tool(upstream_base: str, tool_name: str, arguments: dict[str, Any]) -> str:
-    """Execute an MCP tool via the upstream gateway and return the result as string."""
+async def _execute_gateway_tool(
+    gateway_base: str, token: str | None, tool_name: str, arguments: dict[str, Any]
+) -> str:
+    """Execute a tool via the OpenClaw gateway's POST /tools/invoke endpoint."""
     import httpx
+
+    headers: dict[str, str] = {"content-type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
-                f"{upstream_base}/mcp",
-                json={
-                    "jsonrpc": "2.0",
-                    "method": "tools/call",
-                    "params": {"name": tool_name, "arguments": arguments},
-                    "id": 1,
-                },
-                headers={"content-type": "application/json"},
+                f"{gateway_base}/tools/invoke",
+                json={"tool": tool_name, "args": arguments},
+                headers=headers,
             )
-            if resp.status_code == 200:
-                data = resp.json()
-                result = data.get("result", data)
-                # MCP tools/call result has content array
-                content = result.get("content", [])
-                if content:
-                    parts = []
-                    for c in content:
-                        if isinstance(c, dict):
-                            parts.append(c.get("text", str(c)))
-                        else:
-                            parts.append(str(c))
-                    return "\n".join(parts)
-                return str(result)
-            return f"[MCP error {resp.status_code}]: {resp.text[:500]}"
+            data = resp.json()
+            if resp.status_code == 200 and data.get("ok"):
+                result = data.get("result", "")
+                # Result may be MCP content array or plain value
+                if isinstance(result, dict) and "content" in result:
+                    parts = result.get("content", [])
+                    texts = [p.get("text", "") for p in parts if isinstance(p, dict)]
+                    return "\n".join(texts) if texts else json.dumps(result)
+                return str(result) if not isinstance(result, str) else result
+            # Error responses
+            err = data.get("error", {})
+            return (
+                f"[Gateway tool error {resp.status_code}]: "
+                f"{err.get('message', resp.text[:500])}"
+            )
     except Exception as e:
-        return f"[MCP execution error]: {e}"
+        return f"[Gateway tool error]: {e}"
+
+
+async def _discover_gateway_tools(
+    gateway_base: str, token: str | None
+) -> list[dict[str, Any]]:
+    """Discover available tools by probing the gateway's /tools/invoke.
+
+    Returns a list of OpenAI-format tool definitions for known gateway tools.
+    """
+    import httpx
+
+    # Known gateway tool catalog (name → simplified schema for LLM)
+    known_tools: list[dict[str, Any]] = [
+        {
+            "type": "function",
+            "function": {
+                "name": "web_search",
+                "description": "Search the web using Brave Search.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query",
+                        },
+                        "count": {
+                            "type": "integer",
+                            "description": "Results count (1-10)",
+                        },
+                    },
+                    "required": ["query"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "web_fetch",
+                "description": "Fetch and extract content from a URL.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "URL to fetch",
+                        },
+                        "extractMode": {
+                            "type": "string",
+                            "enum": ["markdown", "text"],
+                        },
+                        "maxChars": {"type": "integer"},
+                    },
+                    "required": ["url"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "message",
+                "description": (
+                    "Send a message via a messaging channel. "
+                    "Common actions: send, reply, edit, delete."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "description": "Message action",
+                        },
+                        "channel": {
+                            "type": "string",
+                            "description": "Channel name",
+                        },
+                        "target": {
+                            "type": "string",
+                            "description": "Target (e.g. phone number, chat ID)",
+                        },
+                        "message": {
+                            "type": "string",
+                            "description": "Message text",
+                        },
+                    },
+                    "required": ["action"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "tts",
+                "description": "Convert text to speech audio.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string",
+                            "description": "Text to speak",
+                        },
+                        "channel": {
+                            "type": "string",
+                            "description": "Channel for playback",
+                        },
+                    },
+                    "required": ["text"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "memory_search",
+                "description": "Search stored memories/knowledge.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query",
+                        },
+                        "maxResults": {"type": "integer"},
+                    },
+                    "required": ["query"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "sessions_list",
+                "description": "List active agent sessions.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "limit": {"type": "integer"},
+                    },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "agents_list",
+                "description": "List available agents.",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "cron",
+                "description": "Manage scheduled cron jobs.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "enum": [
+                                "status", "list", "add",
+                                "update", "remove", "run",
+                            ],
+                        },
+                    },
+                    "required": ["action"],
+                },
+            },
+        },
+    ]
+
+    # Probe which tools are actually available on the gateway
+    headers: dict[str, str] = {"content-type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    available: list[dict[str, Any]] = []
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            for tool_def in known_tools:
+                name = tool_def["function"]["name"]
+                resp = await client.post(
+                    f"{gateway_base}/tools/invoke",
+                    json={"tool": name, "args": {}},
+                    headers=headers,
+                )
+                # 404 = tool not available; anything else = tool exists
+                if resp.status_code != 404:
+                    available.append(tool_def)
+    except Exception:
+        logger.debug("Failed to probe gateway tools")
+
+    return available
 
 
 @app.post("/api/chat/send")
@@ -788,7 +958,8 @@ async def chat_send(request: Request) -> JSONResponse:
         "model": "deepseek/deepseek-chat",
         "modified_content": "...",     // optional: injected/modified user content
         "force_forward": false,        // optional: forward even if blocked
-        "analyze_only": false          // optional: only analyze, don't forward
+        "analyze_only": false,         // optional: only analyze, don't forward
+        "use_gateway": true            // optional: enable gateway tools (default true)
       }
 
     Response:
@@ -810,6 +981,7 @@ async def chat_send(request: Request) -> JSONResponse:
     modified_content = data.get("modified_content", None)
     force_forward = data.get("force_forward", False)
     analyze_only = data.get("analyze_only", False)
+    use_gateway = data.get("use_gateway", True)
 
     if not messages:
         return JSONResponse({"error": "No messages provided"}, status_code=400)
@@ -944,31 +1116,37 @@ async def chat_send(request: Request) -> JSONResponse:
         try:
             import httpx
 
-            # Use the openai_adapter's upstream URL and API key
+            gateway_base = f"http://{s.config.upstream_host}:{s.config.upstream_port}"
+            gateway_token = _read_gateway_token()
+
+            # Use external LLM (OpenRouter) with gateway tool execution
             upstream_url = f"{s.openai_adapter.upstream_url}/chat/completions"
             upstream_headers: dict[str, str] = {
                 "content-type": "application/json",
                 "accept": "application/json",
             }
             if s.openai_adapter.api_key:
-                upstream_headers["Authorization"] = f"Bearer {s.openai_adapter.api_key}"
-
-            # Fetch available MCP tools from the upstream gateway
-            mcp_upstream_base = f"http://{s.config.upstream_host}:{s.config.upstream_port}"
-            mcp_tools_raw = await _fetch_mcp_tools(mcp_upstream_base)
-            openai_tools = _mcp_tools_to_openai_tools(mcp_tools_raw)
+                upstream_headers["Authorization"] = (
+                    f"Bearer {s.openai_adapter.api_key}"
+                )
 
             chat_body: dict[str, Any] = {
                 "model": model,
                 "messages": list(forwarded_messages),
                 "stream": False,
             }
-            if openai_tools:
-                chat_body["tools"] = openai_tools
-                chat_body["tool_choice"] = "auto"
+
+            # Discover and attach gateway tools when enabled
+            if use_gateway:
+                openai_tools = await _discover_gateway_tools(
+                    gateway_base, gateway_token
+                )
+                if openai_tools:
+                    chat_body["tools"] = openai_tools
+                    chat_body["tool_choice"] = "auto"
 
             tool_calls_log: list[dict[str, Any]] = []
-            max_iterations = 10  # safety: prevent infinite tool-call loops
+            max_iterations = 10
 
             async with httpx.AsyncClient(timeout=120.0) as client:
                 for iteration in range(max_iterations):
@@ -980,7 +1158,8 @@ async def chat_send(request: Request) -> JSONResponse:
 
                     if resp.status_code != 200:
                         response_data["response"] = (
-                            f"[Upstream error {resp.status_code}]: {resp.text[:500]}"
+                            f"[Upstream error {resp.status_code}]: "
+                            f"{resp.text[:500]}"
                         )
                         break
 
@@ -988,94 +1167,106 @@ async def chat_send(request: Request) -> JSONResponse:
                     response_data["response_raw"] = resp_json
                     choices = resp_json.get("choices", [])
                     if not choices:
-                        response_data["response"] = "[No choices in LLM response]"
+                        response_data["response"] = (
+                            "[No choices in LLM response]"
+                        )
                         break
 
                     assistant_msg = choices[0].get("message", {})
                     finish_reason = choices[0].get("finish_reason", "stop")
+                    pending = assistant_msg.get("tool_calls", [])
 
-                    # Check if the LLM wants to call tools
-                    pending_tool_calls = assistant_msg.get("tool_calls", [])
-
-                    if finish_reason == "tool_calls" or pending_tool_calls:
-                        # Append assistant message with tool_calls to conversation
+                    if finish_reason == "tool_calls" or pending:
                         chat_body["messages"].append(assistant_msg)
 
-                        # Execute each tool call
-                        for tc in pending_tool_calls:
+                        for tc in pending:
                             tc_id = tc.get("id", "")
                             func = tc.get("function", {})
                             tool_name = func.get("name", "")
                             try:
-                                tool_args = json.loads(func.get("arguments", "{}"))
+                                tool_args = json.loads(
+                                    func.get("arguments", "{}")
+                                )
                             except Exception:
                                 tool_args = {}
 
                             # L1 analysis on the tool call
-                            tool_content_str = f"tools/call {tool_name} {json.dumps(tool_args)}"
-                            tool_l1 = s.static_analyzer.analyze(tool_content_str)
-                            tool_l1_blocked = tool_l1.threat_level in (
+                            tool_str = (
+                                f"tools/call {tool_name} "
+                                f"{json.dumps(tool_args)}"
+                            )
+                            tool_l1 = s.static_analyzer.analyze(tool_str)
+                            l1_blk = tool_l1.threat_level in (
                                 ThreatLevel.CRITICAL,
                                 ThreatLevel.HIGH,
                             )
 
-                            tool_call_record: dict[str, Any] = {
+                            tc_rec: dict[str, Any] = {
                                 "tool_name": tool_name,
                                 "arguments": tool_args,
                                 "iteration": iteration,
                                 "l1_patterns": tool_l1.matched_patterns,
-                                "l1_blocked": tool_l1_blocked,
+                                "l1_blocked": l1_blk,
                             }
 
-                            if tool_l1_blocked:
-                                # Block this tool call
+                            if l1_blk:
                                 tool_result = (
-                                    f"[BLOCKED by firewall L1] Matched patterns: "
+                                    "[BLOCKED by firewall L1] "
+                                    "Patterns: "
                                     f"{', '.join(tool_l1.matched_patterns)}"
                                 )
-                                tool_call_record["blocked"] = True
-                                tool_call_record["result_preview"] = tool_result[:200]
+                                tc_rec["blocked"] = True
+                                tc_rec["result_preview"] = tool_result[:200]
                             else:
-                                # Execute tool via MCP upstream
-                                tool_result = await _execute_mcp_tool(
-                                    mcp_upstream_base, tool_name, tool_args
+                                tool_result = await _execute_gateway_tool(
+                                    gateway_base,
+                                    gateway_token,
+                                    tool_name,
+                                    tool_args,
                                 )
-                                tool_call_record["blocked"] = False
-                                tool_call_record["result_preview"] = tool_result[:200]
+                                tc_rec["blocked"] = False
+                                tc_rec["result_preview"] = tool_result[:200]
 
-                            tool_calls_log.append(tool_call_record)
+                            tool_calls_log.append(tc_rec)
 
-                            # Emit dashboard event for each tool call
-                            tool_event = DashboardEvent(
-                                event_type="chat_lab_tool_call",
-                                timestamp=time.time(),
-                                session_id="chat-lab",
-                                agent_id="red-team-tester",
-                                method=f"tools/call/{tool_name}",
-                                payload_preview=tool_content_str[:200],
-                                analysis=AnalysisResult(
-                                    request_id=str(uuid.uuid4()),
-                                    verdict="BLOCK" if tool_l1_blocked else "ALLOW",
-                                    threat_level=(
-                                        tool_l1.threat_level
-                                        if tool_l1_blocked
-                                        else ThreatLevel.NONE
+                            # Dashboard event per tool call
+                            await s._emit_dashboard(
+                                DashboardEvent(
+                                    event_type="chat_lab_tool_call",
+                                    timestamp=time.time(),
+                                    session_id="chat-lab",
+                                    agent_id="red-team-tester",
+                                    method=f"tools/call/{tool_name}",
+                                    payload_preview=tool_str[:200],
+                                    analysis=AnalysisResult(
+                                        request_id=str(uuid.uuid4()),
+                                        verdict=(
+                                            "BLOCK" if l1_blk else "ALLOW"
+                                        ),
+                                        threat_level=(
+                                            tool_l1.threat_level
+                                            if l1_blk
+                                            else ThreatLevel.NONE
+                                        ),
+                                        l1_matched_patterns=(
+                                            tool_l1.matched_patterns
+                                        ),
+                                        l2_is_injection=False,
+                                        l2_confidence=0.0,
+                                        l2_reasoning="",
+                                        blocked_reason=(
+                                            "L1: "
+                                            + ", ".join(
+                                                tool_l1.matched_patterns
+                                            )
+                                            if l1_blk
+                                            else ""
+                                        ),
                                     ),
-                                    l1_matched_patterns=tool_l1.matched_patterns,
-                                    l2_is_injection=False,
-                                    l2_confidence=0.0,
-                                    l2_reasoning="",
-                                    blocked_reason=(
-                                        f"L1: {', '.join(tool_l1.matched_patterns)}"
-                                        if tool_l1_blocked
-                                        else ""
-                                    ),
-                                ),
-                                is_alert=tool_l1_blocked,
+                                    is_alert=l1_blk,
+                                )
                             )
-                            await s._emit_dashboard(tool_event)
 
-                            # Append tool result to conversation
                             chat_body["messages"].append(
                                 {
                                     "role": "tool",
@@ -1084,19 +1275,18 @@ async def chat_send(request: Request) -> JSONResponse:
                                 }
                             )
 
-                        # Continue loop — LLM will process tool results
                         continue
 
-                    # No tool calls — we have the final response
-                    response_data["response"] = assistant_msg.get("content", "")
+                    # Final response — no tool calls
+                    response_data["response"] = assistant_msg.get(
+                        "content", ""
+                    )
                     break
                 else:
-                    # max iterations reached
-                    response_data["response"] = "[Max tool-call iterations reached] " + (
-                        assistant_msg.get("content", "") if "assistant_msg" in dir() else ""
+                    response_data["response"] = (
+                        "[Max tool-call iterations reached]"
                     )
 
-            # Attach tool call log to response
             if tool_calls_log:
                 response_data["tool_calls"] = tool_calls_log
 
