@@ -29,7 +29,7 @@ for arg in "$@"; do
     --no-open)    SKIP_OPEN=true ;;
     -h|--help)
       echo "Usage: $0 [--no-gateway] [--no-open]"
-      echo "  --no-gateway  Skip OpenClaw Gateway (for frontend-only dev)"
+      echo "  --no-gateway  Skip OpenClaw Gateway (frontend-only dev, tool-calling disabled)"
       echo "  --no-open     Don't auto-open browser"
       exit 0 ;;
   esac
@@ -76,11 +76,14 @@ wait_for_http() {
 
 # --- Pre-checks ---
 HAS_GATEWAY=false
-if ! $SKIP_GATEWAY; then
+if [[ "$SKIP_GATEWAY" == "false" ]]; then
   if command -v openclaw &>/dev/null; then
     HAS_GATEWAY=true
   else
-    warn "openclaw CLI not found — skipping Gateway. Install with: npm i -g openclaw"
+    err "openclaw CLI not found! Gateway is required for tool-calling in Chat Lab."
+    err "Install with: npm i -g openclaw"
+    err "Or skip with: ./scripts/start-all.sh --no-gateway"
+    exit 1
   fi
 fi
 
@@ -99,9 +102,9 @@ cleanup_ports
 
 ALL_PIDS=()
 
-# 1) Gateway (optional)
+# 1) Gateway
 PID_GATEWAY=""
-if $HAS_GATEWAY; then
+if [[ "$HAS_GATEWAY" == "true" ]]; then
   log "Starting OpenClaw Gateway on :18789..."
   openclaw gateway run --bind loopback --port 18789 --force > /tmp/openclaw-gateway.log 2>&1 &
   PID_GATEWAY=$!
@@ -148,7 +151,7 @@ echo ""
 ok "════════════════════════════════════════════"
 ok " Agent Firewall — All services running"
 ok "════════════════════════════════════════════"
-if $HAS_GATEWAY; then
+if [[ "$HAS_GATEWAY" == "true" ]]; then
   ok " Gateway (WS RPC):    ws://localhost:18789/ws"
 fi
 ok " Backend (FastAPI):   http://localhost:9090"
