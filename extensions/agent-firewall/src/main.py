@@ -26,13 +26,15 @@ Startup sequence:
 
 from __future__ import annotations
 
+import json
 import logging
-import os
+import mimetypes
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import asdict, replace
+from dataclasses import asdict
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
 # Load .env file before importing config
 from dotenv import load_dotenv
@@ -43,17 +45,19 @@ if _env_path.exists():
 
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from .audit.logger import AuditLogger
 from .config import FirewallConfig
 from .dashboard.ws_handler import DashboardHub
 from .engine.semantic_analyzer import LlmClassifier, MockClassifier, SemanticAnalyzer
 from .engine.static_analyzer import StaticAnalyzer
+from .gateway_tools import GatewayToolRegistry, get_gateway_tool_registry
 from .models import AuditEntry, DashboardEvent
+from .proxy.openai_adapter import OpenAIAdapter
 from .proxy.session_manager import SessionManager
 from .proxy.sse_adapter import SseAdapter, WebSocketAdapter
-from .proxy.openai_adapter import OpenAIAdapter
+from .skills import SkillRegistry, get_skill_registry
 
 logger = logging.getLogger("agent_firewall")
 
@@ -211,12 +215,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
 def _state(request: Request | None = None) -> AppState:
     """Extract AppState from the ASGI app."""
-    from fastapi import Request as _Req
 
     if request is not None:
         return request.app.state.firewall  # type: ignore[no-any-return]
@@ -229,6 +233,66 @@ def _state(request: Request | None = None) -> AppState:
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "service": "agent-firewall"}
+
+
+# ── Local File Serve (for audio/image/doc rendered in ChatLab) ──
+
+_ALLOWED_EXTENSIONS = {
+    # Audio
+    ".mp3",
+    ".wav",
+    ".ogg",
+    ".m4a",
+    ".flac",
+    ".aac",
+    ".webm",
+    # Image
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".svg",
+    ".bmp",
+    ".ico",
+    # Documents
+    ".txt",
+    ".pdf",
+    ".docx",
+    ".xlsx",
+    ".csv",
+    ".json",
+    ".md",
+    ".html",
+    # Video
+    ".mp4",
+    ".mov",
+    ".avi",
+    ".mkv",
+}
+
+
+@app.get("/api/file")
+async def serve_local_file(path: str) -> FileResponse:
+    """Serve a local file so the browser can render audio/image/doc inline.
+
+    Only serves files with allowed extensions. The *path* query param is the
+    absolute filesystem path, e.g. `/api/file?path=/tmp/voice.mp3`.
+    """
+    file_path = Path(path)
+    if not file_path.exists():
+        return JSONResponse({"error": "File not found"}, status_code=404)  # type: ignore[return-value]
+    if not file_path.is_file():
+        return JSONResponse({"error": "Not a file"}, status_code=400)  # type: ignore[return-value]
+    ext = file_path.suffix.lower()
+    if ext not in _ALLOWED_EXTENSIONS:
+        return JSONResponse({"error": f"Extension {ext} not allowed"}, status_code=403)  # type: ignore[return-value]
+    media_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
+    return FileResponse(
+        path=str(file_path),
+        media_type=media_type,
+        filename=file_path.name,
+    )
 
 
 # ── Gateway Info (auto-discover token from local config) ────────
@@ -572,7 +636,9 @@ async def get_audit(request: Request) -> JSONResponse:
 
     # Apply filters
     if verdict_filter:
-        raw_entries = [e for e in raw_entries if str(e.get("verdict", "")).upper() == verdict_filter.upper()]
+        raw_entries = [
+            e for e in raw_entries if str(e.get("verdict", "")).upper() == verdict_filter.upper()
+        ]
     if since_str:
         since_ts = float(since_str)
         raw_entries = [e for e in raw_entries if e.get("timestamp", 0) >= since_ts]
@@ -619,6 +685,126 @@ async def stats(request: Request) -> JSONResponse:
 
 
 # ── MCP Proxy (HTTP POST) ────────────────────────────────────────
+
+
+@app.get("/api/mcp/tools")
+async def list_mcp_tools(request: Request) -> JSONResponse:
+    """List available tools: gateway (auto-discovered) + skills (from SKILL.md)."""
+    tools = _all_tools_openai_format()
+
+    # Gateway tools info
+    gw_registry = _get_gateway_tool_registry()
+    gateway_info = [
+        {"name": t.name, "description": t.description, "source": "gateway"}
+        for t in gw_registry.tools.values()
+    ]
+
+    # Skill tools info
+    skill_registry = _get_skill_registry()
+    skills_info = [
+        {
+            "name": s.name,
+            "description": s.description,
+            "emoji": s.emoji,
+            "bins": s.required_bins,
+            "source": "skill",
+        }
+        for s in skill_registry.ready_skills.values()
+    ]
+
+    return JSONResponse(
+        {
+            "tools": tools,
+            "count": len(tools),
+            "gateway_tools": gateway_info,
+            "skills": skills_info,
+        }
+    )
+
+
+# ── Custom MCP Servers & Skills CRUD ─────────────────────────────
+
+_CUSTOM_CONFIG_PATH = Path(__file__).parent.parent / "custom_config.json"
+
+
+def _load_custom_config() -> dict:
+    """Load custom MCP servers and skills from JSON file."""
+    if _CUSTOM_CONFIG_PATH.exists():
+        try:
+            return json.loads(_CUSTOM_CONFIG_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"mcp_servers": [], "skills": []}
+
+
+def _save_custom_config(data: dict) -> None:
+    """Persist custom config to JSON file."""
+    _CUSTOM_CONFIG_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+@app.get("/api/custom-config")
+async def get_custom_config() -> JSONResponse:
+    """Return all custom MCP servers and skills."""
+    return JSONResponse(_load_custom_config())
+
+
+@app.put("/api/custom-config")
+async def save_custom_config(request: Request) -> JSONResponse:
+    """Replace the full custom config (mcp_servers + skills)."""
+    data = await request.json()
+    _save_custom_config(data)
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/custom-config/mcp-servers")
+async def add_custom_mcp_server(request: Request) -> JSONResponse:
+    """Add or update a custom MCP server."""
+    server = await request.json()
+    cfg = _load_custom_config()
+    servers = cfg.get("mcp_servers", [])
+    # Upsert by id
+    idx = next((i for i, s in enumerate(servers) if s["id"] == server.get("id")), None)
+    if idx is not None:
+        servers[idx] = server
+    else:
+        servers.append(server)
+    cfg["mcp_servers"] = servers
+    _save_custom_config(cfg)
+    return JSONResponse({"ok": True, "server": server})
+
+
+@app.delete("/api/custom-config/mcp-servers/{server_id}")
+async def delete_custom_mcp_server(server_id: str) -> JSONResponse:
+    """Delete a custom MCP server by ID."""
+    cfg = _load_custom_config()
+    cfg["mcp_servers"] = [s for s in cfg.get("mcp_servers", []) if s.get("id") != server_id]
+    _save_custom_config(cfg)
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/custom-config/skills")
+async def add_custom_skill(request: Request) -> JSONResponse:
+    """Add or update a custom skill definition."""
+    skill = await request.json()
+    cfg = _load_custom_config()
+    skills = cfg.get("skills", [])
+    idx = next((i for i, s in enumerate(skills) if s["id"] == skill.get("id")), None)
+    if idx is not None:
+        skills[idx] = skill
+    else:
+        skills.append(skill)
+    cfg["skills"] = skills
+    _save_custom_config(cfg)
+    return JSONResponse({"ok": True, "skill": skill})
+
+
+@app.delete("/api/custom-config/skills/{skill_id}")
+async def delete_custom_skill(skill_id: str) -> JSONResponse:
+    """Delete a custom skill by ID."""
+    cfg = _load_custom_config()
+    cfg["skills"] = [s for s in cfg.get("skills", []) if s.get("id") != skill_id]
+    _save_custom_config(cfg)
+    return JSONResponse({"ok": True})
 
 
 @app.post("/mcp/{path:path}")
@@ -683,6 +869,96 @@ async def dashboard_websocket(ws: WebSocket) -> None:
 
 # ── Red Team Chat Lab ─────────────────────────────────────────────
 
+# ── Dynamic tool discovery (skills + gateway) ────────────────────
+
+# Tavily web search (replaces Brave for web_search)
+TAVILY_API_KEY = "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"
+TAVILY_SEARCH_URL = "https://api.tavily.com/search"
+
+
+async def _tavily_web_search(query: str, max_results: int = 5) -> str:
+    """Execute a web search via Tavily API."""
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                TAVILY_SEARCH_URL,
+                json={
+                    "api_key": TAVILY_API_KEY,
+                    "query": query,
+                    "max_results": max_results,
+                    "include_answer": True,
+                    "search_depth": "basic",
+                },
+            )
+            if resp.status_code != 200:
+                return f"[Tavily error] HTTP {resp.status_code}: {resp.text[:300]}"
+            data = resp.json()
+            parts = []
+            # Include AI-generated answer if available
+            if data.get("answer"):
+                parts.append(f"**Answer:** {data['answer']}\n")
+            # Include search results
+            for i, r in enumerate(data.get("results", [])[:max_results], 1):
+                title = r.get("title", "")
+                url = r.get("url", "")
+                content = r.get("content", "")[:300]
+                parts.append(f"{i}. [{title}]({url})\n   {content}")
+            return "\n\n".join(parts) if parts else "No results found."
+    except Exception as e:
+        return f"[Tavily search error]: {e}"
+
+
+_skill_registry: SkillRegistry | None = None
+_gateway_tool_registry: GatewayToolRegistry | None = None
+
+
+def _get_skill_registry() -> SkillRegistry:
+    """Lazy-init the global skill registry (scans skills/ once)."""
+    global _skill_registry
+    if _skill_registry is None:
+        _skill_registry = get_skill_registry()
+    return _skill_registry
+
+
+def _get_gateway_tool_registry() -> GatewayToolRegistry:
+    """Lazy-init the global gateway tool registry (scans source once)."""
+    global _gateway_tool_registry
+    if _gateway_tool_registry is None:
+        _gateway_tool_registry = get_gateway_tool_registry()
+    return _gateway_tool_registry
+
+
+def _get_gateway_auth() -> tuple[str, int, str]:
+    """Read gateway host, port, and auth token from ~/.openclaw/openclaw.json."""
+    config_path = Path.home() / ".openclaw" / "openclaw.json"
+    host = "127.0.0.1"
+    port = 18789
+    token = ""
+    if config_path.exists():
+        try:
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+            gw = data.get("gateway", {})
+            port = gw.get("port", 18789)
+            token = gw.get("auth", {}).get("token", "")
+        except Exception:
+            pass
+    return host, port, token
+
+
+def _all_tools_openai_format() -> list[dict[str, Any]]:
+    """Build OpenAI function-calling tools from dynamic registries (gateway + skills)."""
+    # Gateway tools (auto-discovered from TypeScript source)
+    gw_registry = _get_gateway_tool_registry()
+    gateway_tools = gw_registry.get_openai_tools()
+
+    # Skill tools (auto-discovered from SKILL.md files)
+    skill_registry = _get_skill_registry()
+    skill_tools = skill_registry.get_openai_tools()
+
+    return gateway_tools + skill_tools
+
 
 @app.post("/api/chat/send")
 async def chat_send(request: Request) -> JSONResponse:
@@ -695,10 +971,13 @@ async def chat_send(request: Request) -> JSONResponse:
     Request body:
       {
         "messages": [{"role": "user", "content": "..."}],
-        "model": "deepseek/deepseek-chat",
+        "model": "openai/gpt-4o-mini",
         "modified_content": "...",     // optional: injected/modified user content
         "force_forward": false,        // optional: forward even if blocked
-        "analyze_only": false          // optional: only analyze, don't forward
+        "analyze_only": false,         // optional: only analyze, don't forward
+        "temperature": 0.7,            // optional: sampling temperature (0-2)
+        "max_tokens": 4096,            // optional: max output tokens
+        "top_p": 1.0                   // optional: nucleus sampling
       }
 
     Response:
@@ -716,16 +995,20 @@ async def chat_send(request: Request) -> JSONResponse:
     s = _state(request)
     data = await request.json()
     messages = data.get("messages", [])
-    model = data.get("model", "deepseek/deepseek-chat")
+    model = data.get("model", "openai/gpt-4o-mini")
     modified_content = data.get("modified_content", None)
     force_forward = data.get("force_forward", False)
     analyze_only = data.get("analyze_only", False)
+    temperature = data.get("temperature", None)
+    max_tokens = data.get("max_tokens", None)
+    top_p = data.get("top_p", None)
+    enable_tools = data.get("enable_tools", True)
 
     if not messages:
         return JSONResponse({"error": "No messages provided"}, status_code=400)
 
     # Extract original user content
-    from .models import ThreatLevel, DashboardEvent, AnalysisResult, AuditEntry
+    from .models import AnalysisResult, AuditEntry, DashboardEvent, ThreatLevel
 
     def _extract_text(content: Any) -> str:
         if isinstance(content, str):
@@ -863,31 +1146,252 @@ async def chat_send(request: Request) -> JSONResponse:
             if s.openai_adapter.api_key:
                 upstream_headers["Authorization"] = f"Bearer {s.openai_adapter.api_key}"
 
-            chat_body = {
+            # Gateway + skill tool definitions (all auto-discovered)
+            gw_host, gw_port, gw_token = _get_gateway_auth()
+            openai_tools = _all_tools_openai_format()
+
+            # Inject tool context into the system prompt so the LLM knows
+            # how to use skills (via run_skill) and gateway tools (via invoke_gateway)
+            registry = _get_skill_registry()
+            gw_registry = _get_gateway_tool_registry()
+            skills_prompt = registry.get_skills_system_prompt()
+            gateway_prompt = gw_registry.get_system_prompt()
+            combined_prompt = "\n\n".join(p for p in [gateway_prompt, skills_prompt] if p)
+
+            if combined_prompt and enable_tools:
+                # Prepend tool docs to the conversation as a system message
+                chat_body_messages = list(forwarded_messages)
+                # Check if there's already a system message; if so, append to it
+                has_system = chat_body_messages and chat_body_messages[0].get("role") == "system"
+                if has_system:
+                    existing = chat_body_messages[0].get("content", "")
+                    chat_body_messages[0] = {
+                        "role": "system",
+                        "content": existing + "\n\n" + combined_prompt,
+                    }
+                else:
+                    chat_body_messages.insert(0, {"role": "system", "content": combined_prompt})
+            else:
+                chat_body_messages = list(forwarded_messages)
+
+            chat_body: dict[str, Any] = {
                 "model": model,
-                "messages": forwarded_messages,
+                "messages": chat_body_messages,
                 "stream": False,
             }
+            if temperature is not None:
+                chat_body["temperature"] = float(temperature)
+            if max_tokens is not None:
+                chat_body["max_tokens"] = int(max_tokens)
+            if top_p is not None:
+                chat_body["top_p"] = float(top_p)
+            if openai_tools and enable_tools:
+                chat_body["tools"] = openai_tools
+                chat_body["tool_choice"] = "auto"
 
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                resp = await client.post(
-                    upstream_url,
-                    headers=upstream_headers,
-                    json=chat_body,
-                )
+            tool_calls_log: list[dict[str, Any]] = []
+            max_iterations = 10  # safety: prevent infinite tool-call loops
 
-                if resp.status_code == 200:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                for iteration in range(max_iterations):
+                    resp = await client.post(
+                        upstream_url,
+                        headers=upstream_headers,
+                        json=chat_body,
+                    )
+
+                    if resp.status_code != 200:
+                        response_data["response"] = (
+                            f"[Upstream error {resp.status_code}]: {resp.text[:500]}"
+                        )
+                        break
+
                     resp_json = resp.json()
                     response_data["response_raw"] = resp_json
-                    # Extract text from response
                     choices = resp_json.get("choices", [])
-                    if choices:
-                        msg = choices[0].get("message", {})
-                        response_data["response"] = msg.get("content", "")
+                    if not choices:
+                        response_data["response"] = "[No choices in LLM response]"
+                        break
+
+                    assistant_msg = choices[0].get("message", {})
+                    finish_reason = choices[0].get("finish_reason", "stop")
+
+                    # Check if the LLM wants to call tools
+                    pending_tool_calls = assistant_msg.get("tool_calls", [])
+
+                    if finish_reason == "tool_calls" or pending_tool_calls:
+                        # Append assistant message with tool_calls to conversation
+                        chat_body["messages"].append(assistant_msg)
+
+                        # Execute each tool call
+                        for tc in pending_tool_calls:
+                            tc_id = tc.get("id", "")
+                            func = tc.get("function", {})
+                            tool_name = func.get("name", "").strip()
+                            try:
+                                tool_args = json.loads(func.get("arguments", "{}"))
+                            except Exception:
+                                tool_args = {}
+
+                            # L1 analysis on the tool call
+                            tool_content_str = f"tools/call {tool_name} {json.dumps(tool_args)}"
+                            tool_l1 = s.static_analyzer.analyze(tool_content_str)
+                            tool_l1_blocked = tool_l1.threat_level in (
+                                ThreatLevel.CRITICAL,
+                                ThreatLevel.HIGH,
+                            )
+
+                            tool_call_record: dict[str, Any] = {
+                                "tool_name": tool_name,
+                                "arguments": tool_args,
+                                "iteration": iteration,
+                                "l1_patterns": tool_l1.matched_patterns,
+                                "l1_blocked": tool_l1_blocked,
+                            }
+
+                            # L2 analysis on the tool call
+                            tool_l2_confidence = 0.0
+                            tool_l2_reasoning = ""
+                            tool_l2_blocked = False
+                            try:
+                                tool_l2_result = await s.semantic_analyzer.analyze(
+                                    method=f"tools/call/{tool_name}",
+                                    params=tool_content_str,
+                                    session_context=[],
+                                )
+                                tool_l2_confidence = tool_l2_result.confidence
+                                tool_l2_reasoning = tool_l2_result.reasoning
+                                tool_l2_blocked = (
+                                    tool_l2_result.is_injection and tool_l2_confidence >= 0.7
+                                )
+                            except Exception as e:
+                                tool_l2_reasoning = f"L2 tool analysis error: {e}"
+
+                            tool_call_record["l2_confidence"] = tool_l2_confidence
+                            tool_call_record["l2_reasoning"] = tool_l2_reasoning
+                            tool_call_record["l2_blocked"] = tool_l2_blocked
+
+                            if tool_l1_blocked or tool_l2_blocked:
+                                # Block this tool call
+                                block_reasons = []
+                                if tool_l1_blocked:
+                                    block_reasons.append(
+                                        f"L1 patterns: {', '.join(tool_l1.matched_patterns)}"
+                                    )
+                                if tool_l2_blocked:
+                                    block_reasons.append(
+                                        f"L2 ({tool_l2_confidence:.0%}): {tool_l2_reasoning}"
+                                    )
+                                tool_result = f"[BLOCKED by firewall] {'; '.join(block_reasons)}"
+                                tool_call_record["blocked"] = True
+                                tool_call_record["result_preview"] = tool_result[:200]
+                            else:
+                                # Execute tool — skill tools or gateway (all dynamically discovered)
+                                if tool_name == "get_skill_docs":
+                                    skill_name = tool_args.get("skill_name", "")
+                                    tool_result = registry.get_skill_docs(skill_name)
+                                elif tool_name == "run_skill":
+                                    skill_name = tool_args.get("skill_name", "")
+                                    command = tool_args.get("command", "")
+                                    explanation = tool_args.get("explanation", "")
+                                    logger.info(
+                                        "run_skill: %s → %s (%s)",
+                                        skill_name,
+                                        command[:100],
+                                        explanation[:80],
+                                    )
+                                    tool_result = await registry.execute_skill(skill_name, command)
+                                elif tool_name == "invoke_gateway":
+                                    # Generic gateway tool invocation
+                                    gw_tool_name = tool_args.get("tool_name", "")
+                                    gw_arguments = tool_args.get("arguments", {})
+                                    logger.info(
+                                        "invoke_gateway: %s args=%s",
+                                        gw_tool_name,
+                                        json.dumps(gw_arguments, ensure_ascii=False)[:200],
+                                    )
+                                    # Intercept web_search → use Tavily instead of gateway Brave
+                                    if gw_tool_name == "web_search":
+                                        search_query = gw_arguments.get("query", "")
+                                        search_count = gw_arguments.get("count", 5)
+                                        tool_result = await _tavily_web_search(
+                                            search_query, search_count
+                                        )
+                                    else:
+                                        tool_result = await GatewayToolRegistry.execute(
+                                            gw_host, gw_port, gw_token, gw_tool_name, gw_arguments
+                                        )
+                                else:
+                                    # Fallback: try as direct gateway tool invocation
+                                    tool_result = await GatewayToolRegistry.execute(
+                                        gw_host, gw_port, gw_token, tool_name, tool_args
+                                    )
+                                tool_call_record["blocked"] = False
+                                tool_call_record["result_preview"] = tool_result[:200]
+
+                            tool_calls_log.append(tool_call_record)
+
+                            # Emit dashboard event for each tool call
+                            tool_event = DashboardEvent(
+                                event_type="chat_lab_tool_call",
+                                timestamp=time.time(),
+                                session_id="chat-lab",
+                                agent_id="red-team-tester",
+                                method=f"tools/call/{tool_name}",
+                                payload_preview=tool_content_str[:200],
+                                analysis=AnalysisResult(
+                                    request_id=str(uuid.uuid4()),
+                                    verdict=(
+                                        "BLOCK" if (tool_l1_blocked or tool_l2_blocked) else "ALLOW"
+                                    ),
+                                    threat_level=(
+                                        tool_l1.threat_level
+                                        if tool_l1_blocked
+                                        else (
+                                            ThreatLevel.HIGH
+                                            if tool_l2_blocked
+                                            else ThreatLevel.NONE
+                                        )
+                                    ),
+                                    l1_matched_patterns=tool_l1.matched_patterns,
+                                    l2_is_injection=tool_l2_blocked,
+                                    l2_confidence=tool_l2_confidence,
+                                    l2_reasoning=tool_l2_reasoning,
+                                    blocked_reason=(
+                                        f"L1: {', '.join(tool_l1.matched_patterns)}"
+                                        if tool_l1_blocked
+                                        else (f"L2: {tool_l2_reasoning}" if tool_l2_blocked else "")
+                                    ),
+                                ),
+                                is_alert=(tool_l1_blocked or tool_l2_blocked),
+                            )
+                            await s._emit_dashboard(tool_event)
+
+                            # Append tool result to conversation
+                            chat_body["messages"].append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tc_id,
+                                    "content": tool_result,
+                                }
+                            )
+
+                        # Continue loop — LLM will process tool results
+                        continue
+
+                    # No tool calls — we have the final response
+                    response_data["response"] = assistant_msg.get("content", "")
+                    break
                 else:
-                    response_data["response"] = (
-                        f"[Upstream error {resp.status_code}]: {resp.text[:500]}"
+                    # max iterations reached
+                    response_data["response"] = "[Max tool-call iterations reached] " + (
+                        assistant_msg.get("content", "") if "assistant_msg" in dir() else ""
                     )
+
+            # Attach tool call log to response
+            if tool_calls_log:
+                response_data["tool_calls"] = tool_calls_log
+
         except Exception as e:
             logger.error(f"Chat lab upstream error: {e}")
             response_data["response"] = f"[Error]: {e}"
@@ -900,9 +1404,10 @@ async def chat_send(request: Request) -> JSONResponse:
 
 @app.post("/api/test/analyze")
 async def test_analyze(request: Request) -> dict[str, Any]:
-    from .models import ThreatLevel, DashboardEvent, AnalysisResult
     import json
     import uuid
+
+    from .models import AnalysisResult, DashboardEvent, ThreatLevel
 
     s = _state(request)
     data = await request.json()

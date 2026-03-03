@@ -24,7 +24,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Optional, Protocol, Sequence
+from collections.abc import Sequence
+from typing import Any, Protocol
 
 import httpx
 
@@ -128,7 +129,7 @@ class MockClassifier:
         # Build searchable text from params + context
         search_text = _serialize_for_search(params, session_context).lower()
 
-        best_match: Optional[tuple[float, str]] = None
+        best_match: tuple[float, str] | None = None
         for marker, confidence, reasoning in self._INJECTION_MARKERS:
             if marker in search_text:
                 if best_match is None or confidence > best_match[0]:

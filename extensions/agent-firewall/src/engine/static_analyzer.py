@@ -19,11 +19,10 @@ from __future__ import annotations
 
 import base64
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import FrozenSet, Sequence
 
 from ..models import ThreatLevel
-
 
 # ────────────────────────────────────────────────────────────────────
 # Aho-Corasick Automaton Wrapper
@@ -172,7 +171,7 @@ class StaticAnalyzer:
     per-call L1Result return value.
     """
 
-    def __init__(self, blocked_commands: FrozenSet[str] | None = None) -> None:
+    def __init__(self, blocked_commands: frozenset[str] | None = None) -> None:
         from ..config import FirewallConfig
 
         cfg = FirewallConfig()
@@ -181,7 +180,7 @@ class StaticAnalyzer:
         self._ac_matcher = AhoCorasickMatcher(list(self._blocked_commands))
 
     @property
-    def blocked_commands(self) -> FrozenSet[str]:
+    def blocked_commands(self) -> frozenset[str]:
         """Return the current set of blocked command patterns."""
         return frozenset(self._blocked_commands)
 

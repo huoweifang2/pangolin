@@ -26,12 +26,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
-from typing import Any, Callable, Coroutine, Optional
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from ..engine.interceptor import intercept_and_analyze
 from ..engine.semantic_analyzer import SemanticAnalyzer
 from ..engine.static_analyzer import StaticAnalyzer
-from ..models import JsonRpcResponse, Verdict
 from .session_manager import SessionManager
 
 logger = logging.getLogger("agent_firewall.stdio")
@@ -61,8 +61,8 @@ class StdioAdapter:
         static_analyzer: StaticAnalyzer,
         semantic_analyzer: SemanticAnalyzer,
         *,
-        emit_dashboard_event: Optional[Callable[..., Coroutine[Any, Any, None]]] = None,
-        emit_audit_entry: Optional[Callable[..., Coroutine[Any, Any, None]]] = None,
+        emit_dashboard_event: Callable[..., Coroutine[Any, Any, None]] | None = None,
+        emit_audit_entry: Callable[..., Coroutine[Any, Any, None]] | None = None,
     ) -> None:
         self._server_cmd = server_command
         self._sessions = session_manager
@@ -70,7 +70,7 @@ class StdioAdapter:
         self._l2 = semantic_analyzer
         self._emit_dashboard = emit_dashboard_event
         self._emit_audit = emit_audit_entry
-        self._process: Optional[asyncio.subprocess.Process] = None
+        self._process: asyncio.subprocess.Process | None = None
 
     async def run(self) -> None:
         """
