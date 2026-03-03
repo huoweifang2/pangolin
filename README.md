@@ -4,6 +4,10 @@
 
 Agent Firewall is a non-invasive Man-in-the-Middle (MITM) proxy that intercepts all MCP (Model Context Protocol) JSON-RPC traffic between AI Agents and Tool Servers. It employs a dual-layer analysis engine (L1 Static + L2 Semantic) to detect and block threats in real-time, with human-in-the-loop escalation and full audit trails.
 
+<p align="center">
+  <img src="public/chat.png" alt="Agent Firewall — Chat Lab with real-time tool interception" width="900" />
+</p>
+
 ---
 
 ## Table of Contents

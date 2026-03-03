@@ -118,15 +118,31 @@
         </div>
         <div class="section-body">
           <div class="model-list">
-            <div v-for="(model, idx) in chatModels" :key="idx" class="model-item">
+            <div v-for="(model, idx) in allChatModels" :key="model.id" class="model-item">
               <div class="model-info">
                 <span class="model-id">{{ model.id }}</span>
                 <span class="model-label">{{ model.label }}</span>
               </div>
+              <button v-if="model.custom" class="model-remove-btn" @click="removeCustomModel(idx)" title="Remove model">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
           </div>
-          <p class="form-hint" style="margin-top: 12px;">
-            Models are routed through your provider endpoint. If using OpenRouter, all listed models are available with a single API key.
+          <!-- Add custom model -->
+          <div class="add-model-row">
+            <input
+              v-model="newModelId"
+              class="form-input add-model-input"
+              placeholder="provider/model-name"
+              @keyup.enter="addCustomModel"
+            />
+            <button class="btn btn-sm btn-outline" @click="addCustomModel" :disabled="!newModelId.trim()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add
+            </button>
+          </div>
+          <p class="form-hint" style="margin-top: 8px;">
+            Format: <code>provider/model-name</code> (e.g. <code>google/gemini-3-flash-preview</code>). Models are routed through your provider endpoint.
           </p>
         </div>
       </section>
@@ -324,18 +340,66 @@ async function saveFirewallSettings() {
 
 watch(fwConfig, syncFromFwConfig)
 
-// Available chat models (static list matching ChatLab)
-const chatModels = [
-  { id: 'openai/gpt-4o-mini', label: 'GPT-4o Mini' },
-  { id: 'openai/gpt-4o', label: 'GPT-4o' },
-  { id: 'moonshotai/kimi-k2.5', label: 'Kimi K2.5' },
-  { id: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4' },
-  { id: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
-  { id: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash' },
-  { id: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash' },
-  { id: 'minimax/minimax-m2.5', label: 'MiniMax M2.5' },
-  { id: 'deepseek/deepseek-chat', label: 'Deepseek Chat (no tools)' },
+// ── Chat models (built-in + user custom) ────────────────────────
+const CUSTOM_MODELS_KEY = 'af-custom-chat-models'
+
+const builtinModels = [
+  { id: 'openai/gpt-4o-mini', label: 'GPT-4o Mini', custom: false },
+  { id: 'openai/gpt-4o', label: 'GPT-4o', custom: false },
+  { id: 'moonshotai/kimi-k2.5', label: 'Kimi K2.5', custom: false },
+  { id: 'anthropic/claude-sonnet-4', label: 'Claude Sonnet 4', custom: false },
+  { id: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet', custom: false },
+  { id: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash', custom: false },
+  { id: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash', custom: false },
+  { id: 'minimax/minimax-m2.5', label: 'MiniMax M2.5', custom: false },
+  { id: 'deepseek/deepseek-chat', label: 'Deepseek Chat (no tools)', custom: false },
 ]
+
+function loadCustomModels(): { id: string; label: string; custom: boolean }[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_MODELS_KEY)
+    if (!raw) return []
+    return JSON.parse(raw).map((m: any) => ({ ...m, custom: true }))
+  } catch { return [] }
+}
+
+function saveCustomModels(models: { id: string; label: string }[]) {
+  localStorage.setItem(CUSTOM_MODELS_KEY, JSON.stringify(models.map(({ id, label }) => ({ id, label }))))
+  window.dispatchEvent(new CustomEvent('af-custom-models-changed'))
+}
+
+/** Auto-generate a display label from model ID: google/gemini-3-flash-preview → Gemini 3 Flash Preview */
+function modelIdToLabel(id: string): string {
+  const name = id.includes('/') ? id.split('/').slice(1).join('/') : id
+  return name.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+const customModels = ref(loadCustomModels())
+const newModelId = ref('')
+
+const allChatModels = computed(() => [...builtinModels, ...customModels.value])
+
+function addCustomModel() {
+  const id = newModelId.value.trim()
+  if (!id) return
+  // Prevent duplicates
+  if (allChatModels.value.some(m => m.id === id)) {
+    newModelId.value = ''
+    return
+  }
+  const label = modelIdToLabel(id)
+  customModels.value = [...customModels.value, { id, label, custom: true }]
+  saveCustomModels(customModels.value)
+  newModelId.value = ''
+}
+
+function removeCustomModel(idx: number) {
+  // idx is in allChatModels; custom models start after builtinModels
+  const customIdx = idx - builtinModels.length
+  if (customIdx < 0) return
+  customModels.value = customModels.value.filter((_, i) => i !== customIdx)
+  saveCustomModels(customModels.value)
+}
 
 // ── Gateway config (WebSocket RPC) ──────────────────────────────
 const { configSnapshot, loading: gwLoading, saving: gwSaving, error: gwError, loadGwConfig, saveGwConfig, applyGwConfig } = useGatewayConfig()
@@ -655,6 +719,54 @@ onMounted(() => {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 8px;
+  position: relative;
+}
+
+.model-remove-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  margin-left: auto;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: all 0.15s;
+}
+.model-remove-btn:hover {
+  color: #e53e3e;
+  background: rgba(229, 62, 62, 0.08);
+}
+
+.add-model-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+}
+.add-model-input {
+  flex: 1;
+  max-width: 360px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 12px;
+}
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.btn-outline:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn-outline:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .model-info {

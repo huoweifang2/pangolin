@@ -51,6 +51,10 @@
           <option value="google/gemini-3-flash-preview">gemini-3-flash</option>
           <option value="minimax/minimax-m2.5">minimax-m2.5</option>
           <option value="deepseek/deepseek-chat">deepseek-chat (no tools)</option>
+          <template v-if="customModels.length">
+            <option disabled>───── Custom ─────</option>
+            <option v-for="m in customModels" :key="m.id" :value="m.id">{{ m.id.split('/').pop() }}</option>
+          </template>
           <option disabled>──────────</option>
           <option value="__custom__">⚙️ 自行配置</option>
         </select>
@@ -497,6 +501,19 @@ const CHAT_STORAGE_KEY = 'af-chat-messages'
 const CHAT_MODEL_KEY = 'af-chat-model'
 const CONV_LIST_KEY = 'af-conversations'
 const SETTINGS_KEY = 'af-chat-settings'
+const CUSTOM_MODELS_KEY = 'af-custom-chat-models'
+
+function loadCustomModels(): { id: string; label: string }[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_MODELS_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+const customModels = ref<{ id: string; label: string }[]>(loadCustomModels())
+
+function refreshCustomModels() {
+  customModels.value = loadCustomModels()
+}
 
 const mode = ref<'chat' | 'mcp' | 'skill'>('chat')
 const chatMessages = ref<ChatMessage[]>([])
@@ -721,6 +738,11 @@ watch(chatMessages, () => {
 }, { deep: true })
 
 watch(selectedModel, (m) => localStorage.setItem(CHAT_MODEL_KEY, m))
+
+// Listen for custom models changes from Settings page
+function onCustomModelsChanged() { refreshCustomModels() }
+window.addEventListener('af-custom-models-changed', onCustomModelsChanged)
+onBeforeUnmount(() => { window.removeEventListener('af-custom-models-changed', onCustomModelsChanged) })
 
 // ── Chat methods ──
 
