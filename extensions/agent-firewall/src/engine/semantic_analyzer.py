@@ -237,6 +237,7 @@ Examples of BENIGN requests:
                 ],
                 "temperature": 0.1,  # Near-deterministic for security
                 "max_tokens": 4096,  # Reasoning models need headroom for CoT + output
+                "stream": True,  # Stream to avoid connection drops on large responses
             }
             # Ask provider to suppress verbose reasoning if possible
             # (OpenRouter / DeepSeek respect this to keep content shorter)
@@ -247,17 +248,47 @@ Examples of BENIGN requests:
             import asyncio as _asyncio
 
             max_retries = 3
-            data = None
+            collected_content = ""
+            collected_reasoning = ""
             last_exc: Exception | None = None
+            success = False
+
             for attempt in range(max_retries):
                 try:
-                    response = await self._client.post(
+                    collected_content = ""
+                    collected_reasoning = ""
+                    async with self._client.stream(
+                        "POST",
                         self._endpoint,
                         headers=headers,
                         json=payload,
-                    )
-                    response.raise_for_status()
-                    data = response.json()
+                    ) as response:
+                        response.raise_for_status()
+                        async for line in response.aiter_lines():
+                            line = line.strip()
+                            if not line or not line.startswith("data: "):
+                                continue
+                            data_str = line[6:]
+                            if data_str == "[DONE]":
+                                break
+                            try:
+                                import orjson as _orjson
+
+                                chunk = _orjson.loads(data_str)
+                            except Exception:
+                                continue
+                            choices = chunk.get("choices") or []
+                            if not choices:
+                                continue
+                            delta = choices[0].get("delta") or {}
+                            if delta.get("content"):
+                                collected_content += delta["content"]
+                            # Reasoning tokens come in "reasoning" or "reasoning_content"
+                            if delta.get("reasoning"):
+                                collected_reasoning += delta["reasoning"]
+                            if delta.get("reasoning_content"):
+                                collected_reasoning += delta["reasoning_content"]
+                    success = True
                     break
                 except (
                     httpx.RemoteProtocolError,
@@ -270,7 +301,7 @@ Examples of BENIGN requests:
                     if attempt < max_retries - 1:
                         wait = 1.5**attempt
                         logger.info(
-                            "L2 retry %d/%d after %s (wait %.1fs)",
+                            "L2 stream retry %d/%d after %s (wait %.1fs)",
                             attempt + 1,
                             max_retries,
                             type(exc).__name__,
@@ -278,6 +309,13 @@ Examples of BENIGN requests:
                         )
                         await _asyncio.sleep(wait)
                     else:
+                        # If we got partial content, try to use it instead of failing
+                        if collected_content or collected_reasoning:
+                            logger.info(
+                                "L2 stream interrupted but got partial data, attempting parse"
+                            )
+                            success = True
+                            break
                         raise
                 except httpx.HTTPStatusError as exc:
                     if exc.response.status_code in (429, 502, 503, 504):
@@ -285,7 +323,7 @@ Examples of BENIGN requests:
                         if attempt < max_retries - 1:
                             wait = 2.0**attempt
                             logger.info(
-                                "L2 retry %d/%d after HTTP %d (wait %.1fs)",
+                                "L2 stream retry %d/%d after HTTP %d (wait %.1fs)",
                                 attempt + 1,
                                 max_retries,
                                 exc.response.status_code,
@@ -297,39 +335,27 @@ Examples of BENIGN requests:
                     else:
                         raise
 
-            if data is None:
+            if not success:
                 return L2Result(reasoning=f"L2 exhausted retries — fail-open: {last_exc}")
 
-            # Parse LLM response — strip whitespace
-            choices = data.get("choices", [])
-            if not choices:
-                logger.warning("L2 LLM returned no choices — fail-open. Full response: %r", data)
-                return L2Result(reasoning="LLM returned no choices — fail-open")
-
-            msg_obj = choices[0].get("message", {})
-            raw_content = msg_obj.get("content")
-            # Some reasoning models (e.g. DeepSeek-R1 / speciale variants) put
-            # chain-of-thought in "reasoning" and the final answer in "content".
-            # When content is null/empty, fall back to reasoning fields.
-            reasoning_text = msg_obj.get("reasoning") or msg_obj.get("reasoning_content") or ""
-            if not raw_content and reasoning_text:
-                raw_content = reasoning_text
+            # Use content; fall back to reasoning if content is empty
+            raw_content = collected_content.strip() or collected_reasoning.strip()
             logger.debug(
-                "L2 raw response — content: %r, reasoning: %r (keys=%s)",
-                (raw_content or "")[:300],
-                reasoning_text[:300] if reasoning_text else "(none)",
-                list(msg_obj.keys()),
+                "L2 streamed response — content: %r, reasoning: %r",
+                collected_content[:300],
+                collected_reasoning[:300] if collected_reasoning else "(none)",
             )
-            content = raw_content.strip() if raw_content else ""
+
+            content = raw_content
 
             if not content:
                 logger.warning("L2 LLM returned empty content — fail-open (no opinion)")
-                # Fail-open: do not fall back to aggressive keyword matcher.
-                # L1 + policy will still catch real threats.
                 return L2Result(reasoning="LLM returned empty content — fail-open")
 
             import orjson
             import re
+
+            reasoning_text = collected_reasoning.strip()
 
             # Try direct parse first (model usually returns clean JSON)
             result = None
