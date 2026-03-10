@@ -71,8 +71,18 @@ class FeishuToolRegistry:
         }
 
     def get_tool_definitions(self) -> list[dict[str, Any]]:
-        """Get all tool definitions for MCP tools/list."""
-        return list(self._tools.values())
+        """Get all tool definitions in OpenAI function calling format."""
+        openai_tools = []
+        for tool_name, tool_def in self._tools.items():
+            openai_tools.append({
+                "type": "function",
+                "function": {
+                    "name": tool_def["name"],
+                    "description": tool_def["description"],
+                    "parameters": tool_def["parameters"],
+                }
+            })
+        return openai_tools
 
     async def invoke_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Invoke a Feishu tool by name."""

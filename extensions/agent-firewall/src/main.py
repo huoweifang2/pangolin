@@ -55,6 +55,7 @@ from .config import FirewallConfig
 from .dashboard.ws_handler import DashboardHub
 from .engine.semantic_analyzer import LlmClassifier, MockClassifier, SemanticAnalyzer
 from .engine.static_analyzer import StaticAnalyzer
+from .feishu_tools import FeishuToolRegistry
 from .gateway_tools import GatewayToolRegistry, get_gateway_tool_registry
 from .models import AuditEntry, DashboardEvent
 from .proxy.openai_adapter import OpenAIAdapter
@@ -117,6 +118,7 @@ class AppState:
 
         # Initialize Feishu channel adapter if enabled
         self.feishu_adapter: FeishuAdapter | None = None
+        self.feishu_tool_registry: FeishuToolRegistry | None = None
         if config.feishu_enabled and config.feishu_app_id:
             feishu_config = FeishuConfig(
                 app_id=config.feishu_app_id,
@@ -134,6 +136,8 @@ class AppState:
                 emit_dashboard_event=self._emit_dashboard,
                 emit_audit_entry=self._emit_audit,
             )
+            # Initialize Feishu tool registry
+            self.feishu_tool_registry = FeishuToolRegistry(self.feishu_adapter)
 
         self._start_time = time.time()
 
@@ -1087,7 +1091,7 @@ def _get_gateway_auth() -> tuple[str, int, str]:
 
 
 def _all_tools_openai_format() -> list[dict[str, Any]]:
-    """Build OpenAI function-calling tools from dynamic registries (gateway + skills)."""
+    """Build OpenAI function-calling tools from dynamic registries (gateway + skills + feishu)."""
     # Gateway tools (auto-discovered from TypeScript source)
     gw_registry = _get_gateway_tool_registry()
     gateway_tools = gw_registry.get_openai_tools()
@@ -1096,7 +1100,12 @@ def _all_tools_openai_format() -> list[dict[str, Any]]:
     skill_registry = _get_skill_registry()
     skill_tools = skill_registry.get_openai_tools()
 
-    return gateway_tools + skill_tools
+    # Feishu tools (if adapter is enabled)
+    feishu_tools = []
+    if _state_instance and _state_instance.feishu_tool_registry:
+        feishu_tools = _state_instance.feishu_tool_registry.get_tool_definitions()
+
+    return gateway_tools + skill_tools + feishu_tools
 
 
 @app.post("/api/chat/send")
@@ -1463,6 +1472,20 @@ async def chat_send(request: Request):
                                         explanation[:80],
                                     )
                                     tool_result = await registry.execute_skill(skill_name, command)
+                                elif tool_name in ["feishu_create_document", "feishu_create_spreadsheet"]:
+                                    # Handle Feishu tools
+                                    if s.feishu_tool_registry:
+                                        logger.info(
+                                            "feishu_tool: %s args=%s",
+                                            tool_name,
+                                            json.dumps(tool_args, ensure_ascii=False)[:200],
+                                        )
+                                        tool_result_dict = await s.feishu_tool_registry.invoke_tool(
+                                            tool_name, tool_args
+                                        )
+                                        tool_result = json.dumps(tool_result_dict, ensure_ascii=False)
+                                    else:
+                                        tool_result = "[Error] Feishu adapter not enabled"
                                 elif tool_name == "invoke_gateway":
                                     gw_tool_name = tool_args.get("tool_name", "")
                                     gw_arguments = tool_args.get("arguments", {})
