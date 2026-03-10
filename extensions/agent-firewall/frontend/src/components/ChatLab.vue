@@ -1221,11 +1221,26 @@ async function testSkill(skill: SkillStatusEntry) {
 .code-header {
   position: absolute; top: 0; right: 0; padding: 4px 8px; font-size: 9px;
   color: var(--text-muted); text-transform: uppercase; pointer-events: none;
+  background: var(--bg-surface); border-bottom-left-radius: 4px;
 }
 .code-content {
-  margin: 0; padding: 12px 14px; font-family: var(--font-mono); font-size: 12px;
+  margin: 0; padding: 16px 14px 12px; font-family: 'JetBrains Mono', var(--font-mono); font-size: 12px;
   background: var(--bg-surface); color: var(--text-secondary); overflow-x: auto;
   white-space: pre-wrap; border-bottom: 1px solid var(--border-subtle);
+  line-height: 1.5;
+}
+
+.tool-output-wrapper { position: relative; }
+.tool-output-content {
+  padding: 24px 14px 14px; font-family: var(--font-sans); font-size: 13px;
+  background: var(--bg-surface); color: var(--text-primary); overflow-x: auto;
+  border-bottom: 1px solid var(--border-subtle);
+}
+/* Style raw JSON/code output specifically */
+.tool-output-content :deep(pre) {
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px; overflow-x: auto; font-family: 'JetBrains Mono', var(--font-mono); font-size: 12px;
+  margin: 0;
 }
 
 .tool-analysis-compact { padding: 10px 14px; background: var(--bg-elevated); display: flex; flex-direction: column; gap: 8px; }
