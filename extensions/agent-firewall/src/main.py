@@ -26,6 +26,7 @@ Startup sequence:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import mimetypes
@@ -49,6 +50,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from .audit.logger import AuditLogger
+from .channels.feishu_adapter import FeishuAdapter, FeishuConfig
 from .config import FirewallConfig
 from .dashboard.ws_handler import DashboardHub
 from .engine.semantic_analyzer import LlmClassifier, MockClassifier, SemanticAnalyzer
@@ -112,6 +114,26 @@ class AppState:
             semantic_analyzer=self.semantic_analyzer,
             api_key=config.l2_api_key,
         )
+
+        # Initialize Feishu channel adapter if enabled
+        self.feishu_adapter: FeishuAdapter | None = None
+        if config.feishu_enabled and config.feishu_app_id:
+            feishu_config = FeishuConfig(
+                app_id=config.feishu_app_id,
+                app_secret=config.feishu_app_secret,
+                encrypt_key=config.feishu_encrypt_key or None,
+                verification_token=config.feishu_verification_token or None,
+                model=config.feishu_model,
+                upstream_url=config.feishu_upstream_url,
+            )
+            self.feishu_adapter = FeishuAdapter(
+                config=feishu_config,
+                static_analyzer=self.static_analyzer,
+                semantic_analyzer=self.semantic_analyzer,
+                upstream_url=openai_upstream,
+                emit_dashboard_event=self._emit_dashboard,
+                emit_audit_entry=self._emit_audit,
+            )
 
         self._start_time = time.time()
 
@@ -179,6 +201,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await state.session_manager.start()
     await state.audit_logger.start()
 
+    # Start Feishu channel if enabled
+    if state.feishu_adapter:
+        logger.info("🚀 Starting Feishu channel adapter...")
+        try:
+            await state.feishu_adapter.start()
+            logger.info("✅ Feishu channel connected successfully")
+        except Exception as e:
+            logger.error(f"❌ Failed to start Feishu channel: {e}")
+            logger.warning("⚠️  Please check your Feishu App ID and Secret in .env file")
+            logger.warning("⚠️  Also ensure you've enabled event subscriptions in Feishu Admin Console")
+
     logger.info(
         "🛡️  Agent Firewall started on %s:%d → upstream %s:%d",
         config.listen_host,
@@ -190,6 +223,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
     # Graceful shutdown
+    if state.feishu_adapter:
+        logger.info("Stopping Feishu channel...")
+        await state.feishu_adapter.stop()
+
     await state.semantic_analyzer.close()
 
     await state.audit_logger.stop()
@@ -702,13 +739,94 @@ async def stats(request: Request) -> JSONResponse:
     )
 
 
+# ── Feishu Channel API ───────────────────────────────────────────
+
+
+@app.get("/api/feishu/config")
+async def get_feishu_config(request: Request) -> JSONResponse:
+    """Get Feishu channel configuration."""
+    s = _state(request)
+    c = s.config
+
+    return JSONResponse(
+        {
+            "connected": s.feishu_adapter is not None and s.feishu_adapter._running,
+            "app_id": c.feishu_app_id,
+            "app_secret": "***" if c.feishu_app_secret else "",
+            "upstream_url": c.feishu_upstream_url,
+            "model": c.feishu_model,
+        }
+    )
+
+
+@app.post("/api/feishu/config")
+async def update_feishu_config(request: Request) -> JSONResponse:
+    """Update Feishu channel configuration."""
+    updates = await request.json()
+    # TODO: Implement config update logic
+    # For now, just return success
+    return JSONResponse({"status": "ok", "message": "Configuration saved. Restart required."})
+
+
+@app.get("/api/feishu/stats")
+async def get_feishu_stats(request: Request) -> JSONResponse:
+    """Get Feishu channel statistics."""
+    s = _state(request)
+
+    # Count Feishu-related audit entries
+    feishu_entries = [
+        e for e in s.audit_logger._buffer if "feishu" in e.get("method", "").lower()
+    ]
+
+    total_messages = len(feishu_entries)
+    blocked_messages = sum(1 for e in feishu_entries if e.get("verdict") == "BLOCK")
+
+    # Count unique chat IDs
+    active_chats = len(set(e.get("session_id") for e in feishu_entries if e.get("session_id")))
+
+    # Calculate average response time
+    response_times = [e.get("response_time_ms", 0) for e in feishu_entries]
+    avg_response_time = round(sum(response_times) / len(response_times)) if response_times else 0
+
+    return JSONResponse(
+        {
+            "total_messages": total_messages,
+            "blocked_messages": blocked_messages,
+            "active_chats": active_chats,
+            "avg_response_time": avg_response_time,
+        }
+    )
+
+
+@app.post("/api/feishu/test-send")
+async def test_feishu_send(request: Request) -> JSONResponse:
+    """Test endpoint to send a message via Feishu API."""
+    s = _state(request)
+
+    if not s.feishu_adapter:
+        return JSONResponse({"error": "Feishu adapter not initialized"}, status_code=503)
+
+    data = await request.json()
+    chat_id = data.get("chat_id")
+    message = data.get("message", "Hello from Agent Firewall!")
+
+    if not chat_id:
+        return JSONResponse({"error": "chat_id is required"}, status_code=400)
+
+    try:
+        success = await s.feishu_adapter.send_message(chat_id, message)
+        return JSONResponse({"success": success, "chat_id": chat_id, "message": message})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 # ── MCP Proxy (HTTP POST) ────────────────────────────────────────
 
 
 @app.get("/api/mcp/tools")
 async def list_mcp_tools(request: Request) -> JSONResponse:
     """List available tools: gateway (auto-discovered) + skills (from SKILL.md)."""
-    tools = _all_tools_openai_format()
+    tools = _all_tools_openai_format(request)
 
     # Gateway tools info
     gw_registry = _get_gateway_tool_registry()
@@ -968,17 +1086,41 @@ def _get_gateway_auth() -> tuple[str, int, str]:
     return host, port, token
 
 
-def _all_tools_openai_format() -> list[dict[str, Any]]:
-    """Build OpenAI function-calling tools from dynamic registries (gateway + skills)."""
-    # Gateway tools (auto-discovered from TypeScript source)
+def _all_tools_openai_format(request: Request) -> list[dict[str, Any]]:
+    """Build OpenAI function-calling tools from dynamic registries (gateway + skills).
+
+    Note: Feishu tools are now auto-discovered via Gateway (TypeScript implementation).
+    """
+    # Gateway tools (auto-discovered from TypeScript source, includes all Feishu tools)
     gw_registry = _get_gateway_tool_registry()
     gateway_tools = gw_registry.get_openai_tools()
+
+    # Add get_gateway_tool_docs tool
+    tool_names = sorted(gw_registry.tools.keys())
+    gateway_docs_tool = {
+        "type": "function",
+        "function": {
+            "name": "get_gateway_tool_docs",
+            "description": f"Get detailed documentation for a gateway tool. Available tools: {', '.join(tool_names)}. Call this BEFORE invoke_gateway to learn the exact parameters and usage.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tool_name": {
+                        "type": "string",
+                        "description": f"Gateway tool to get docs for. One of: {', '.join(tool_names)}",
+                        "enum": tool_names,
+                    }
+                },
+                "required": ["tool_name"],
+            },
+        },
+    }
 
     # Skill tools (auto-discovered from SKILL.md files)
     skill_registry = _get_skill_registry()
     skill_tools = skill_registry.get_openai_tools()
 
-    return gateway_tools + skill_tools
+    return gateway_tools + [gateway_docs_tool] + skill_tools
 
 
 @app.post("/api/chat/send")
@@ -1155,7 +1297,7 @@ async def chat_send(request: Request):
                 upstream_headers["Authorization"] = f"Bearer {s.openai_adapter.api_key}"
 
             gw_host, gw_port, gw_token = _get_gateway_auth()
-            openai_tools = _all_tools_openai_format()
+            openai_tools = _all_tools_openai_format(request)
 
             registry = _get_skill_registry()
             gw_registry = _get_gateway_tool_registry()
@@ -1193,22 +1335,71 @@ async def chat_send(request: Request):
                 chat_body["tool_choice"] = "auto"
 
             tool_calls_log: list[dict[str, Any]] = []
-            max_iterations = 10
+            max_iterations = 100
+            max_retries = 4
 
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(connect=15.0, read=120.0, write=30.0, pool=30.0),
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            ) as client:
                 for iteration in range(max_iterations):
-                    resp = await client.post(upstream_url, headers=upstream_headers, json=chat_body)
+                    # Retry loop: fetch + parse as one atomic unit
+                    resp = None
+                    resp_json = None
+                    for attempt in range(max_retries):
+                        try:
+                            resp = await client.post(
+                                upstream_url, headers=upstream_headers, json=chat_body
+                            )
+                            if resp.status_code == 429 or resp.status_code >= 502:
+                                wait = (2**attempt) + 0.5
+                                logger.warning(
+                                    "Upstream %d on attempt %d/%d, retrying in %.1fs",
+                                    resp.status_code,
+                                    attempt + 1,
+                                    max_retries,
+                                    wait,
+                                )
+                                await asyncio.sleep(wait)
+                                continue
+                            if resp.status_code == 200:
+                                resp_json = resp.json()
+                            break  # success or non-retryable error
+                        except (
+                            httpx.RemoteProtocolError,
+                            httpx.ReadError,
+                            httpx.ReadTimeout,
+                            httpx.ConnectError,
+                            httpx.ConnectTimeout,
+                        ) as exc:
+                            wait = (2**attempt) + 0.5
+                            logger.warning(
+                                "Upstream connection error on attempt %d/%d: %s, retrying in %.1fs",
+                                attempt + 1,
+                                max_retries,
+                                exc,
+                                wait,
+                            )
+                            if attempt < max_retries - 1:
+                                await asyncio.sleep(wait)
+                            else:
+                                raise
 
-                    if resp.status_code != 200:
+                    if resp is None or resp.status_code != 200:
+                        err_detail = resp.text[:500] if resp else "No response"
+                        status = resp.status_code if resp else 0
                         yield _emit(
                             {
                                 "type": "error",
-                                "error": f"Upstream error {resp.status_code}: {resp.text[:500]}",
+                                "error": f"Upstream error {status}: {err_detail}",
                             }
                         )
                         break
 
-                    resp_json = resp.json()
+                    if not resp_json:
+                        yield _emit({"type": "error", "error": "Empty response body from upstream"})
+                        break
+
                     choices = resp_json.get("choices", [])
                     if not choices:
                         yield _emit({"type": "error", "error": "No choices in LLM response"})
@@ -1285,6 +1476,10 @@ async def chat_send(request: Request):
                                 if tool_name == "get_skill_docs":
                                     skill_name = tool_args.get("skill_name", "")
                                     tool_result = registry.get_skill_docs(skill_name)
+                                elif tool_name == "get_gateway_tool_docs":
+                                    gw_tool_name = tool_args.get("tool_name", "")
+                                    gw_registry = _get_gateway_tool_registry()
+                                    tool_result = gw_registry.get_tool_docs(gw_tool_name)
                                 elif tool_name == "run_skill":
                                     skill_name = tool_args.get("skill_name", "")
                                     command = tool_args.get("command", "")

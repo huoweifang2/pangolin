@@ -203,7 +203,13 @@ Examples of BENIGN requests:
         self._api_key = cfg.l2_api_key
         self._model = cfg.l2_model
         self._timeout = cfg.l2_timeout_seconds
-        self._client = httpx.AsyncClient(timeout=self._timeout)
+        # Reasoning models (DeepSeek-R1, speciale) can take 30-60s for CoT + output.
+        # Use a generous read timeout; connect stays tight to fail fast on bad hosts.
+        read_timeout = max(self._timeout, 45.0)
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(read_timeout, connect=10.0),
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+        )
 
     async def classify(
         self,
@@ -223,54 +229,163 @@ Examples of BENIGN requests:
             headers = {"Content-Type": "application/json"}
             if self._api_key:
                 headers["Authorization"] = f"Bearer {self._api_key}"
-            response = await self._client.post(
-                self._endpoint,
-                headers=headers,
-                json={
-                    "model": self._model,
-                    "messages": [
-                        {"role": "system", "content": self._SYSTEM_PROMPT},
-                        {"role": "user", "content": user_content},
-                    ],
-                    "temperature": 0.1,  # Near-deterministic for security
-                    "max_tokens": 200,
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
+            payload = {
+                "model": self._model,
+                "messages": [
+                    {"role": "system", "content": self._SYSTEM_PROMPT},
+                    {"role": "user", "content": user_content},
+                ],
+                "temperature": 0.1,  # Near-deterministic for security
+                "max_tokens": 4096,  # Reasoning models need headroom for CoT + output
+                "stream": True,  # Stream to avoid connection drops on large responses
+            }
+            # Ask provider to suppress verbose reasoning if possible
+            # (OpenRouter / DeepSeek respect this to keep content shorter)
+            if "deepseek" in self._model.lower() or "reasoning" in self._model.lower():
+                payload["reasoning"] = {"effort": "low"}
 
-            # Parse LLM response — strip whitespace
-            choices = data.get("choices", [])
-            if not choices:
-                logger.warning("L2 LLM returned no choices — fail-open. Full response: %r", data)
-                return L2Result(reasoning="LLM returned no choices — fail-open")
+            # Retry with exponential backoff for transient network errors
+            import asyncio as _asyncio
 
-            raw_content = choices[0].get("message", {}).get("content")
+            max_retries = 3
+            collected_content = ""
+            collected_reasoning = ""
+            last_exc: Exception | None = None
+            success = False
+
+            for attempt in range(max_retries):
+                try:
+                    collected_content = ""
+                    collected_reasoning = ""
+                    async with self._client.stream(
+                        "POST",
+                        self._endpoint,
+                        headers=headers,
+                        json=payload,
+                    ) as response:
+                        response.raise_for_status()
+                        async for line in response.aiter_lines():
+                            line = line.strip()
+                            if not line or not line.startswith("data: "):
+                                continue
+                            data_str = line[6:]
+                            if data_str == "[DONE]":
+                                break
+                            try:
+                                import orjson as _orjson
+
+                                chunk = _orjson.loads(data_str)
+                            except Exception:
+                                continue
+                            choices = chunk.get("choices") or []
+                            if not choices:
+                                continue
+                            delta = choices[0].get("delta") or {}
+                            if delta.get("content"):
+                                collected_content += delta["content"]
+                            # Reasoning tokens come in "reasoning" or "reasoning_content"
+                            if delta.get("reasoning"):
+                                collected_reasoning += delta["reasoning"]
+                            if delta.get("reasoning_content"):
+                                collected_reasoning += delta["reasoning_content"]
+                    success = True
+                    break
+                except (
+                    httpx.RemoteProtocolError,
+                    httpx.ReadError,
+                    httpx.ReadTimeout,
+                    httpx.ConnectError,
+                    httpx.ConnectTimeout,
+                ) as exc:
+                    last_exc = exc
+                    if attempt < max_retries - 1:
+                        wait = 1.5**attempt
+                        logger.info(
+                            "L2 stream retry %d/%d after %s (wait %.1fs)",
+                            attempt + 1,
+                            max_retries,
+                            type(exc).__name__,
+                            wait,
+                        )
+                        await _asyncio.sleep(wait)
+                    else:
+                        # If we got partial content, try to use it instead of failing
+                        if collected_content or collected_reasoning:
+                            logger.info(
+                                "L2 stream interrupted but got partial data, attempting parse"
+                            )
+                            success = True
+                            break
+                        raise
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code in (429, 502, 503, 504):
+                        last_exc = exc
+                        if attempt < max_retries - 1:
+                            wait = 2.0**attempt
+                            logger.info(
+                                "L2 stream retry %d/%d after HTTP %d (wait %.1fs)",
+                                attempt + 1,
+                                max_retries,
+                                exc.response.status_code,
+                                wait,
+                            )
+                            await _asyncio.sleep(wait)
+                        else:
+                            raise
+                    else:
+                        raise
+
+            if not success:
+                return L2Result(reasoning=f"L2 exhausted retries — fail-open: {last_exc}")
+
+            # Use content; fall back to reasoning if content is empty
+            raw_content = collected_content.strip() or collected_reasoning.strip()
             logger.debug(
-                "L2 raw response content: %r", raw_content[:500] if raw_content else "(empty)"
+                "L2 streamed response — content: %r, reasoning: %r",
+                collected_content[:300],
+                collected_reasoning[:300] if collected_reasoning else "(none)",
             )
-            content = raw_content.strip() if raw_content else ""
+
+            content = raw_content
 
             if not content:
                 logger.warning("L2 LLM returned empty content — fail-open (no opinion)")
-                # Fail-open: do not fall back to aggressive keyword matcher.
-                # L1 + policy will still catch real threats.
                 return L2Result(reasoning="LLM returned empty content — fail-open")
 
             import orjson
+            import re
+
+            reasoning_text = collected_reasoning.strip()
 
             # Try direct parse first (model usually returns clean JSON)
+            result = None
             try:
                 result = orjson.loads(content)
             except orjson.JSONDecodeError:
-                # Fallback: extract JSON from markdown code blocks or surrounding text
-                import re
-
-                # Match JSON object allowing nested braces
-                json_match = re.search(r'\{(?:[^{}]|"[^"]*")*\}', content, re.DOTALL)
+                # Fallback: extract JSON object from surrounding text / markdown / CoT
+                json_match = re.search(r'\{[^{}]*"is_injection"[^{}]*\}', content, re.DOTALL)
                 if json_match:
-                    content = json_match.group(0)
-                result = orjson.loads(content)
+                    try:
+                        result = orjson.loads(json_match.group(0))
+                    except orjson.JSONDecodeError:
+                        pass
+
+            # Last resort: scan reasoning text for JSON (may differ from content)
+            if result is None and reasoning_text and reasoning_text != content:
+                json_match = re.search(r'\{[^{}]*"is_injection"[^{}]*\}', reasoning_text, re.DOTALL)
+                if json_match:
+                    try:
+                        result = orjson.loads(json_match.group(0))
+                    except orjson.JSONDecodeError:
+                        pass
+
+            if result is None:
+                logger.warning(
+                    "L2 could not extract JSON from response — fail-open. content=%r reasoning=%r",
+                    content[:200],
+                    reasoning_text[:200],
+                )
+                return L2Result(reasoning="LLM returned non-JSON content — fail-open")
 
             is_injection = bool(result.get("is_injection", False))
             confidence = float(result.get("confidence", 0.0))
@@ -331,7 +446,12 @@ class SemanticAnalyzer:
             self._classifier = LlmClassifier(cfg)
         else:
             self._classifier = MockClassifier()
-        self._timeout = cfg.l2_timeout_seconds
+        # Per-request timeout used by the httpx client
+        self._request_timeout = cfg.l2_timeout_seconds
+        # Outer envelope timeout: must be large enough for retries + backoff.
+        # 3 retries × request_timeout + backoff ≈ 3.5× the per-request timeout.
+        # Use a minimum of 60s for reasoning models that need thinking time.
+        self._envelope_timeout = max(cfg.l2_timeout_seconds * 4, 60.0)
 
     async def analyze(
         self,
@@ -357,7 +477,7 @@ class SemanticAnalyzer:
         try:
             result = await asyncio.wait_for(
                 self._classifier.classify(method, params, context),
-                timeout=self._timeout,
+                timeout=self._envelope_timeout,
             )
             logger.info(
                 "L2 result: injection=%s confidence=%.2f method=%s",
@@ -368,7 +488,11 @@ class SemanticAnalyzer:
             return result
 
         except asyncio.TimeoutError:
-            logger.warning("L2 analysis timed out for method=%s", method)
+            logger.warning(
+                "L2 analysis timed out after %.0fs for method=%s",
+                self._envelope_timeout,
+                method,
+            )
             return L2Result(reasoning="Analysis timeout — fail-open")
 
         except Exception as exc:
