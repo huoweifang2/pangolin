@@ -144,9 +144,14 @@
               <span v-if="msg.verdict" class="msg-tag" :class="msg.verdict.toLowerCase()">{{ msg.verdict }}</span>
             </div>
             <!-- Tool Call Card (Modern) -->
-            <div v-if="msg.toolCalls?.length" class="tool-invocation-card">
-              <div class="tool-card-header">
+            <div v-if="msg.toolCalls?.length" class="tool-invocation-card" :class="{ expanded: msg.toolCallsExpanded }">
+              <div class="tool-card-header" @click="msg.toolCallsExpanded = !msg.toolCallsExpanded" title="Toggle details">
                 <div class="tool-info">
+                  <span class="tool-chevron">
+                    <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                  </span>
                   <span class="tool-icon">⚡</span>
                   <span class="tool-name">{{ msg.toolCalls[0].tool_name }}</span>
                 </div>
@@ -155,7 +160,7 @@
                 </div>
               </div>
               
-              <div class="tool-card-body">
+              <div class="tool-card-body" v-show="msg.toolCallsExpanded">
                 <div class="code-block-wrapper">
                   <div class="code-header">Arguments</div>
                   <pre class="code-content">{{ JSON.stringify(msg.toolCalls[0].arguments, null, 2) }}</pre>
@@ -508,6 +513,7 @@ interface ChatMessage {
   id: string; role: 'user' | 'assistant' | 'system' | 'tool'; content: string; timestamp: number;
   analysis?: ChatAnalysis; blocked?: boolean; wasModified?: boolean; originalContent?: string; verdict?: string;
   toolCalls?: ToolCallRecord[];
+  toolCallsExpanded?: boolean;
 }
 
 interface SavedConversation {
@@ -1183,8 +1189,11 @@ async function testSkill(skill: SkillStatusEntry) {
 .tool-card-header {
   padding: 10px 14px; background: var(--bg-hover); border-bottom: 1px solid var(--border-subtle);
   display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none;
 }
 .tool-info { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; color: var(--text-primary); }
+.tool-chevron { display: flex; align-items: center; color: var(--text-muted); transition: transform 0.2s ease; }
+.tool-invocation-card.expanded .tool-chevron { transform: rotate(90deg); }
 .tool-icon { font-size: 14px; }
 .tool-name { font-family: var(--font-mono); color: var(--accent); }
 
