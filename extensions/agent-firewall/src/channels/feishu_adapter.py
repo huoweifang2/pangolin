@@ -170,8 +170,9 @@ class FeishuAdapter:
             )
 
             # ── Step 1: L1 Static Analysis ──
-            l1_patterns = self.static_analyzer.scan(text_content)
-            l1_threat = self.static_analyzer.assess_threat_level(l1_patterns)
+            l1_result = self.static_analyzer.analyze(text_content)
+            l1_patterns = l1_result.matched_patterns
+            l1_threat = l1_result.threat_level
 
             # ── Step 2: L2 Semantic Analysis ──
             l2_result = await self.semantic_analyzer.analyze(
