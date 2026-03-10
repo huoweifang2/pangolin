@@ -19,8 +19,8 @@ Configuration via environment variables:
 
 from __future__ import annotations
 
-import asyncio
 import logging
+import threading
 from typing import TYPE_CHECKING, Any
 
 import lark_oapi as lark
@@ -64,7 +64,7 @@ class FeishuAdapter:
         self._ws_client: Any = None
 
     async def start(self) -> None:
-        """Start the Feishu WebSocket event listener as a background task."""
+        """Start the Feishu WebSocket event listener in a separate thread."""
         if self._running:
             logger.warning("Feishu adapter already running")
             return
@@ -83,12 +83,17 @@ class FeishuAdapter:
             self.config.app_id, self.config.app_secret, event_handler=event_handler
         )
 
-        # Run the blocking ws_client.start() in a thread so it doesn't block the event loop
-        self._bg_task = asyncio.create_task(
-            asyncio.to_thread(self._ws_client.start)
-        )
-        self._bg_task.add_done_callback(self._on_ws_done)
-        logger.info("Feishu WebSocket connecting in background...")
+        # Run in separate thread with its own event loop
+        def _run_ws() -> None:
+            try:
+                self._ws_client.start()
+            except Exception as e:
+                logger.error(f"Feishu WebSocket error: {e}")
+                self._running = False
+
+        self._ws_thread = threading.Thread(target=_run_ws, daemon=True)
+        self._ws_thread.start()
+        logger.info("Feishu WebSocket started in background thread")
 
     async def stop(self) -> None:
         """Stop the Feishu WebSocket connection."""
@@ -98,18 +103,10 @@ class FeishuAdapter:
                 self._ws_client.close()
             except Exception as e:
                 logger.error(f"Error closing Feishu WebSocket: {e}")
-        if hasattr(self, "_bg_task") and not self._bg_task.done():
-            self._bg_task.cancel()
+        if hasattr(self, "_ws_thread") and self._ws_thread.is_alive():
+            # Give thread time to finish
+            self._ws_thread.join(timeout=2.0)
         logger.info("Feishu adapter stopped")
-
-    def _on_ws_done(self, task: asyncio.Task) -> None:  # type: ignore[type-arg]
-        """Called when the WebSocket background task finishes."""
-        if task.cancelled():
-            return
-        exc = task.exception()
-        if exc:
-            logger.error(f"Feishu WebSocket background task failed: {exc}")
-            self._running = False
 
     async def _handle_message(self, data: Any) -> None:  # noqa: ANN401
         """Handle incoming Feishu message event."""
