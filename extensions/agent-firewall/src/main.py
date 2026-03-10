@@ -830,7 +830,7 @@ async def test_feishu_send(request: Request) -> JSONResponse:
 @app.get("/api/mcp/tools")
 async def list_mcp_tools(request: Request) -> JSONResponse:
     """List available tools: gateway (auto-discovered) + skills (from SKILL.md)."""
-    tools = _all_tools_openai_format()
+    tools = _all_tools_openai_format(request)
 
     # Gateway tools info
     gw_registry = _get_gateway_tool_registry()
@@ -1090,8 +1090,10 @@ def _get_gateway_auth() -> tuple[str, int, str]:
     return host, port, token
 
 
-def _all_tools_openai_format() -> list[dict[str, Any]]:
+def _all_tools_openai_format(request: Request) -> list[dict[str, Any]]:
     """Build OpenAI function-calling tools from dynamic registries (gateway + skills + feishu)."""
+    s = _state(request)
+
     # Gateway tools (auto-discovered from TypeScript source)
     gw_registry = _get_gateway_tool_registry()
     gateway_tools = gw_registry.get_openai_tools()
@@ -1102,8 +1104,8 @@ def _all_tools_openai_format() -> list[dict[str, Any]]:
 
     # Feishu tools (if adapter is enabled)
     feishu_tools = []
-    if _state_instance and _state_instance.feishu_tool_registry:
-        feishu_tools = _state_instance.feishu_tool_registry.get_tool_definitions()
+    if s.feishu_tool_registry:
+        feishu_tools = s.feishu_tool_registry.get_tool_definitions()
 
     return gateway_tools + skill_tools + feishu_tools
 
@@ -1282,7 +1284,7 @@ async def chat_send(request: Request):
                 upstream_headers["Authorization"] = f"Bearer {s.openai_adapter.api_key}"
 
             gw_host, gw_port, gw_token = _get_gateway_auth()
-            openai_tools = _all_tools_openai_format()
+            openai_tools = _all_tools_openai_format(request)
 
             registry = _get_skill_registry()
             gw_registry = _get_gateway_tool_registry()
