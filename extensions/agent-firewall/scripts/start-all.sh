@@ -1,5 +1,5 @@
 #!/bin/bash
-# Agent Firewall — Start All Services
+# Agent Firewall — Start All Services (Backend + Frontend + Gateway)
 # Usage: ./scripts/start-all.sh
 
 set -e
@@ -68,6 +68,25 @@ if [ -n "$pids_frontend" ]; then
     fi
 fi
 
+# Start OpenClaw Gateway (port 18789)
+echo "🚀 Starting OpenClaw Gateway (port 18789)..."
+openclaw gateway --port 18789 > /tmp/agent-firewall-gateway.log 2>&1 &
+GATEWAY_PID=$!
+echo "   Gateway PID: $GATEWAY_PID"
+
+# Wait for gateway to start (check if port is listening)
+for i in $(seq 1 30); do
+    if lsof -ti :18789 > /dev/null 2>&1; then
+        break
+    fi
+    sleep 1
+done
+if ! lsof -ti :18789 > /dev/null 2>&1; then
+    echo "❌ Gateway failed to start. Check /tmp/agent-firewall-gateway.log"
+    exit 1
+fi
+echo "   ✅ Gateway healthy"
+
 # Start Backend (port 9090)
 echo "🚀 Starting Backend (port 9090)..."
 cd "$PROJECT_DIR"
@@ -125,6 +144,7 @@ echo "============================================"
 echo "✅ All services started successfully!"
 echo ""
 echo "📍 Access Points:"
+echo "   Gateway:      http://localhost:18789"
 echo "   Backend API:  http://localhost:9090"
 echo "   Dashboard:    http://localhost:9091"
 echo ""

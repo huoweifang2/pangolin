@@ -42,16 +42,36 @@ class GatewayToolRegistry:
             repo_root = Path(__file__).resolve().parent.parent.parent.parent
             tools_source_dir = repo_root / "src" / "agents" / "tools"
         self._source_dir = Path(tools_source_dir)
+        self._repo_root = Path(__file__).resolve().parent.parent.parent.parent
         self._tools: dict[str, GatewayToolDef] = {}
 
     def discover(self) -> None:
         """Scan TypeScript tool source files for name + description."""
         self._tools.clear()
 
-        if not self._source_dir.is_dir():
+        # Scan core tools directory
+        if self._source_dir.is_dir():
+            self._scan_directory(self._source_dir)
+        else:
             logger.warning("Gateway tools source dir not found: %s", self._source_dir)
-            return
 
+        # Scan plugin directories (channel/*/src/*.ts)
+        channel_dir = self._repo_root / "channel"
+        if channel_dir.is_dir():
+            for plugin_dir in channel_dir.iterdir():
+                if plugin_dir.is_dir():
+                    plugin_src = plugin_dir / "src"
+                    if plugin_src.is_dir():
+                        self._scan_directory(plugin_src)
+
+        logger.info(
+            "Gateway tools discovered: %d (%s)",
+            len(self._tools),
+            ", ".join(sorted(self._tools.keys())),
+        )
+
+    def _scan_directory(self, directory: Path) -> None:
+        """Scan a single directory for tool definitions."""
         # Utility/helper files that are NOT tool definitions
         skip_names = {
             "common.ts",
@@ -66,14 +86,51 @@ class GatewayToolRegistry:
             "image-tool.helpers.ts",
             "browser-tool.schema.ts",
             "agent-step.ts",
+            # Plugin helper files
+            "accounts.ts",
+            "client.ts",
+            "channel.ts",
+            "runtime.ts",
+            "tool-account.ts",
+            "tools-config.ts",
+            "config-schema.ts",
+            "monitor.ts",
+            "bot.ts",
+            "send.ts",
+            "media.ts",
+            "probe.ts",
+            "reactions.ts",
+            "mention.ts",
+            "typing.ts",
+            "targets.ts",
+            "policy.ts",
+            "onboarding.ts",
+            "outbound.ts",
+            "reply-dispatcher.ts",
+            "send-message.ts",
+            "send-result.ts",
+            "send-target.ts",
+            "streaming-card.ts",
+            "tool-result.ts",
+            "tool-factory-test-harness.ts",
+            "dedup.ts",
+            "directory.ts",
+            "external-keys.ts",
+            "feishu-command-handler.ts",
+            "secret-input.ts",
+            "dynamic-agent.ts",
+            "async.ts",
+            "post.ts",
         }
 
-        for fpath in sorted(self._source_dir.iterdir()):
+        for fpath in sorted(directory.iterdir()):
             if not fpath.name.endswith(".ts"):
                 continue
             if fpath.name in skip_names:
                 continue
             if ".test." in fpath.name or ".e2e." in fpath.name:
+                continue
+            if fpath.name.endswith("-schema.ts"):
                 continue
 
             try:
@@ -98,12 +155,6 @@ class GatewayToolRegistry:
                     description=desc,
                     source_file=str(fpath),
                 )
-
-        logger.info(
-            "Gateway tools discovered: %d (%s)",
-            len(self._tools),
-            ", ".join(sorted(self._tools.keys())),
-        )
 
     def _extract_description(self, text: str, name_start: int, name_end: int) -> str:
         """Extract the description string near a tool's name definition."""
@@ -254,6 +305,8 @@ class GatewayToolRegistry:
             "Use `invoke_gateway(tool_name, arguments)` to call these OpenClaw gateway tools.",
             "Pass arguments as a JSON object with the expected fields for each tool.",
             "",
+            "**IMPORTANT**: For plugin tools (feishu_*, etc.), call `get_gateway_tool_docs(tool_name)` FIRST to learn the exact parameters and usage before invoking.",
+            "",
         ]
 
         # Manual overrides for better LLM guidance on complex tools
@@ -277,6 +330,47 @@ class GatewayToolRegistry:
         parts.append("")
         return "\n".join(parts)
 
+    def get_tool_docs(self, tool_name: str) -> str:
+        """Get detailed documentation for a specific tool."""
+        tool = self._tools.get(tool_name)
+        if not tool:
+            return f"Tool '{tool_name}' not found. Available tools: {', '.join(sorted(self._tools.keys()))}"
+
+        # Check if this is a plugin tool with SKILL.md
+        source_path = Path(tool.source_file)
+
+        # Try to find SKILL.md in parent directories
+        # Pattern: channel/feishu/src/docx.ts -> channel/feishu/skills/feishu-doc/SKILL.md
+        if "channel" in source_path.parts:
+            channel_idx = source_path.parts.index("channel")
+            if channel_idx + 1 < len(source_path.parts):
+                plugin_name = source_path.parts[channel_idx + 1]
+                channel_root = Path(*source_path.parts[:channel_idx + 2])
+                skills_dir = channel_root / "skills"
+
+                if skills_dir.is_dir():
+                    # Try to find matching SKILL.md
+                    for skill_dir in skills_dir.iterdir():
+                        if not skill_dir.is_dir():
+                            continue
+                        skill_md = skill_dir / "SKILL.md"
+                        if skill_md.is_file():
+                            try:
+                                text = skill_md.read_text(encoding="utf-8")
+                                # Check if this SKILL.md mentions the tool
+                                if tool_name in text or tool_name.replace("_", "-") in text:
+                                    # Strip YAML frontmatter
+                                    if text.startswith("---"):
+                                        end = text.find("---", 3)
+                                        if end != -1:
+                                            text = text[end + 3:].strip()
+                                    return text
+                            except Exception:
+                                continue
+
+        # Fallback: return basic info
+        return f"**{tool_name}**\n\nDescription: {tool.description}\n\nSource: {tool.source_file}\n\nNo detailed documentation available. Try calling with common parameters based on the description."
+
     # ── Execution ────────────────────────────────────────────────
 
     @staticmethod
@@ -290,13 +384,13 @@ class GatewayToolRegistry:
         """Execute a tool via the OpenClaw gateway's /tools/invoke endpoint."""
         import httpx
 
-        # Separate "action" from args if present (gateway expects top-level action)
+        # Pass arguments directly; Gateway tool handlers expect arguments to contain 'action'
+        # if the tool schema defines it (e.g. feishu_doc).
+        # We DO NOT extract 'action' to the top-level body because plugins
+        # receive the entire 'args' object as parameters.
         args = dict(arguments) if arguments else {}
-        action = args.pop("action", None)
-
+        
         body: dict[str, Any] = {"tool": tool_name, "args": args}
-        if action is not None:
-            body["action"] = action
 
         try:
             headers: dict[str, str] = {"content-type": "application/json"}
