@@ -625,6 +625,9 @@ const getToolDisplayName = (name: string, args: any) => {
   if ((name === 'run_skill' || name === 'skill') && args?.skill_name) {
     return args.skill_name
   }
+  if (name === 'invoke_gateway' && args?.tool_name) {
+    return args.tool_name
+  }
   return name
 }
 
@@ -798,7 +801,12 @@ function onDocClick(e: MouseEvent) {
     showHistoryMenu.value = false
   }
 }
-onMounted(() => { document.addEventListener('click', onDocClick); scrollToBottom(); inputEl.value?.focus() })
+onMounted(() => {
+  document.addEventListener('click', onDocClick)
+  scrollToBottom()
+  inputEl.value?.focus()
+  loadSkillsList() // Auto-load skills for chat context
+})
 onBeforeUnmount(() => { document.removeEventListener('click', onDocClick) })
 
 // ── Watches ──
@@ -872,6 +880,11 @@ async function sendMessage(content: string, modifiedContent: string | null, anal
   sending.value = true
   abortController = new AbortController()
 
+  // Collect active skills to send to backend (so LLM knows about them)
+  const activeSkills = skills.value
+    .filter(s => s.eligible && !s.disabled)
+    .map(s => ({ name: s.name, description: s.description }))
+
   try {
     const body: Record<string, unknown> = {
       messages: apiMessages,
@@ -883,6 +896,7 @@ async function sendMessage(content: string, modifiedContent: string | null, anal
       max_tokens: maxTokens.value,
       top_p: topP.value,
       enable_tools: enableTools.value,
+      external_tools: activeSkills, // Pass skills to backend
     }
 
     const res = await fetch(`${API_BASE}/api/chat/send`, {
@@ -1290,6 +1304,29 @@ async function testSkill(skill: SkillStatusEntry) {
   margin: 0;
 }
 
+/* Tool output markdown heading overrides - prevent huge fonts */
+.tool-output-content :deep(h1),
+.tool-output-content :deep(h2),
+.tool-output-content :deep(h3),
+.tool-output-content :deep(h4),
+.tool-output-content :deep(h5),
+.tool-output-content :deep(h6) {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 12px 0 6px;
+  line-height: 1.4;
+  border: none;
+  padding: 0;
+  color: var(--text-primary);
+}
+
+.tool-output-content :deep(p) { margin: 0 0 10px; line-height: 1.6; }
+.tool-output-content :deep(p:last-child) { margin-bottom: 0; }
+.tool-output-content :deep(ul), .tool-output-content :deep(ol) { margin: 8px 0 12px 24px; padding: 0; }
+.tool-output-content :deep(li) { margin-bottom: 6px; padding-left: 4px; line-height: 1.6; }
+.tool-output-content :deep(li::marker) { color: var(--text-muted); font-weight: 600; }
+.tool-output-content :deep(blockquote) { margin: 12px 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--bg-hover); border-radius: 0 4px 4px 0; color: var(--text-secondary); }
+
 .tool-analysis-compact { padding: 10px 14px; background: var(--bg-elevated); display: flex; flex-direction: column; gap: 8px; }
 .analysis-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .confidence-badge {
@@ -1311,8 +1348,12 @@ async function testSkill(skill: SkillStatusEntry) {
 }
 
 /* Markdown content styling */
-.md-content :deep(p) { margin: 0 0 10px 0; }
+.md-content { font-size: 14px; line-height: 1.6; color: var(--text-primary); }
+.md-content :deep(p) { margin: 0 0 12px 0; }
 .md-content :deep(p:last-child) { margin-bottom: 0; }
+.md-content :deep(ul), .md-content :deep(ol) { margin: 8px 0 16px 24px; padding: 0; }
+.md-content :deep(li) { margin-bottom: 6px; padding-left: 4px; }
+.md-content :deep(li::marker) { color: var(--text-muted); font-weight: 600; }
 .md-content :deep(code) {
   font-family: var(--font-mono); font-size: 12px;
   padding: 2px 5px; border-radius: 4px;
