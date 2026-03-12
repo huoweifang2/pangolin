@@ -158,6 +158,26 @@ class StorageBackend(ABC):
         pass
 
     @abstractmethod
+    async def list_annotations(
+        self,
+        filters: dict[str, Any] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """
+        List annotations with optional filters.
+
+        Args:
+            filters: Query filters
+            limit: Maximum number of annotations to return
+            offset: Number of annotations to skip (pagination)
+
+        Returns:
+            List of annotation data
+        """
+        pass
+
+    @abstractmethod
     async def save_policy(self, policy: dict[str, Any]) -> str:
         """
         Save a policy to storage.

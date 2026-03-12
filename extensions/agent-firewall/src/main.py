@@ -53,6 +53,7 @@ from .audit.logger import AuditLogger
 from .channels.feishu_adapter import FeishuAdapter, FeishuConfig
 from .config import FirewallConfig
 from .dashboard.ws_handler import DashboardHub
+from .engine.agent_scan_integration import AgentScanAnalyzer
 from .engine.semantic_analyzer import LlmClassifier, MockClassifier, SemanticAnalyzer
 from .engine.static_analyzer import StaticAnalyzer
 from .gateway_tools import GatewayToolRegistry, get_gateway_tool_registry
@@ -81,6 +82,12 @@ class AppState:
             classifier=LlmClassifier(config) if config.l2_enabled else MockClassifier(),
             config=config,
         )
+        self.agent_scan_analyzer = AgentScanAnalyzer(
+            enabled=config.agent_scan_enabled,
+            mode=config.agent_scan_mode,
+            api_key=config.agent_scan_api_key,
+            cache_ttl=config.agent_scan_cache_ttl,
+        )
         self.session_manager = SessionManager(config)
         self.audit_logger = AuditLogger(config.audit_log_path)
         self.dashboard_hub = DashboardHub()
@@ -89,6 +96,7 @@ class AppState:
             session_manager=self.session_manager,
             static_analyzer=self.static_analyzer,
             semantic_analyzer=self.semantic_analyzer,
+            agent_scan_analyzer=self.agent_scan_analyzer,
             emit_dashboard_event=self._emit_dashboard,
             emit_audit_entry=self._emit_audit,
         )
@@ -97,6 +105,7 @@ class AppState:
             session_manager=self.session_manager,
             static_analyzer=self.static_analyzer,
             semantic_analyzer=self.semantic_analyzer,
+            agent_scan_analyzer=self.agent_scan_analyzer,
             emit_dashboard_event=self._emit_dashboard,
             emit_audit_entry=self._emit_audit,
         )
@@ -256,7 +265,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Register dataset routes
+# Register dataset and trace routes
 from src.routes.dataset import router as dataset_router
 from src.routes.trace import router as trace_router
 

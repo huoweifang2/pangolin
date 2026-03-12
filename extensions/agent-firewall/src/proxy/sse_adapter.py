@@ -37,6 +37,7 @@ import httpx
 from fastapi import Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 
+from ..engine.agent_scan_integration import AgentScanAnalyzer
 from ..engine.interceptor import intercept_and_analyze
 from ..engine.semantic_analyzer import SemanticAnalyzer
 from ..engine.static_analyzer import StaticAnalyzer
@@ -61,6 +62,7 @@ class SseAdapter:
         session_manager: SessionManager,
         static_analyzer: StaticAnalyzer,
         semantic_analyzer: SemanticAnalyzer,
+        agent_scan_analyzer: AgentScanAnalyzer | None = None,
         *,
         emit_dashboard_event: Callable[..., Coroutine[Any, Any, None]] | None = None,
         emit_audit_entry: Callable[..., Coroutine[Any, Any, None]] | None = None,
@@ -69,6 +71,7 @@ class SseAdapter:
         self._sessions = session_manager
         self._l1 = static_analyzer
         self._l2 = semantic_analyzer
+        self._agent_scan = agent_scan_analyzer
         self._emit_dashboard = emit_dashboard_event
         self._emit_audit = emit_audit_entry
         self._client = httpx.AsyncClient(timeout=30.0)
@@ -104,6 +107,7 @@ class SseAdapter:
             session=session,
             static_analyzer=self._l1,
             semantic_analyzer=self._l2,
+            agent_scan_analyzer=self._agent_scan,
             emit_dashboard_event=self._emit_dashboard,
             emit_audit_entry=self._emit_audit,
         )
@@ -126,6 +130,20 @@ class SseAdapter:
                     "x-forwarded-by": "agent-firewall",
                 },
             )
+
+            # Inspect tools/list response for Agent-Scan
+            if (
+                self._agent_scan
+                and parsed_request.method == "tools/list"
+                and upstream_response.status_code == 200
+            ):
+                try:
+                    data = upstream_response.json()
+                    if "result" in data and "tools" in data["result"]:
+                        await self._agent_scan.register_tools_async(data["result"]["tools"])
+                except Exception as e:
+                    logger.warning(f"Failed to scan tools list: {e}")
+
             return Response(
                 content=upstream_response.content,
                 status_code=upstream_response.status_code,
@@ -220,6 +238,7 @@ class SseAdapter:
                 session=session,
                 static_analyzer=self._l1,
                 semantic_analyzer=self._l2,
+                agent_scan_analyzer=self._agent_scan,
                 emit_dashboard_event=self._emit_dashboard,
                 emit_audit_entry=self._emit_audit,
             )
@@ -257,6 +276,7 @@ class WebSocketAdapter:
         session_manager: SessionManager,
         static_analyzer: StaticAnalyzer,
         semantic_analyzer: SemanticAnalyzer,
+        agent_scan_analyzer: AgentScanAnalyzer | None = None,
         *,
         emit_dashboard_event: Callable[..., Coroutine[Any, Any, None]] | None = None,
         emit_audit_entry: Callable[..., Coroutine[Any, Any, None]] | None = None,
@@ -265,8 +285,10 @@ class WebSocketAdapter:
         self._sessions = session_manager
         self._l1 = static_analyzer
         self._l2 = semantic_analyzer
+        self._agent_scan = agent_scan_analyzer
         self._emit_dashboard = emit_dashboard_event
         self._emit_audit = emit_audit_entry
+        self._pending_requests: dict[str | int, str] = {}  # id -> method
 
     async def handle_websocket(self, ws: WebSocket) -> None:
         """
@@ -311,14 +333,18 @@ class WebSocketAdapter:
             while True:
                 data = await client_ws.receive_text()
 
-                _, analysis, block_response = await intercept_and_analyze(
+                parsed_request, analysis, block_response = await intercept_and_analyze(
                     raw_payload=data,
                     session=session,
                     static_analyzer=self._l1,
                     semantic_analyzer=self._l2,
+                    agent_scan_analyzer=self._agent_scan,
                     emit_dashboard_event=self._emit_dashboard,
                     emit_audit_entry=self._emit_audit,
                 )
+
+                if parsed_request.id is not None:
+                    self._pending_requests[parsed_request.id] = parsed_request.method
 
                 if block_response is not None:
                     await client_ws.send_bytes(block_response.to_bytes())
@@ -334,8 +360,25 @@ class WebSocketAdapter:
         upstream_ws: Any,
     ) -> None:
         """Forward server→agent messages (pass-through)."""
+        import json
+
         try:
             async for message in upstream_ws:
+                # Inspect response for Agent-Scan
+                if self._agent_scan:
+                    try:
+                        data = json.loads(message)
+                        msg_id = data.get("id")
+                        if msg_id in self._pending_requests:
+                            method = self._pending_requests.pop(msg_id)
+                            if method == "tools/list" and "result" in data:
+                                if "tools" in data["result"]:
+                                    await self._agent_scan.register_tools_async(
+                                        data["result"]["tools"]
+                                    )
+                    except Exception:
+                        pass
+
                 await client_ws.send_text(message)
         except Exception:
             pass

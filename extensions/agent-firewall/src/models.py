@@ -73,6 +73,60 @@ class JsonRpcResponse(BaseModel):
 
 
 # ────────────────────────────────────────────────────────────────────
+# Agent-Scan Models
+# ────────────────────────────────────────────────────────────────────
+
+
+class ScalarToolLabels(BaseModel):
+    """Tool classification labels (0-1 float values)."""
+
+    is_public_sink: float = 0.0  # Sends data to external/public destination
+    destructive: float = 0.0  # Executes irreversible operations
+    untrusted_content: float = 0.0  # Returns external/user-controlled data
+    private_data: float = 0.0  # Accesses sensitive user data
+
+
+class Issue(BaseModel):
+    """Security issue detected by agent-scan."""
+
+    code: str  # E001-E006 (errors), W001-W013 (warnings)
+    message: str
+    severity: str  # "error" | "warning"
+    reference: tuple[int, int | None] | None = None  # (server_index, entity_index)
+    extra_data: dict[str, Any] | None = None
+
+
+class ToxicFlow(BaseModel):
+    """Combination threat detected across multiple tools."""
+
+    type: str  # "TF001" (data leak) | "TF002" (destructive)
+    description: str
+    tool_chain: list[str]  # Names of tools involved in the flow
+
+
+class AgentScanResult(BaseModel):
+    """Result from agent-scan analysis."""
+
+    issues: list[Issue] = Field(default_factory=list)
+    labels: ScalarToolLabels = Field(default_factory=ScalarToolLabels)
+    toxic_flows: list[ToxicFlow] = Field(default_factory=list)
+    scan_time_ms: float = 0.0
+    cached: bool = False
+
+    def has_critical_issues(self) -> bool:
+        """Check if any critical issues (E001-E006) were detected."""
+        return any(issue.code.startswith("E") for issue in self.issues)
+
+    def has_warnings(self) -> bool:
+        """Check if any warnings (W001-W013) were detected."""
+        return any(issue.code.startswith("W") for issue in self.issues)
+
+    def has_toxic_flows(self) -> bool:
+        """Check if any toxic flows were detected."""
+        return len(self.toxic_flows) > 0
+
+
+# ────────────────────────────────────────────────────────────────────
 # Firewall Decision Model
 # ────────────────────────────────────────────────────────────────────
 
@@ -114,6 +168,9 @@ class AnalysisResult(BaseModel):
     l2_is_injection: bool = False
     l2_confidence: float = 0.0
     l2_reasoning: str = ""
+
+    # Agent-Scan analysis
+    agent_scan_result: AgentScanResult | None = None
 
     # Final verdict (set by policy enforcer)
     verdict: Verdict = Verdict.ALLOW
@@ -313,4 +370,3 @@ class Policy(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: float = Field(default_factory=time.time)
     updated_at: float = Field(default_factory=time.time)
-

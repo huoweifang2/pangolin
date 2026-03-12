@@ -16,6 +16,7 @@ Agent Firewall is a non-invasive Man-in-the-Middle (MITM) proxy that intercepts 
 - [System Architecture](#system-architecture)
 - [Dual Analysis Engine](#dual-analysis-engine)
 - [Security Decision Matrix](#security-decision-matrix)
+- [New Features (Phase 1-6)](#new-features-phase-1-6)
 - [Quick Start](#quick-start)
 - [Installation](#installation)
 - [Configuration](#configuration)

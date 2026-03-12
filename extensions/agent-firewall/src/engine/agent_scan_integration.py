@@ -31,62 +31,9 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from ..models import AgentScanResult, Issue, ScalarToolLabels, ToxicFlow
+
 logger = logging.getLogger("agent_firewall.agent_scan")
-
-
-# ────────────────────────────────────────────────────────────────────
-# Agent-Scan Models (Simplified from agent_scan.models)
-# ────────────────────────────────────────────────────────────────────
-
-
-class ScalarToolLabels(BaseModel):
-    """Tool classification labels (0-1 float values)."""
-
-    is_public_sink: float = 0.0  # Sends data to external/public destination
-    destructive: float = 0.0  # Executes irreversible operations
-    untrusted_content: float = 0.0  # Returns external/user-controlled data
-    private_data: float = 0.0  # Accesses sensitive user data
-
-
-class Issue(BaseModel):
-    """Security issue detected by agent-scan."""
-
-    code: str  # E001-E006 (errors), W001-W013 (warnings)
-    message: str
-    severity: str  # "error" | "warning"
-    reference: tuple[int, int | None] | None = None  # (server_index, entity_index)
-    extra_data: dict[str, Any] | None = None
-
-
-class ToxicFlow(BaseModel):
-    """Combination threat detected across multiple tools."""
-
-    type: str  # "TF001" (data leak) | "TF002" (destructive)
-    description: str
-    tool_chain: list[str]  # Names of tools involved in the flow
-
-
-@dataclass
-class AgentScanResult:
-    """Result from agent-scan analysis."""
-
-    issues: list[Issue]
-    labels: ScalarToolLabels
-    toxic_flows: list[ToxicFlow]
-    scan_time_ms: float
-    cached: bool = False
-
-    def has_critical_issues(self) -> bool:
-        """Check if any critical issues (E001-E006) were detected."""
-        return any(issue.code.startswith("E") for issue in self.issues)
-
-    def has_warnings(self) -> bool:
-        """Check if any warnings (W001-W013) were detected."""
-        return any(issue.code.startswith("W") for issue in self.issues)
-
-    def has_toxic_flows(self) -> bool:
-        """Check if any toxic flows were detected."""
-        return len(self.toxic_flows) > 0
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -109,17 +56,74 @@ class AgentScanAnalyzer:
         mode: str = "local",
         api_key: str = "",
         cache_ttl: int = 3600,
-    ):
+    ) -> None:
         self.enabled = enabled
         self.mode = mode  # "local" | "remote"
         self.api_key = api_key
         self.cache_ttl = cache_ttl
         self._cache: dict[str, tuple[AgentScanResult, float]] = {}
+        self._tool_registry: dict[str, AgentScanResult] = {}  # tool_name -> result
 
         if not enabled:
             logger.info("Agent-Scan integration disabled")
         else:
             logger.info(f"Agent-Scan integration enabled (mode={mode})")
+
+    async def scan_mcp_server(
+        self,
+        tools: list[dict[str, Any]],
+    ) -> dict[str, AgentScanResult]:
+        """
+        Scan a full MCP server (list of tools).
+
+        Args:
+            tools: List of tool definitions (name, description, inputSchema)
+
+        Returns:
+            Dictionary mapping tool names to scan results
+        """
+        results: dict[str, AgentScanResult] = {}
+        tools_with_labels: list[tuple[str, ScalarToolLabels]] = []
+
+        # 1. Analyze each tool individually
+        for tool in tools:
+            name = tool.get("name", "")
+            description = tool.get("description", "")
+            schema = tool.get("inputSchema")
+
+            result = await self.analyze_tool(name, description, schema)
+            results[name] = result
+            tools_with_labels.append((name, result.labels))
+
+        # 2. Detect toxic flows across tools
+        toxic_flows = self.detect_toxic_flows(tools_with_labels)
+
+        # 3. Attach toxic flows to relevant tools
+        # If a tool is part of a toxic flow, we add the flow to its result
+        for flow in toxic_flows:
+            for tool_name in flow.tool_chain:
+                if tool_name in results:
+                    # We need to append to the existing list
+                    # Pydantic models are mutable by default unless frozen
+                    results[tool_name].toxic_flows.append(flow)
+
+        return results
+
+    def register_tools(self, tools: list[dict[str, Any]]) -> None:
+        """Register tools from tools/list response."""
+        # This is async in implementation but called from sync context?
+        # No, scan_mcp_server is async. We should probably make register_tools async.
+        pass
+
+    async def register_tools_async(self, tools: list[dict[str, Any]]) -> None:
+        """Register tools and cache results."""
+        results = await self.scan_mcp_server(tools)
+        self._tool_registry.update(results)
+        logger.info(f"Registered {len(results)} tools with Agent-Scan")
+
+    def get_tool_result(self, tool_name: str) -> AgentScanResult | None:
+        """Get cached result for a tool."""
+        return self._tool_registry.get(tool_name)
 
     async def analyze_tool(
         self,
@@ -305,10 +309,16 @@ class AgentScanAnalyzer:
         toxic_flows: list[ToxicFlow] = []
 
         # Build tool index by label type
-        untrusted_tools = [name for name, labels in tools_with_labels if labels.untrusted_content > 0.5]
+        untrusted_tools = [
+            name for name, labels in tools_with_labels if labels.untrusted_content > 0.5
+        ]
         private_tools = [name for name, labels in tools_with_labels if labels.private_data > 0.5]
-        public_sink_tools = [name for name, labels in tools_with_labels if labels.is_public_sink > 0.5]
-        destructive_tools = [name for name, labels in tools_with_labels if labels.destructive > 0.5]
+        public_sink_tools = [
+            name for name, labels in tools_with_labels if labels.is_public_sink > 0.5
+        ]
+        destructive_tools = [
+            name for name, labels in tools_with_labels if labels.destructive > 0.5
+        ]
 
         # TF001: Data Leak (untrusted → private → public)
         if untrusted_tools and private_tools and public_sink_tools:

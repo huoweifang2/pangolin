@@ -1,57 +1,757 @@
 INFO:     Will watch for changes in these directories: ['/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall']
 INFO:     Uvicorn running on http://127.0.0.1:9090 (Press CTRL+C to quit)
-INFO:     Started reloader process [89327] using WatchFiles
-INFO:     Started server process [89338]
+INFO:     Started reloader process [26019] using WatchFiles
+INFO:     Started server process [26022]
 INFO:     Waiting for application startup.
-2026-03-10T23:48:55 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
-2026-03-10T23:48:55 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
-2026-03-10T23:48:55 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-12T14:52:52 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T14:52:52 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T14:52:52 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T14:52:52 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+[Lark] [2026-03-12 14:52:52,995] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T14:52:52 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T14:52:52 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T14:52:52 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T14:52:52 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+2026-03-12T14:52:52 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
 INFO:     Application startup complete.
-INFO:     127.0.0.1:59444 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61595 - "OPTIONS /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61595 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50192 - "OPTIONS /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50204 - "WebSocket /ws/dashboard" [accepted]
-2026-03-11T21:49:21 [INFO] agent_firewall.dashboard: Dashboard client connected: 4423723936 (total: 1)
-INFO:     127.0.0.1:50192 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50208 - "OPTIONS /api/stats HTTP/1.1" 200 OK
+[Lark] [2026-03-12 14:52:53,373] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616258423433219272&access_key=3a4c2926980897e2f50864c75933d71b&service_id=33554678&ticket=182dfe24-a0f6-4123-bbd9-8af0b8c55f96 [conn_id=7616258423433219272]
+2026-03-12T14:52:53 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616258423433219272&access_key=3a4c2926980897e2f50864c75933d71b&service_id=33554678&ticket=182dfe24-a0f6-4123-bbd9-8af0b8c55f96 [conn_id=7616258423433219272]
+[Lark] [2026-03-12 14:52:53,406] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616258423433219272]
+2026-03-12T14:52:53 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616258423433219272]
+[Lark] [2026-03-12 14:52:53,407] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616258423433219272&access_key=3a4c2926980897e2f50864c75933d71b&service_id=33554678&ticket=182dfe24-a0f6-4123-bbd9-8af0b8c55f96 [conn_id=7616258423433219272]
+2026-03-12T14:52:53 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616258423433219272&access_key=3a4c2926980897e2f50864c75933d71b&service_id=33554678&ticket=182dfe24-a0f6-4123-bbd9-8af0b8c55f96 [conn_id=7616258423433219272]
+[Lark] [2026-03-12 14:52:55,947] [INFO] trying to reconnect for the 1st time
+2026-03-12T14:52:55 [INFO] Lark: trying to reconnect for the 1st time
+[Lark] [2026-03-12 14:52:56,271] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616258420665601214&access_key=1ed6437156546b81ad259cced53c8cee&service_id=33554678&ticket=83e6d8a6-2a2e-48a8-842b-da21102d7aaa [conn_id=7616258420665601214]
+2026-03-12T14:52:56 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616258420665601214&access_key=1ed6437156546b81ad259cced53c8cee&service_id=33554678&ticket=83e6d8a6-2a2e-48a8-842b-da21102d7aaa [conn_id=7616258420665601214]
+INFO:     127.0.0.1:49733 - "GET /health HTTP/1.1" 200 OK
+2026-03-12T14:53:59 [INFO] agent_firewall.storage.jsonl: JsonlStorage initialized at data
+INFO:     127.0.0.1:49802 - "POST /api/v1/dataset HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54584 - "OPTIONS /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54584 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54593 - "WebSocket /ws/dashboard" [accepted]
+2026-03-12T15:24:43 [INFO] agent_firewall.dashboard: Dashboard client connected: 4552827984 (total: 1)
 INFO:     connection open
-INFO:     127.0.0.1:50192 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50485 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54597 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54630 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55157 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55157 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55157 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55157 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55157 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55157 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55157 - "GET /api/stats HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'src/gateway_tools.py', 'src/main.py'. Reloading...
+INFO:     Shutting down
 INFO:     connection closed
-2026-03-11T21:50:31 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4423723936 (total: 0)
-INFO:     127.0.0.1:51376 - "WebSocket /ws/dashboard" [accepted]
-2026-03-11T21:50:40 [INFO] agent_firewall.dashboard: Dashboard client connected: 4423959040 (total: 1)
-INFO:     127.0.0.1:51377 - "GET /api/stats HTTP/1.1" 200 OK
+2026-03-12T15:28:21 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4552827984 (total: 0)
+INFO:     Waiting for application shutdown.
+2026-03-12T15:28:21 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T15:28:21 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T15:28:21 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T15:28:22 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T15:28:22 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T15:28:22 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [26022]
+WARNING:  WatchFiles detected changes in 'src/skills.py'. Reloading...
+INFO:     Started server process [27979]
+INFO:     Waiting for application startup.
+2026-03-12T15:29:21 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T15:29:21 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T15:29:21 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T15:29:21 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+2026-03-12T15:29:21 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T15:29:21 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+[Lark] [2026-03-12 15:29:21,706] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T15:29:21 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T15:29:21 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-12T15:29:21 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:55322 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55323 - "WebSocket /ws/dashboard" [accepted]
+2026-03-12T15:29:32 [INFO] agent_firewall.dashboard: Dashboard client connected: 4592046000 (total: 1)
+INFO:     127.0.0.1:55328 - "GET /api/stats HTTP/1.1" 200 OK
 INFO:     connection open
-INFO:     127.0.0.1:51378 - "GET /api/gateway-info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51379 - "OPTIONS /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51380 - "OPTIONS /api/rules HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51381 - "OPTIONS /api/audit?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51377 - "GET /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51378 - "GET /api/rules HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51379 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51380 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51380 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51380 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51524 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51661 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51661 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51683 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51683 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51732 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51732 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51768 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51768 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51768 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51768 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51768 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51768 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51768 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51850 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51850 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51892 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51892 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51902 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51943 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51943 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55331 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55322 - "GET /api/stats HTTP/1.1" 200 OK
+[Lark] [2026-03-12 15:29:34,557] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616267853074894045&access_key=55c9c3fd51cd20ec7d1bf6bc35a5d955&service_id=33554678&ticket=e25356cb-650b-436c-8761-552dbd0aa6db [conn_id=7616267853074894045]
+2026-03-12T15:29:34 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616267853074894045&access_key=55c9c3fd51cd20ec7d1bf6bc35a5d955&service_id=33554678&ticket=e25356cb-650b-436c-8761-552dbd0aa6db [conn_id=7616267853074894045]
+[Lark] [2026-03-12 15:29:34,663] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616267853074894045]
+2026-03-12T15:29:34 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616267853074894045]
+[Lark] [2026-03-12 15:29:34,665] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616267853074894045&access_key=55c9c3fd51cd20ec7d1bf6bc35a5d955&service_id=33554678&ticket=e25356cb-650b-436c-8761-552dbd0aa6db [conn_id=7616267853074894045]
+2026-03-12T15:29:34 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616267853074894045&access_key=55c9c3fd51cd20ec7d1bf6bc35a5d955&service_id=33554678&ticket=e25356cb-650b-436c-8761-552dbd0aa6db [conn_id=7616267853074894045]
+[Lark] [2026-03-12 15:29:56,445] [INFO] trying to reconnect for the 1st time
+2026-03-12T15:29:56 [INFO] Lark: trying to reconnect for the 1st time
+[Lark] [2026-03-12 15:30:15,772] [ERROR] connect failed, err: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /callback/ws/endpoint (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+2026-03-12T15:30:15 [ERROR] Lark: connect failed, err: HTTPSConnectionPool(host='open.feishu.cn', port=443): Max retries exceeded with url: /callback/ws/endpoint (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)')))
+INFO:     127.0.0.1:55487 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55487 - "GET /api/stats HTTP/1.1" 200 OK
+[Lark] [2026-03-12 15:31:45,845] [INFO] trying to reconnect for the 2nd time
+2026-03-12T15:31:45 [INFO] Lark: trying to reconnect for the 2nd time
+[Lark] [2026-03-12 15:31:47,360] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616268436113149145&access_key=73d36ed512af321a672f89d2c148a4b9&service_id=33554678&ticket=26115350-913a-412b-b04c-b3666b44cb1e [conn_id=7616268436113149145]
+2026-03-12T15:31:47 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616268436113149145&access_key=73d36ed512af321a672f89d2c148a4b9&service_id=33554678&ticket=26115350-913a-412b-b04c-b3666b44cb1e [conn_id=7616268436113149145]
+WARNING:  WatchFiles detected changes in 'src/config.py'. Reloading...
+INFO:     Shutting down
+INFO:     connection closed
+2026-03-12T17:45:06 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4592046000 (total: 0)
+INFO:     Waiting for application shutdown.
+2026-03-12T17:45:06 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:45:06 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:45:06 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:45:07 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:45:07 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:45:07 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [27979]
+INFO:     Started server process [41480]
+INFO:     Waiting for application startup.
+2026-03-12T17:45:27 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:45:27 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:45:27 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:45:27 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+[Lark] [2026-03-12 17:45:27,498] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:45:27 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:45:27 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+2026-03-12T17:45:27 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T17:45:27 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:45:27 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+INFO:     Application startup complete.
+[Lark] [2026-03-12 17:45:27,878] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616302913611173084&access_key=2808de6e6f5880d7023dbe922957d621&service_id=33554678&ticket=3e4dfce3-02fb-4c87-93e3-3f6eb6fe4ed1 [conn_id=7616302913611173084]
+2026-03-12T17:45:27 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616302913611173084&access_key=2808de6e6f5880d7023dbe922957d621&service_id=33554678&ticket=3e4dfce3-02fb-4c87-93e3-3f6eb6fe4ed1 [conn_id=7616302913611173084]
+[Lark] [2026-03-12 17:45:27,913] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616302913611173084]
+2026-03-12T17:45:27 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616302913611173084]
+[Lark] [2026-03-12 17:45:27,914] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616302913611173084&access_key=2808de6e6f5880d7023dbe922957d621&service_id=33554678&ticket=3e4dfce3-02fb-4c87-93e3-3f6eb6fe4ed1 [conn_id=7616302913611173084]
+2026-03-12T17:45:27 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616302913611173084&access_key=2808de6e6f5880d7023dbe922957d621&service_id=33554678&ticket=3e4dfce3-02fb-4c87-93e3-3f6eb6fe4ed1 [conn_id=7616302913611173084]
+WARNING:  WatchFiles detected changes in 'src/models.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:45:29 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:45:29 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:45:29 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:45:29 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:45:29 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:45:29 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41480]
+WARNING:  WatchFiles detected changes in 'src/models.py'. Reloading...
+INFO:     Started server process [41543]
+INFO:     Waiting for application startup.
+2026-03-12T17:45:54 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:45:54 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:45:54 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:45:54 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+[Lark] [2026-03-12 17:45:54,397] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:45:54 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:45:54 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+2026-03-12T17:45:54 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T17:45:54 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:45:54 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:45:55 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:45:55 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:45:55 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:45:55 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+[Lark] [2026-03-12 17:45:55,063] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303041189137589&access_key=ccec6a970ff4be05acbec59b97053a9e&service_id=33554678&ticket=f537dec7-6419-42d3-9778-d4472832ff87 [conn_id=7616303041189137589]
+2026-03-12T17:45:55 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303041189137589&access_key=ccec6a970ff4be05acbec59b97053a9e&service_id=33554678&ticket=f537dec7-6419-42d3-9778-d4472832ff87 [conn_id=7616303041189137589]
+2026-03-12T17:45:55 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:45:55 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41543]
+WARNING:  WatchFiles detected changes in 'src/models.py'. Reloading...
+WARNING:  WatchFiles detected changes in 'src/engine/agent_scan_integration.py'. Reloading...
+INFO:     Started server process [41618]
+INFO:     Waiting for application startup.
+2026-03-12T17:46:21 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:46:21 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:46:21 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:46:21 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+2026-03-12T17:46:21 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+[Lark] [2026-03-12 17:46:21,027] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:46:21 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:46:21 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:46:21 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-12T17:46:21 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:46:21 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:46:21 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:46:21 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:46:21 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+[Lark] [2026-03-12 17:46:21,345] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303173891820736&access_key=3e7430144eda456fb29fe4be10aa431d&service_id=33554678&ticket=2826fa38-f90a-46a6-ac30-ce326a035824 [conn_id=7616303173891820736]
+2026-03-12T17:46:21 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303173891820736&access_key=3e7430144eda456fb29fe4be10aa431d&service_id=33554678&ticket=2826fa38-f90a-46a6-ac30-ce326a035824 [conn_id=7616303173891820736]
+2026-03-12T17:46:21 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:46:21 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41618]
+WARNING:  WatchFiles detected changes in 'src/engine/agent_scan_integration.py'. Reloading...
+WARNING:  WatchFiles detected changes in 'src/engine/agent_scan_integration.py'. Reloading...
+INFO:     Started server process [41694]
+INFO:     Waiting for application startup.
+2026-03-12T17:46:37 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:46:37 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:46:37 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:46:37 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+2026-03-12T17:46:37 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T17:46:37 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+[Lark] [2026-03-12 17:46:37,271] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:46:37 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:46:37 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-12T17:46:37 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:46:37 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:46:37 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:46:37 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:46:37 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:46:37 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:46:37 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41694]
+WARNING:  WatchFiles detected changes in 'src/engine/agent_scan_integration.py'. Reloading...
+INFO:     Started server process [41748]
+INFO:     Waiting for application startup.
+2026-03-12T17:46:46 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:46:46 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:46:46 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:46:46 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+[Lark] [2026-03-12 17:46:46,809] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:46:46 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:46:46 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+2026-03-12T17:46:46 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T17:46:46 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:46:46 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:46:47 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:46:47 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:46:47 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:46:47 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:46:47 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:46:47 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41748]
+INFO:     Started server process [41781]
+INFO:     Waiting for application startup.
+2026-03-12T17:46:53 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:46:53 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:46:53 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:46:53 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+2026-03-12T17:46:53 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T17:46:53 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+[Lark] [2026-03-12 17:46:53,958] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:46:53 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-12T17:46:53 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:46:53 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+INFO:     Application startup complete.
+[Lark] [2026-03-12 17:46:54,351] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303283334679773&access_key=f8c24026cd17bc597e879684e432e051&service_id=33554678&ticket=94553187-22d9-41c1-9c27-c264120a7f60 [conn_id=7616303283334679773]
+2026-03-12T17:46:54 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303283334679773&access_key=f8c24026cd17bc597e879684e432e051&service_id=33554678&ticket=94553187-22d9-41c1-9c27-c264120a7f60 [conn_id=7616303283334679773]
+[Lark] [2026-03-12 17:46:54,399] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303283334679773]
+2026-03-12T17:46:54 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303283334679773]
+[Lark] [2026-03-12 17:46:54,400] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303283334679773&access_key=f8c24026cd17bc597e879684e432e051&service_id=33554678&ticket=94553187-22d9-41c1-9c27-c264120a7f60 [conn_id=7616303283334679773]
+2026-03-12T17:46:54 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303283334679773&access_key=f8c24026cd17bc597e879684e432e051&service_id=33554678&ticket=94553187-22d9-41c1-9c27-c264120a7f60 [conn_id=7616303283334679773]
+WARNING:  WatchFiles detected changes in 'src/engine/interceptor.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:46:59 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:46:59 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:46:59 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:46:59 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:46:59 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:46:59 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41781]
+INFO:     Started server process [41824]
+INFO:     Waiting for application startup.
+2026-03-12T17:47:11 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:47:11 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:47:11 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:47:11 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+[Lark] [2026-03-12 17:47:11,757] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:47:11 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T17:47:11 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:47:11 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-12T17:47:11 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:47:11 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+INFO:     Application startup complete.
+[Lark] [2026-03-12 17:47:12,168] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303344970239162&access_key=827724a202c87a6d439403fb5fa13632&service_id=33554678&ticket=c99cc28a-6506-410c-b362-14f56d4d73a8 [conn_id=7616303344970239162]
+2026-03-12T17:47:12 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303344970239162&access_key=827724a202c87a6d439403fb5fa13632&service_id=33554678&ticket=c99cc28a-6506-410c-b362-14f56d4d73a8 [conn_id=7616303344970239162]
+[Lark] [2026-03-12 17:47:12,204] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303344970239162]
+2026-03-12T17:47:12 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303344970239162]
+[Lark] [2026-03-12 17:47:12,205] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303344970239162&access_key=827724a202c87a6d439403fb5fa13632&service_id=33554678&ticket=c99cc28a-6506-410c-b362-14f56d4d73a8 [conn_id=7616303344970239162]
+2026-03-12T17:47:12 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303344970239162&access_key=827724a202c87a6d439403fb5fa13632&service_id=33554678&ticket=c99cc28a-6506-410c-b362-14f56d4d73a8 [conn_id=7616303344970239162]
+[Lark] [2026-03-12 17:47:14,846] [INFO] trying to reconnect for the 1st time
+2026-03-12T17:47:14 [INFO] Lark: trying to reconnect for the 1st time
+[Lark] [2026-03-12 17:47:15,185] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303371318660281&access_key=f2f31f85b022fd8a17cb5f61e707cd78&service_id=33554678&ticket=924e4eaf-9f92-412d-92e6-57ef2ba3ac45 [conn_id=7616303371318660281]
+2026-03-12T17:47:15 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303371318660281&access_key=f2f31f85b022fd8a17cb5f61e707cd78&service_id=33554678&ticket=924e4eaf-9f92-412d-92e6-57ef2ba3ac45 [conn_id=7616303371318660281]
+WARNING:  WatchFiles detected changes in 'src/engine/interceptor.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:47:19 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:47:19 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:47:19 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:47:19 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:47:19 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:47:19 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41824]
+INFO:     Started server process [41884]
+INFO:     Waiting for application startup.
+2026-03-12T17:47:28 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:47:28 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:47:28 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:47:28 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+2026-03-12T17:47:28 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+[Lark] [2026-03-12 17:47:28,697] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:47:28 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:47:28 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:47:28 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-12T17:47:28 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+INFO:     Application startup complete.
+[Lark] [2026-03-12 17:47:29,220] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303429854710966&access_key=4b383f149b2c96c9358ab2e9a05afb3d&service_id=33554678&ticket=3188219d-7415-4b36-9072-942af8ad92b9 [conn_id=7616303429854710966]
+2026-03-12T17:47:29 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303429854710966&access_key=4b383f149b2c96c9358ab2e9a05afb3d&service_id=33554678&ticket=3188219d-7415-4b36-9072-942af8ad92b9 [conn_id=7616303429854710966]
+[Lark] [2026-03-12 17:47:29,269] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303429854710966]
+2026-03-12T17:47:29 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303429854710966]
+[Lark] [2026-03-12 17:47:29,273] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303429854710966&access_key=4b383f149b2c96c9358ab2e9a05afb3d&service_id=33554678&ticket=3188219d-7415-4b36-9072-942af8ad92b9 [conn_id=7616303429854710966]
+2026-03-12T17:47:29 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303429854710966&access_key=4b383f149b2c96c9358ab2e9a05afb3d&service_id=33554678&ticket=3188219d-7415-4b36-9072-942af8ad92b9 [conn_id=7616303429854710966]
+WARNING:  WatchFiles detected changes in 'src/engine/interceptor.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:47:29 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:47:29 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:47:29 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:47:29 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:47:29 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:47:29 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41884]
+INFO:     Started server process [41918]
+INFO:     Waiting for application startup.
+2026-03-12T17:47:37 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:47:37 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:47:37 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:47:37 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+[Lark] [2026-03-12 17:47:37,801] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:47:37 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T17:47:37 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:47:37 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:47:37 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+2026-03-12T17:47:37 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+INFO:     Application startup complete.
+[Lark] [2026-03-12 17:47:38,145] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303468416683187&access_key=e08ce713ffac2d120bc3cc605b1b7356&service_id=33554678&ticket=edacbdc6-ca37-455e-a6f5-6cfd3f5208fe [conn_id=7616303468416683187]
+2026-03-12T17:47:38 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303468416683187&access_key=e08ce713ffac2d120bc3cc605b1b7356&service_id=33554678&ticket=edacbdc6-ca37-455e-a6f5-6cfd3f5208fe [conn_id=7616303468416683187]
+[Lark] [2026-03-12 17:47:38,167] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303468416683187]
+2026-03-12T17:47:38 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303468416683187]
+[Lark] [2026-03-12 17:47:38,168] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303468416683187&access_key=e08ce713ffac2d120bc3cc605b1b7356&service_id=33554678&ticket=edacbdc6-ca37-455e-a6f5-6cfd3f5208fe [conn_id=7616303468416683187]
+2026-03-12T17:47:38 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303468416683187&access_key=e08ce713ffac2d120bc3cc605b1b7356&service_id=33554678&ticket=edacbdc6-ca37-455e-a6f5-6cfd3f5208fe [conn_id=7616303468416683187]
+WARNING:  WatchFiles detected changes in 'src/engine/interceptor.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:47:45 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:47:45 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:47:45 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:47:45 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:47:45 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:47:45 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41918]
+INFO:     Started server process [41974]
+INFO:     Waiting for application startup.
+2026-03-12T17:47:56 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:47:56 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:47:56 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:47:56 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+2026-03-12T17:47:56 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+[Lark] [2026-03-12 17:47:56,968] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:47:56 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:47:56 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-12T17:47:56 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:47:56 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+INFO:     Application startup complete.
+[Lark] [2026-03-12 17:47:57,326] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303518828481762&access_key=c9f056ff4352b2b75b5b1e0d0461a238&service_id=33554678&ticket=133d0863-86b1-4ec1-b89c-da515b75eff0 [conn_id=7616303518828481762]
+2026-03-12T17:47:57 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303518828481762&access_key=c9f056ff4352b2b75b5b1e0d0461a238&service_id=33554678&ticket=133d0863-86b1-4ec1-b89c-da515b75eff0 [conn_id=7616303518828481762]
+[Lark] [2026-03-12 17:47:57,347] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303518828481762]
+2026-03-12T17:47:57 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303518828481762]
+[Lark] [2026-03-12 17:47:57,347] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303518828481762&access_key=c9f056ff4352b2b75b5b1e0d0461a238&service_id=33554678&ticket=133d0863-86b1-4ec1-b89c-da515b75eff0 [conn_id=7616303518828481762]
+2026-03-12T17:47:57 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303518828481762&access_key=c9f056ff4352b2b75b5b1e0d0461a238&service_id=33554678&ticket=133d0863-86b1-4ec1-b89c-da515b75eff0 [conn_id=7616303518828481762]
+WARNING:  WatchFiles detected changes in 'src/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:47:59 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:47:59 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:47:59 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:47:59 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:47:59 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:47:59 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [41974]
+INFO:     Started server process [42013]
+INFO:     Waiting for application startup.
+2026-03-12T17:48:11 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:48:11 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:48:11 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:48:11 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+2026-03-12T17:48:11 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+[Lark] [2026-03-12 17:48:11,809] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:48:11 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:48:11 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-12T17:48:11 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:48:11 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+INFO:     Application startup complete.
+[Lark] [2026-03-12 17:48:12,145] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303583764155585&access_key=1c92d8bfe7bf80665825798c7f24289b&service_id=33554678&ticket=b8ec9725-8b04-43ff-8ad8-df6a8dd38c5b [conn_id=7616303583764155585]
+2026-03-12T17:48:12 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303583764155585&access_key=1c92d8bfe7bf80665825798c7f24289b&service_id=33554678&ticket=b8ec9725-8b04-43ff-8ad8-df6a8dd38c5b [conn_id=7616303583764155585]
+[Lark] [2026-03-12 17:48:12,166] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303583764155585]
+2026-03-12T17:48:12 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616303583764155585]
+[Lark] [2026-03-12 17:48:12,167] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303583764155585&access_key=1c92d8bfe7bf80665825798c7f24289b&service_id=33554678&ticket=b8ec9725-8b04-43ff-8ad8-df6a8dd38c5b [conn_id=7616303583764155585]
+2026-03-12T17:48:12 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616303583764155585&access_key=1c92d8bfe7bf80665825798c7f24289b&service_id=33554678&ticket=b8ec9725-8b04-43ff-8ad8-df6a8dd38c5b [conn_id=7616303583764155585]
+WARNING:  WatchFiles detected changes in 'src/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:48:13 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:48:13 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:48:13 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:48:13 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:48:13 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:48:13 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [42013]
+INFO:     Started server process [42058]
+INFO:     Waiting for application startup.
+2026-03-12T17:48:27 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+ERROR:    Traceback (most recent call last):
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/starlette/routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/src/main.py", line 206, in lifespan
+    state = AppState(config)
+            ^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/src/main.py", line 94, in __init__
+    self.sse_adapter = SseAdapter(
+                       ^^^^^^^^^^^
+TypeError: SseAdapter.__init__() got an unexpected keyword argument 'agent_scan_analyzer'
+
+ERROR:    Application startup failed. Exiting.
+WARNING:  WatchFiles detected changes in 'src/proxy/sse_adapter.py'. Reloading...
+INFO:     Started server process [42134]
+INFO:     Waiting for application startup.
+2026-03-12T17:48:53 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+ERROR:    Traceback (most recent call last):
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/starlette/routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/src/main.py", line 206, in lifespan
+    state = AppState(config)
+            ^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/src/main.py", line 94, in __init__
+    self.sse_adapter = SseAdapter(
+                       ^^^^^^^^^^^
+TypeError: SseAdapter.__init__() got an unexpected keyword argument 'agent_scan_analyzer'
+
+ERROR:    Application startup failed. Exiting.
+WARNING:  WatchFiles detected changes in 'src/proxy/sse_adapter.py'. Reloading...
+INFO:     Started server process [42188]
+INFO:     Waiting for application startup.
+2026-03-12T17:49:04 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+ERROR:    Traceback (most recent call last):
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/starlette/routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/src/main.py", line 206, in lifespan
+    state = AppState(config)
+            ^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/src/main.py", line 103, in __init__
+    self.ws_adapter = WebSocketAdapter(
+                      ^^^^^^^^^^^^^^^^^
+TypeError: WebSocketAdapter.__init__() got an unexpected keyword argument 'agent_scan_analyzer'
+
+ERROR:    Application startup failed. Exiting.
+WARNING:  WatchFiles detected changes in 'src/proxy/sse_adapter.py'. Reloading...
+INFO:     Started server process [42240]
+INFO:     Waiting for application startup.
+2026-03-12T17:49:20 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+ERROR:    Traceback (most recent call last):
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/starlette/routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/src/main.py", line 206, in lifespan
+    state = AppState(config)
+            ^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/src/main.py", line 103, in __init__
+    self.ws_adapter = WebSocketAdapter(
+                      ^^^^^^^^^^^^^^^^^
+TypeError: WebSocketAdapter.__init__() got an unexpected keyword argument 'agent_scan_analyzer'
+
+ERROR:    Application startup failed. Exiting.
+WARNING:  WatchFiles detected changes in 'src/proxy/sse_adapter.py'. Reloading...
+INFO:     Started server process [42277]
+INFO:     Waiting for application startup.
+2026-03-12T17:49:37 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+ERROR:    Traceback (most recent call last):
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/starlette/routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 201, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/src/main.py", line 206, in lifespan
+    state = AppState(config)
+            ^^^^^^^^^^^^^^^^
+  File "/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall/src/main.py", line 103, in __init__
+    self.ws_adapter = WebSocketAdapter(
+                      ^^^^^^^^^^^^^^^^^
+TypeError: WebSocketAdapter.__init__() got an unexpected keyword argument 'agent_scan_analyzer'
+
+ERROR:    Application startup failed. Exiting.
+WARNING:  WatchFiles detected changes in 'src/proxy/sse_adapter.py'. Reloading...
+WARNING:  WatchFiles detected changes in 'src/proxy/sse_adapter.py'. Reloading...
+INFO:     Started server process [42326]
+INFO:     Waiting for application startup.
+2026-03-12T17:49:59 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+2026-03-12T17:49:59 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:49:59 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:49:59 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:49:59 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+[Lark] [2026-03-12 17:49:59,684] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:49:59 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T17:49:59 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:49:59 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:49:59 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+2026-03-12T17:49:59 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:49:59 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:49:59 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:49:59 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:49:59 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+[Lark] [2026-03-12 17:49:59,997] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304039635094731&access_key=6a9cf41683b6e9da0b13bca256df64ad&service_id=33554678&ticket=9f28da7f-6fb1-45b8-803b-d6cbb4c81ad6 [conn_id=7616304039635094731]
+2026-03-12T17:49:59 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304039635094731&access_key=6a9cf41683b6e9da0b13bca256df64ad&service_id=33554678&ticket=9f28da7f-6fb1-45b8-803b-d6cbb4c81ad6 [conn_id=7616304039635094731]
+2026-03-12T17:49:59 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:49:59 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [42326]
+INFO:     Started server process [42389]
+INFO:     Waiting for application startup.
+2026-03-12T17:50:09 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+WARNING:  WatchFiles detected changes in 'src/proxy/sse_adapter.py'. Reloading...
+2026-03-12T17:50:10 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:50:10 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:50:10 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:50:10 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+[Lark] [2026-03-12 17:50:10,083] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:50:10 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:50:10 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+2026-03-12T17:50:10 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T17:50:10 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:50:10 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:50:10 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:50:10 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:50:10 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:50:10 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:50:10 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:50:10 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [42389]
+INFO:     Started server process [42425]
+INFO:     Waiting for application startup.
+2026-03-12T17:50:18 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+2026-03-12T17:50:18 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:50:18 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:50:18 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:50:18 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+[Lark] [2026-03-12 17:50:18,594] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:50:18 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T17:50:18 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:50:18 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-12T17:50:18 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:50:18 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+INFO:     Application startup complete.
+[Lark] [2026-03-12 17:50:18,885] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304123274136772&access_key=561f7f9d4e99a0989ef4827637fcbe29&service_id=33554678&ticket=c570564e-848e-46d2-8ae1-2d7a7635b0cd [conn_id=7616304123274136772]
+2026-03-12T17:50:18 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304123274136772&access_key=561f7f9d4e99a0989ef4827637fcbe29&service_id=33554678&ticket=c570564e-848e-46d2-8ae1-2d7a7635b0cd [conn_id=7616304123274136772]
+[Lark] [2026-03-12 17:50:18,906] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616304123274136772]
+2026-03-12T17:50:18 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616304123274136772]
+[Lark] [2026-03-12 17:50:18,906] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304123274136772&access_key=561f7f9d4e99a0989ef4827637fcbe29&service_id=33554678&ticket=c570564e-848e-46d2-8ae1-2d7a7635b0cd [conn_id=7616304123274136772]
+2026-03-12T17:50:18 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304123274136772&access_key=561f7f9d4e99a0989ef4827637fcbe29&service_id=33554678&ticket=c570564e-848e-46d2-8ae1-2d7a7635b0cd [conn_id=7616304123274136772]
+WARNING:  WatchFiles detected changes in 'src/storage/base.py'. Reloading...
+INFO:     Shutting down
+[Lark] [2026-03-12 17:50:22,268] [INFO] trying to reconnect for the 1st time
+2026-03-12T17:50:22 [INFO] Lark: trying to reconnect for the 1st time
+INFO:     Waiting for application shutdown.
+2026-03-12T17:50:22 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:50:22 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:50:22 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:50:22 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:50:22 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:50:22 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [42425]
+INFO:     Started server process [42464]
+INFO:     Waiting for application startup.
+2026-03-12T17:50:31 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+2026-03-12T17:50:31 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:50:31 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:50:31 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:50:31 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+2026-03-12T17:50:31 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+[Lark] [2026-03-12 17:50:31,847] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:50:31 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:50:31 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:50:31 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-12T17:50:31 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+INFO:     Application startup complete.
+[Lark] [2026-03-12 17:50:32,280] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304243557043386&access_key=b0fb68afdf8628c00343b9f821dcbfb4&service_id=33554678&ticket=cfc95617-e2ef-4086-85e4-31b1fb1ace81 [conn_id=7616304243557043386]
+2026-03-12T17:50:32 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304243557043386&access_key=b0fb68afdf8628c00343b9f821dcbfb4&service_id=33554678&ticket=cfc95617-e2ef-4086-85e4-31b1fb1ace81 [conn_id=7616304243557043386]
+[Lark] [2026-03-12 17:50:32,326] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616304243557043386]
+2026-03-12T17:50:32 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616304243557043386]
+[Lark] [2026-03-12 17:50:32,326] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304243557043386&access_key=b0fb68afdf8628c00343b9f821dcbfb4&service_id=33554678&ticket=cfc95617-e2ef-4086-85e4-31b1fb1ace81 [conn_id=7616304243557043386]
+2026-03-12T17:50:32 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304243557043386&access_key=b0fb68afdf8628c00343b9f821dcbfb4&service_id=33554678&ticket=cfc95617-e2ef-4086-85e4-31b1fb1ace81 [conn_id=7616304243557043386]
+WARNING:  WatchFiles detected changes in 'src/storage/jsonl.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:50:33 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:50:33 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:50:33 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:50:33 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:50:33 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:50:33 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [42464]
+INFO:     Started server process [42501]
+INFO:     Waiting for application startup.
+2026-03-12T17:50:41 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+2026-03-12T17:50:42 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:50:42 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:50:42 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:50:42 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+[Lark] [2026-03-12 17:50:42,145] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:50:42 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:50:42 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+2026-03-12T17:50:42 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+2026-03-12T17:50:42 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:50:42 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+INFO:     Application startup complete.
+[Lark] [2026-03-12 17:50:42,786] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304278176894176&access_key=05ca9e2f6800ce4a7f6a48d18ebb258b&service_id=33554678&ticket=01796888-c977-40fb-ba41-24b2d0a25d92 [conn_id=7616304278176894176]
+2026-03-12T17:50:42 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304278176894176&access_key=05ca9e2f6800ce4a7f6a48d18ebb258b&service_id=33554678&ticket=01796888-c977-40fb-ba41-24b2d0a25d92 [conn_id=7616304278176894176]
+[Lark] [2026-03-12 17:50:42,841] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616304278176894176]
+2026-03-12T17:50:42 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616304278176894176]
+[Lark] [2026-03-12 17:50:42,841] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304278176894176&access_key=05ca9e2f6800ce4a7f6a48d18ebb258b&service_id=33554678&ticket=01796888-c977-40fb-ba41-24b2d0a25d92 [conn_id=7616304278176894176]
+2026-03-12T17:50:42 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304278176894176&access_key=05ca9e2f6800ce4a7f6a48d18ebb258b&service_id=33554678&ticket=01796888-c977-40fb-ba41-24b2d0a25d92 [conn_id=7616304278176894176]
+[Lark] [2026-03-12 17:50:44,179] [INFO] trying to reconnect for the 1st time
+2026-03-12T17:50:44 [INFO] Lark: trying to reconnect for the 1st time
+[Lark] [2026-03-12 17:50:44,458] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304235492969670&access_key=f5d06f15330cda40848779b49183f682&service_id=33554678&ticket=cbeb1648-ec47-47fb-8a3d-70920ff701a8 [conn_id=7616304235492969670]
+2026-03-12T17:50:44 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304235492969670&access_key=f5d06f15330cda40848779b49183f682&service_id=33554678&ticket=cbeb1648-ec47-47fb-8a3d-70920ff701a8 [conn_id=7616304235492969670]
+WARNING:  WatchFiles detected changes in 'src/storage/sqlite.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-03-12T17:50:46 [INFO] agent_firewall: Stopping Feishu channel...
+2026-03-12T17:50:46 [ERROR] agent_firewall.channels.feishu: Error closing Feishu WebSocket: 'Client' object has no attribute 'close'
+2026-03-12T17:50:46 [INFO] agent_firewall.channels.feishu: Feishu adapter stopped
+2026-03-12T17:50:46 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-12T17:50:46 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-12T17:50:46 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [42501]
+INFO:     Started server process [42549]
+INFO:     Waiting for application startup.
+2026-03-12T17:50:55 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+2026-03-12T17:50:55 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-12T17:50:55 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-12T17:50:55 [INFO] agent_firewall: 🚀 Starting Feishu channel adapter...
+2026-03-12T17:50:55 [INFO] agent_firewall.channels.feishu: Starting Feishu adapter (App ID: cli_a925cba144f9dbb6)
+2026-03-12T17:50:55 [INFO] agent_firewall.channels.feishu: Feishu WebSocket started in background thread
+[Lark] [2026-03-12 17:50:55,646] [ERROR] connect failed, err: this event loop is already running.
+2026-03-12T17:50:55 [ERROR] Lark: connect failed, err: this event loop is already running.
+2026-03-12T17:50:55 [INFO] agent_firewall: ✅ Feishu channel connected successfully
+2026-03-12T17:50:55 [ERROR] agent_firewall.channels.feishu: Feishu WebSocket thread error: this event loop is already running.
+2026-03-12T17:50:55 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+INFO:     Application startup complete.
+[Lark] [2026-03-12 17:50:56,019] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304314202279118&access_key=600c1a49154cc173cd06cc99daad82c7&service_id=33554678&ticket=60d11363-9db5-4fb9-bea2-8565d1621dbc [conn_id=7616304314202279118]
+2026-03-12T17:50:56 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304314202279118&access_key=600c1a49154cc173cd06cc99daad82c7&service_id=33554678&ticket=60d11363-9db5-4fb9-bea2-8565d1621dbc [conn_id=7616304314202279118]
+[Lark] [2026-03-12 17:50:56,059] [ERROR] receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616304314202279118]
+2026-03-12T17:50:56 [ERROR] Lark: receive message loop exit, err: sent 1000 (OK); then received 1000 (OK) bye [conn_id=7616304314202279118]
+[Lark] [2026-03-12 17:50:56,059] [INFO] disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304314202279118&access_key=600c1a49154cc173cd06cc99daad82c7&service_id=33554678&ticket=60d11363-9db5-4fb9-bea2-8565d1621dbc [conn_id=7616304314202279118]
+2026-03-12T17:50:56 [INFO] Lark: disconnected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304314202279118&access_key=600c1a49154cc173cd06cc99daad82c7&service_id=33554678&ticket=60d11363-9db5-4fb9-bea2-8565d1621dbc [conn_id=7616304314202279118]
+[Lark] [2026-03-12 17:51:13,508] [INFO] trying to reconnect for the 1st time
+2026-03-12T17:51:13 [INFO] Lark: trying to reconnect for the 1st time
+[Lark] [2026-03-12 17:51:13,843] [INFO] connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304405990182071&access_key=18ef27e84c6a8f9191de1a128215693a&service_id=33554678&ticket=107567f1-0509-4ff9-8aeb-94f6ccf272d3 [conn_id=7616304405990182071]
+2026-03-12T17:51:13 [INFO] Lark: connected to wss://msg-frontier.feishu.cn/ws/v2?fpid=493&aid=552564&device_id=7616304405990182071&access_key=18ef27e84c6a8f9191de1a128215693a&service_id=33554678&ticket=107567f1-0509-4ff9-8aeb-94f6ccf272d3 [conn_id=7616304405990182071]

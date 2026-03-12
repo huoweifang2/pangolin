@@ -41,12 +41,12 @@
         </div>
         <div class="top-spacer"></div>
         <div class="top-right">
-          <div class="top-stats" v-if="stats">
+          <div v-if="stats" class="top-stats">
             <span class="stat-pill">
               <span class="stat-dot green"></span>
               {{ stats.active_sessions ?? 0 }} sessions
             </span>
-            <span class="stat-pill" v-if="stats.audit?.blocked">
+            <span v-if="stats.audit?.blocked" class="stat-pill">
               <span class="stat-dot red"></span>
               {{ stats.audit.blocked }} blocked
             </span>
@@ -54,8 +54,8 @@
           <button
             class="traffic-toggle"
             :class="{ active: showTraffic }"
-            @click="showTraffic = !showTraffic"
             title="Toggle Traffic Panel"
+            @click="showTraffic = !showTraffic"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -83,6 +83,9 @@
           <RateLimitSettings v-if="currentSection === 'rate-limit'" :config="config?.rate_limit ?? { requests_per_sec: 10, burst: 20 }" @save="handleSaveRateLimit" />
           <SecurityTest v-if="currentSection === 'test'" :results="testResults" :running="testRunning" @run="handleRunTest" @runAll="handleRunAllTests" @clear="clearTestResults" />
           <AuditLog v-if="currentSection === 'audit'" :entries="auditEntries" :loading="auditLoading" :hasMore="auditHasMore" @load="handleLoadAudit" @loadMore="handleLoadMoreAudit" />
+          <Playground v-if="currentSection === 'playground'" />
+          <DatasetList v-if="currentSection === 'datasets'" />
+          <TracesPage v-if="currentSection === 'traces'" />
           <SkillsManager v-if="currentSection === 'skills'" />
           <AgentsManager v-if="currentSection === 'agents'" />
           <FeishuConfig v-if="currentSection === 'feishu'" />
@@ -106,7 +109,7 @@
             {{ connected ? 'Online' : 'Offline' }}
           </span>
           <span class="status-sep">|</span>
-          <span class="status-item" v-if="stats">{{ formatUptime(stats.uptime_seconds) }}</span>
+          <span v-if="stats" class="status-item">{{ formatUptime(stats.uptime_seconds) }}</span>
         </div>
         <div class="status-right">
           <span class="status-item">{{ events.length }} events</span>
@@ -158,6 +161,9 @@ import EngineSettings from './components/EngineSettings.vue'
 import RateLimitSettings from './components/RateLimitSettings.vue'
 import SecurityTest from './components/SecurityTest.vue'
 import SchematicDiagram from './components/SchematicDiagram.vue'
+import Playground from './components/Playground.vue'
+import DatasetList from './components/DatasetList.vue'
+import TracesPage from './components/TracesPage.vue'
 
 const icons = {
   chat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
@@ -171,6 +177,9 @@ const icons = {
   agents: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
   config: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
   feishu: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`,
+  playground: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
+  datasets: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
+  traces: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
   sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
   moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
 }
@@ -201,6 +210,9 @@ const navItems = computed(() => [
   { id: 'rate-limit' as const, label: 'Rate Limit', icon: icons.rateLimit, group: 'security' },
   { id: 'test' as const, label: 'Security Test', icon: icons.test, group: 'security' },
   { id: 'audit' as const, label: 'Audit Log', icon: icons.audit, group: 'security', badge: stats.value?.audit?.blocked ?? 0, badgeType: stats.value?.audit?.blocked ? 'danger' : undefined },
+  { id: 'playground' as const, label: 'Playground', icon: icons.playground, group: 'analysis', separator: true },
+  { id: 'datasets' as const, label: 'Datasets', icon: icons.datasets, group: 'analysis' },
+  { id: 'traces' as const, label: 'Traces', icon: icons.traces, group: 'analysis' },
   { id: 'agents' as const, label: 'Agents', icon: icons.agents, group: 'agent', separator: true },
   { id: 'skills' as const, label: 'Skills', icon: icons.skills, group: 'agent' },
   { id: 'feishu' as const, label: 'Feishu Channel', icon: icons.feishu, group: 'channels', separator: true },

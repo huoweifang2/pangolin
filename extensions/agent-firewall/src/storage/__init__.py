@@ -35,14 +35,16 @@ except ImportError:
 
 
 def get_storage_backend(
-    backend_type: str = "jsonl",
+    backend: str = "jsonl",
+    path: str = "./data",
     **kwargs,
 ) -> StorageBackend:
     """
     Factory function to create storage backend instances.
 
     Args:
-        backend_type: "jsonl" or "sqlite"
+        backend: "jsonl" or "sqlite"
+        path: Path to storage (directory for jsonl, db file for sqlite)
         **kwargs: Backend-specific configuration
 
     Returns:
@@ -50,22 +52,22 @@ def get_storage_backend(
 
     Examples:
         # JSONL backend
-        storage = get_storage_backend("jsonl", data_dir="./data")
+        storage = get_storage_backend("jsonl", path="./data")
 
         # SQLite backend
-        storage = get_storage_backend("sqlite", db_path="./data/firewall.db")
+        storage = get_storage_backend("sqlite", path="./data/firewall.db")
     """
-    if backend_type == "jsonl":
-        return JsonlStorage(**kwargs)
-    elif backend_type == "sqlite":
+    if backend == "jsonl":
+        return JsonlStorage(data_dir=path, **kwargs)
+    elif backend == "sqlite":
         if SqliteStorage is None:
             raise ImportError(
                 "SQLite backend requires aiosqlite. "
                 "Install it with: pip install aiosqlite"
             )
-        return SqliteStorage(**kwargs)
+        return SqliteStorage(db_path=path, **kwargs)
     else:
-        raise ValueError(f"Unknown storage backend: {backend_type}")
+        raise ValueError(f"Unknown storage backend: {backend}")
 
 
 __all__ = [

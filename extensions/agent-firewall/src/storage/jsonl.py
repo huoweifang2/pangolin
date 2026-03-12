@@ -159,11 +159,30 @@ class JsonlStorage(StorageBackend):
 
     async def get_annotations(self, trace_id: str) -> list[dict[str, Any]]:
         """Get all annotations for a trace."""
+        return await self.list_annotations(filters={"trace_id": trace_id})
+
+    async def list_annotations(
+        self,
+        filters: dict[str, Any] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """List annotations with filters."""
         annotations = []
+        count = 0
 
         async for line in self._read_lines(self.annotations_file):
-            if line.get("trace_id") == trace_id:
-                annotations.append(line)
+            if filters and not self._matches_filters(line, filters):
+                continue
+
+            if count < offset:
+                count += 1
+                continue
+
+            annotations.append(line)
+
+            if len(annotations) >= limit:
+                break
 
         return annotations
 

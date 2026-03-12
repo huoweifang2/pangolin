@@ -29,6 +29,7 @@ from typing import Any
 import orjson
 
 from ..models import (
+    AgentScanResult,
     AnalysisResult,
     AuditEntry,
     DashboardEvent,
@@ -39,6 +40,7 @@ from ..models import (
     ThreatLevel,
     Verdict,
 )
+from .agent_scan_integration import AgentScanAnalyzer
 from .semantic_analyzer import L2Result, SemanticAnalyzer
 from .static_analyzer import L1Result, StaticAnalyzer
 
@@ -73,9 +75,13 @@ _SAFE_METHODS: frozenset[str] = frozenset(
 )
 
 
-def _compute_verdict(l1: L1Result, l2: L2Result) -> tuple[Verdict, ThreatLevel, str]:
+def _compute_verdict(
+    l1: L1Result,
+    l2: L2Result,
+    agent_scan: AgentScanResult | None = None,
+) -> tuple[Verdict, ThreatLevel, str]:
     """
-    Merge L1 + L2 results into a final security verdict.
+    Merge L1 + L2 + Agent-Scan results into a final security verdict.
 
     Decision matrix:
     ┌──────────┬─────────────┬───────────┬──────────────────────────────┐
@@ -93,17 +99,41 @@ def _compute_verdict(l1: L1Result, l2: L2Result) -> tuple[Verdict, ThreatLevel, 
     │ LOW/NONE │ False       │ any       │ ALLOW                        │
     └──────────┴─────────────┴───────────┴──────────────────────────────┘
 
+    Agent-Scan Override:
+    - Critical Issues (E001-E006) -> BLOCK
+    - Toxic Flows (TF001-TF002) -> ESCALATE (or BLOCK if configured)
+
     Returns:
         Tuple of (verdict, aggregated_threat_level, reason_string).
     """
     from .static_analyzer import _threat_ord
 
-    # Aggregate threat level = max(L1, L2)
+    reasons: list[str] = []
+
+    # 1. Agent-Scan Checks (Highest Priority)
+    if agent_scan:
+        if agent_scan.has_critical_issues():
+            issue = agent_scan.issues[0]
+            return (
+                Verdict.BLOCK,
+                ThreatLevel.CRITICAL,
+                f"Agent-Scan Critical: {issue.code} - {issue.message}",
+            )
+        
+        if agent_scan.has_toxic_flows():
+            flow = agent_scan.toxic_flows[0]
+            # Default to ESCALATE for toxic flows unless configured otherwise
+            return (
+                Verdict.ESCALATE,
+                ThreatLevel.HIGH,
+                f"Toxic Flow detected: {flow.type} - {flow.description}",
+            )
+
+    # 2. Aggregate threat level = max(L1, L2)
     threat = l1.threat_level
     if _threat_ord(l2.threat_level) > _threat_ord(threat):
         threat = l2.threat_level
 
-    reasons: list[str] = []
     if l1.matched_patterns:
         reasons.append(f"L1 patterns: {', '.join(l1.matched_patterns[:5])}")
     if l2.is_injection:
@@ -152,6 +182,7 @@ async def intercept_and_analyze(
     session: SessionContext,
     static_analyzer: StaticAnalyzer,
     semantic_analyzer: SemanticAnalyzer,
+    agent_scan_analyzer: AgentScanAnalyzer | None = None,
     *,
     emit_dashboard_event: Any | None = None,
     emit_audit_entry: Any | None = None,
@@ -244,8 +275,15 @@ async def intercept_and_analyze(
             session_context=session.messages,
         )
 
-    # ── Step 6: Policy Decision ──────────────────────────────────
-    verdict, threat_level, reason = _compute_verdict(l1_result, l2_result)
+    # ── Step 6: Agent-Scan Analysis (if tool call) ───────────────
+    agent_scan_result: AgentScanResult | None = None
+    if agent_scan_analyzer and request.method == "tools/call" and isinstance(request.params, dict):
+        tool_name = request.params.get("name")
+        if tool_name:
+            agent_scan_result = agent_scan_analyzer.get_tool_result(tool_name)
+
+    # ── Step 7: Policy Decision ──────────────────────────────────
+    verdict, threat_level, reason = _compute_verdict(l1_result, l2_result, agent_scan_result)
 
     analysis = AnalysisResult(
         l1_matched_patterns=l1_result.matched_patterns,
@@ -253,12 +291,13 @@ async def intercept_and_analyze(
         l2_is_injection=l2_result.is_injection,
         l2_confidence=l2_result.confidence,
         l2_reasoning=l2_result.reasoning,
+        agent_scan_result=agent_scan_result,
         verdict=verdict,
         threat_level=threat_level,
         blocked_reason=reason,
     )
 
-    # ── Step 7: Update session context ───────────────────────────
+    # ── Step 8: Update session context ───────────────────────────
     session.push_message(
         "agent",
         {

@@ -192,8 +192,12 @@ export type NavSection =
   | "rate-limit"
   | "test"
   | "audit"
+  | "playground"
+  | "datasets"
+  | "traces"
   | "skills"
   | "agents"
+  | "feishu"
   | "gateway-config";
 
 // ── Gateway Types (for Skills / Agents / Config) ────────────────────

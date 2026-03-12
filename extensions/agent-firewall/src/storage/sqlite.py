@@ -405,13 +405,40 @@ class SqliteStorage(StorageBackend):
 
     async def get_annotations(self, trace_id: str) -> list[dict[str, Any]]:
         """Get all annotations for a trace."""
+        return await self.list_annotations(filters={"trace_id": trace_id}, limit=1000)
+
+    async def list_annotations(
+        self,
+        filters: dict[str, Any] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """List annotations with filters."""
         db = await self._get_db()
 
+        where_clauses = []
+        params = []
+
+        if filters:
+            if "trace_id" in filters:
+                where_clauses.append("trace_id = ?")
+                params.append(filters["trace_id"])
+            if "severity" in filters:
+                where_clauses.append("severity = ?")
+                params.append(filters["severity"])
+
+        where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+        query = f"""
+            SELECT * FROM annotations
+            {where_sql}
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        """
+        params.extend([limit, offset])
+
         annotations = []
-        async with db.execute(
-            "SELECT * FROM annotations WHERE trace_id = ? ORDER BY created_at",
-            (trace_id,),
-        ) as cursor:
+        async with db.execute(query, params) as cursor:
             async for row in cursor:
                 annotations.append(dict(row))
 

@@ -70,22 +70,35 @@ fi
 
 # Start OpenClaw Gateway (port 18789)
 echo "🚀 Starting OpenClaw Gateway (port 18789)..."
-openclaw gateway --port 18789 > /tmp/agent-firewall-gateway.log 2>&1 &
-GATEWAY_PID=$!
-echo "   Gateway PID: $GATEWAY_PID"
-
-# Wait for gateway to start (check if port is listening)
-for i in $(seq 1 30); do
+if ! command -v openclaw &> /dev/null; then
+    echo "   ⚠️  openclaw command not found. Skipping gateway startup."
+    echo "   Install openclaw or start it manually if needed."
+    export AF_UPSTREAM_PORT=18789
+else
+    # Check if gateway is already running
     if lsof -ti :18789 > /dev/null 2>&1; then
-        break
+        echo "   ✅ Gateway already running on port 18789"
+    else
+        openclaw gateway --port 18789 > /tmp/agent-firewall-gateway.log 2>&1 &
+        GATEWAY_PID=$!
+        echo "   Gateway PID: $GATEWAY_PID"
+
+        # Wait for gateway to start (check if port is listening)
+        for i in $(seq 1 30); do
+            if lsof -ti :18789 > /dev/null 2>&1; then
+                break
+            fi
+            sleep 1
+        done
+        if ! lsof -ti :18789 > /dev/null 2>&1; then
+            echo "   ⚠️  Gateway failed to start. Check /tmp/agent-firewall-gateway.log"
+            echo "   Continuing without gateway..."
+        else
+            echo "   ✅ Gateway healthy"
+        fi
     fi
-    sleep 1
-done
-if ! lsof -ti :18789 > /dev/null 2>&1; then
-    echo "❌ Gateway failed to start. Check /tmp/agent-firewall-gateway.log"
-    exit 1
+    export AF_UPSTREAM_PORT=18789
 fi
-echo "   ✅ Gateway healthy"
 
 # Start Backend (port 9090)
 echo "🚀 Starting Backend (port 9090)..."
@@ -153,4 +166,4 @@ echo "   Backend:  $LOG_DIR/backend.log"
 echo "   Frontend: $LOG_DIR/frontend.log"
 echo ""
 echo "🛑 To stop all manually:"
-echo "   kill $BACKEND_PID $FRONTEND_PID"
+echo "   kill $BACKEND_PID $FRONTEND_PID ${GATEWAY_PID:-}"

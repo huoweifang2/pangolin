@@ -108,6 +108,26 @@ class FirewallConfig:
         default_factory=lambda: os.getenv("AF_FEISHU_UPSTREAM_URL", "https://openrouter.ai/api/v1")
     )
 
+    # ── Agent-Scan Integration ───────────────────────────────────────
+    agent_scan_enabled: bool = field(
+        default_factory=lambda: os.getenv("AF_AGENT_SCAN_ENABLED", "0") == "1"
+    )
+    agent_scan_mode: str = field(
+        default_factory=lambda: os.getenv("AF_AGENT_SCAN_MODE", "local")  # local | remote
+    )
+    agent_scan_api_key: str = field(
+        default_factory=lambda: os.getenv("AF_AGENT_SCAN_API_KEY", "")
+    )
+    agent_scan_cache_ttl: int = field(
+        default_factory=lambda: int(os.getenv("AF_AGENT_SCAN_CACHE_TTL", "3600"))
+    )
+    block_critical_issues: bool = field(
+        default_factory=lambda: os.getenv("AF_BLOCK_CRITICAL_ISSUES", "1") == "1"
+    )
+    escalate_toxic_flows: bool = field(
+        default_factory=lambda: os.getenv("AF_ESCALATE_TOXIC_FLOWS", "1") == "1"
+    )
+
     # ── Storage (Phase 1) ────────────────────────────────────────────
     storage_backend: str = field(
         default_factory=lambda: os.getenv("AF_STORAGE_BACKEND", "jsonl")  # "jsonl" | "sqlite"
@@ -118,3 +138,22 @@ class FirewallConfig:
     # For SQLite: full path to database file
     # For JSONL: directory containing *.jsonl files
 
+
+
+# Global config instance
+_config_instance: FirewallConfig | None = None
+
+
+def get_config() -> FirewallConfig:
+    """
+    Get the global FirewallConfig instance.
+    
+    Creates the instance on first call (singleton pattern).
+    
+    Returns:
+        FirewallConfig: The global configuration instance
+    """
+    global _config_instance
+    if _config_instance is None:
+        _config_instance = FirewallConfig()
+    return _config_instance
