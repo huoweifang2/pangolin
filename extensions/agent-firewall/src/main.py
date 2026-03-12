@@ -236,6 +236,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("Stopping Feishu channel...")
         await state.feishu_adapter.stop()
 
+    if state.agent_scan_analyzer:
+        state.agent_scan_analyzer.clear_cache()
+
     await state.semantic_analyzer.close()
 
     await state.audit_logger.stop()

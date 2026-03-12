@@ -71,7 +71,7 @@
 
       <!-- Dual-Layer Analysis -->
       <div class="analysis-section">
-        <h3 class="section-title">双层分析引擎</h3>
+        <h3 class="section-title">三层分析引擎</h3>
         <div class="analysis-grid">
           <!-- L1 Static Analysis -->
           <div class="analysis-card l1-card" @click="navigateToEngine">
@@ -93,6 +93,32 @@
                 <li>• 正则表达式匹配</li>
                 <li>• 命令注入防护</li>
                 <li>• 路径遍历检测</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Agent Scan -->
+          <div class="analysis-card agent-scan-card" @click="navigateToEngine">
+            <div class="card-header">
+              <div class="card-icon orange">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div class="card-title">
+                <h4>Agent Scan</h4>
+                <span class="card-badge">Security</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <p class="card-desc">针对 MCP 工具的供应链安全扫描</p>
+              <ul class="feature-list">
+                <li>• 恶意工具检测</li>
+                <li>• 危险功能识别</li>
+                <li>• 组合攻击路径分析</li>
+                <li>• 工具白名单验证</li>
               </ul>
             </div>
           </div>

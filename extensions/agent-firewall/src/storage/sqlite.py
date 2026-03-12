@@ -122,12 +122,11 @@ class SqliteStorage(StorageBackend):
         if self._db is None:
             self._db = await aiosqlite.connect(str(self.db_path))
             self._db.row_factory = aiosqlite.Row
-            await self._init_schema()
+            await self._init_schema(self._db)
         return self._db
 
-    async def _init_schema(self) -> None:
+    async def _init_schema(self, db: aiosqlite.Connection) -> None:
         """Initialize database schema."""
-        db = await self._get_db()
 
         # Create traces table
         await db.execute("""

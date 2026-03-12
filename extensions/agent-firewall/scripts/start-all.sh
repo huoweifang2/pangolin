@@ -1,6 +1,6 @@
 #!/bin/bash
 # Agent Firewall — Start All Services (Backend + Frontend + Gateway)
-# Usage: ./scripts/start-all.sh
+# Usage: cd extensions/agent-firewall && ./scripts/start-all.sh
 
 set -e
 

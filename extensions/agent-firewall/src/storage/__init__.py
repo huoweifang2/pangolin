@@ -65,6 +65,12 @@ def get_storage_backend(
                 "SQLite backend requires aiosqlite. "
                 "Install it with: pip install aiosqlite"
             )
+        
+        # If path is a directory (e.g. default "./data"), append filename
+        import os
+        if os.path.isdir(path):
+            path = os.path.join(path, "firewall.db")
+            
         return SqliteStorage(db_path=path, **kwargs)
     else:
         raise ValueError(f"Unknown storage backend: {backend}")
