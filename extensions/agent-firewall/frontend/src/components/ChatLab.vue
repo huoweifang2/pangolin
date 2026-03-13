@@ -12,8 +12,8 @@
       </div>
       <div class="toolbar-right">
         <!-- History dropdown -->
-        <div class="history-dropdown" ref="histDropRef">
-          <button class="toolbar-btn" @click="showHistoryMenu = !showHistoryMenu" title="Conversation history">
+        <div ref="histDropRef" class="history-dropdown">
+          <button class="toolbar-btn" title="Conversation history" @click="showHistoryMenu = !showHistoryMenu">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
@@ -21,7 +21,7 @@
           <div v-if="showHistoryMenu" class="dropdown-menu history-menu">
             <div class="dropdown-header">
               <span>Conversations</span>
-              <button class="icon-btn-sm" @click="newConversation" title="New conversation">
+              <button class="icon-btn-sm" title="New conversation" @click="newConversation">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               </button>
             </div>
@@ -32,8 +32,8 @@
                   <span class="conv-meta">{{ conv.messageCount }} msgs · {{ formatDate(conv.updatedAt) }}</span>
                 </div>
                 <div class="conv-actions">
-                  <button class="icon-btn-xs" @click.stop="exportConversation(conv.id)" title="Export JSON">⬇</button>
-                  <button class="icon-btn-xs danger" @click.stop="deleteConversation(conv.id)" title="Delete">✕</button>
+                  <button class="icon-btn-xs" title="Export JSON" @click.stop="exportConversation(conv.id)">⬇</button>
+                  <button class="icon-btn-xs danger" title="Delete" @click.stop="deleteConversation(conv.id)">✕</button>
                 </div>
               </div>
               <div v-if="!savedConversations.length" class="dropdown-empty">No saved conversations</div>
@@ -60,21 +60,21 @@
         </select>
 
         <!-- Settings gear -->
-        <button class="toolbar-btn" @click="showSettings = !showSettings" :class="{ active: showSettings }" title="Model settings">
+        <button class="toolbar-btn" :class="{ active: showSettings }" title="Model settings" @click="showSettings = !showSettings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
             <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </button>
 
         <label class="toolbar-toggle" title="Auto-intercept messages for review">
-          <input type="checkbox" v-model="autoIntercept" />
+          <input v-model="autoIntercept" type="checkbox" />
           <span class="toggle-label">Intercept</span>
         </label>
         <label class="toolbar-toggle" title="Bypass firewall blocks">
-          <input type="checkbox" v-model="forceForward" />
+          <input v-model="forceForward" type="checkbox" />
           <span class="toggle-label">Force</span>
         </label>
-        <button class="toolbar-btn" @click="clearChat" title="Clear chat">
+        <button class="toolbar-btn" title="Clear chat" @click="clearChat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
           </svg>
@@ -91,28 +91,28 @@
         </div>
         <div class="setting-group">
           <label class="setting-label">Temperature <span class="setting-val">{{ temperature.toFixed(2) }}</span></label>
-          <input type="range" v-model.number="temperature" min="0" max="2" step="0.05" class="setting-range" />
+          <input v-model.number="temperature" type="range" min="0" max="2" step="0.05" class="setting-range" />
         </div>
         <div class="setting-group">
           <label class="setting-label">Max Tokens <span class="setting-val">{{ maxTokens }}</span></label>
-          <input type="range" v-model.number="maxTokens" min="256" max="16384" step="256" class="setting-range" />
+          <input v-model.number="maxTokens" type="range" min="256" max="16384" step="256" class="setting-range" />
         </div>
         <div class="setting-group">
           <label class="setting-label">Top P <span class="setting-val">{{ topP.toFixed(2) }}</span></label>
-          <input type="range" v-model.number="topP" min="0" max="1" step="0.05" class="setting-range" />
+          <input v-model.number="topP" type="range" min="0" max="1" step="0.05" class="setting-range" />
         </div>
         <div class="setting-group">
           <label class="setting-label">
-            <input type="checkbox" v-model="enableTools" /> Enable Tool Calling
+            <input v-model="enableTools" type="checkbox" /> Enable Tool Calling
           </label>
         </div>
       </div>
     </div>
 
     <!-- Chat area -->
-    <div class="chat-area" v-if="mode === 'chat'">
+    <div v-if="mode === 'chat'" class="chat-area">
       <!-- Messages -->
-      <div class="messages" ref="messagesEl">
+      <div ref="messagesEl" class="messages">
         <div v-if="chatMessages.length === 0" class="empty-state">
           <div class="empty-icon">
             <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
@@ -145,7 +145,7 @@
             </div>
             <!-- Tool Call Card (Modern) -->
             <div v-if="msg.toolCalls?.length" class="tool-invocation-card" :class="{ expanded: msg.toolCallsExpanded }">
-              <div class="tool-card-header" @click="msg.toolCallsExpanded = !msg.toolCallsExpanded" title="Toggle details">
+              <div class="tool-card-header" title="Toggle details" @click="msg.toolCallsExpanded = !msg.toolCallsExpanded">
                 <div class="tool-info">
                   <span class="tool-chevron">
                     <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
@@ -160,7 +160,7 @@
                 </div>
               </div>
               
-              <div class="tool-card-body" v-show="msg.toolCallsExpanded">
+              <div v-show="msg.toolCallsExpanded" class="tool-card-body">
                 <div class="code-block-wrapper">
                   <div class="code-header">Arguments</div>
                   <pre class="code-content">{{ JSON.stringify(msg.toolCalls[0].arguments, null, 2) }}</pre>
@@ -199,11 +199,11 @@
 
             <!-- Message Actions (Copy/Retry) -->
             <div v-if="msg.role === 'assistant'" class="msg-actions">
-              <button class="action-btn" @click="copyMessage(msg.content)" title="Copy">
+              <button class="action-btn" title="Copy" @click="copyMessage(msg.content)">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 Copy
               </button>
-              <button class="action-btn" @click="retryMessage(msg)" title="Retry">
+              <button class="action-btn" title="Retry" @click="retryMessage(msg)">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
                 Retry
               </button>
@@ -219,7 +219,7 @@
               <div class="analysis-body">
                 <div v-if="msg.analysis.l1_patterns.length" class="analysis-row">
                   <span class="al">L1 Patterns</span>
-                  <span class="pattern-chip" v-for="p in msg.analysis.l1_patterns" :key="p">{{ p }}</span>
+                  <span v-for="p in msg.analysis.l1_patterns" :key="p" class="pattern-chip">{{ p }}</span>
                 </div>
                 <div class="analysis-row">
                   <span class="al">L2 Confidence</span>
@@ -267,27 +267,27 @@
 
       <!-- Input -->
       <div class="input-bar">
-        <button class="attach-btn" @click="triggerFileUpload" title="Attach file">
+        <button class="attach-btn" title="Attach file" @click="triggerFileUpload">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
           </svg>
         </button>
-        <input type="file" ref="fileInput" style="display: none" @change="handleFileSelect" multiple />
+        <input ref="fileInput" type="file" style="display: none" multiple @change="handleFileSelect" />
         
         <textarea
+          ref="inputEl"
           v-model="inputMessage"
-          @keydown.enter.exact.prevent="handleSend"
           class="msg-input"
           placeholder="Message Agent Firewall..."
           rows="1"
-          ref="inputEl"
+          @keydown.enter.exact.prevent="handleSend"
         ></textarea>
-        <button v-if="sending" class="stop-btn" @click="stopResponse" title="Stop response">
+        <button v-if="sending" class="stop-btn" title="Stop response" @click="stopResponse">
           <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
             <rect x="4" y="4" width="16" height="16" rx="2"/>
           </svg>
         </button>
-        <button v-else class="send-btn" @click="handleSend" :disabled="!inputMessage.trim()">
+        <button v-else class="send-btn" :disabled="!inputMessage.trim()" @click="handleSend">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
@@ -296,7 +296,7 @@
     </div>
 
     <!-- MCP Test mode -->
-    <div class="mcp-area" v-if="mode === 'mcp'">
+    <div v-if="mode === 'mcp'" class="mcp-area">
       <div class="mcp-content">
         <div class="mcp-header">
           <h3>MCP Tool Call Tester</h3>
@@ -332,7 +332,7 @@
             <button v-for="p in mcpPresets" :key="p.name" class="preset-btn" @click="applyPreset(p)">{{ p.name }}</button>
           </div>
 
-          <button class="mcp-send-btn" @click="sendMcpTest" :disabled="mcpSending">
+          <button class="mcp-send-btn" :disabled="mcpSending" @click="sendMcpTest">
             {{ mcpSending ? 'Testing...' : 'Send Through Firewall' }}
           </button>
         </div>
@@ -346,10 +346,10 @@
               <span class="verdict-chip" :class="r.verdict.toLowerCase()">{{ r.verdict }}</span>
               <span class="result-time">{{ r.latency }}ms</span>
             </div>
-            <div class="result-body" v-if="r.details">
+            <div v-if="r.details" class="result-body">
               <div v-if="r.details.l1_patterns?.length" class="result-row">
                 <span class="rl">L1:</span>
-                <span class="pattern-chip" v-for="p in r.details.l1_patterns" :key="p">{{ p }}</span>
+                <span v-for="p in r.details.l1_patterns" :key="p" class="pattern-chip">{{ p }}</span>
               </div>
               <div class="result-row">
                 <span class="rl">L2:</span>
@@ -366,14 +366,14 @@
     </div>
 
     <!-- Skill Test mode -->
-    <div class="skill-area" v-if="mode === 'skill'">
+    <div v-if="mode === 'skill'" class="skill-area">
       <div class="skill-content">
         <div class="skill-header">
           <h3>Skills Probe</h3>
           <p>Test skill invocations through the firewall.</p>
         </div>
 
-        <div class="skill-list" v-if="skills.length">
+        <div v-if="skills.length" class="skill-list">
           <div v-for="skill in skills" :key="skill.skillKey" class="skill-card" :class="{ eligible: skill.eligible, disabled: skill.disabled }">
             <div class="skill-info">
               <span class="skill-emoji">{{ skill.emoji || '⚡' }}</span>

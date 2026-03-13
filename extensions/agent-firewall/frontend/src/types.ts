@@ -197,7 +197,7 @@ export type NavSection =
   | "traces"
   | "skills"
   | "agents"
-  | "feishu"
+  | "benchmark"
   | "integrations"
   | "gateway-config";
 

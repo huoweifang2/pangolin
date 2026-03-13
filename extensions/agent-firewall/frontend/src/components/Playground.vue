@@ -6,7 +6,7 @@
         <p class="subtitle">Test and debug your security policies against trace data</p>
       </div>
       <div class="header-actions">
-        <button class="btn-evaluate" @click="evaluatePolicy" :disabled="evaluating">
+        <button class="btn-evaluate" :disabled="evaluating" @click="evaluatePolicy">
           <span v-if="evaluating" class="spinner-sm"></span>
           <span v-else>▶ Evaluate Policy</span>
         </button>
@@ -37,7 +37,7 @@
           <div v-else class="empty-state">
             <div class="empty-icon">📜</div>
             <p>No trace loaded</p>
-            <button @click="loadSampleTrace" class="btn-primary-sm">Load Sample Trace</button>
+            <button class="btn-primary-sm" @click="loadSampleTrace">Load Sample Trace</button>
           </div>
         </div>
       </div>
@@ -91,7 +91,7 @@ raise 'High risk detected' if:
             <span class="icon">📊</span>
             Evaluation Result
           </div>
-          <button v-if="result" @click="clearResult" class="btn-sm">Clear</button>
+          <button v-if="result" class="btn-sm" @click="clearResult">Clear</button>
         </div>
         <div class="panel-content">
           <div v-if="result" class="result-card" :class="result.passed ? 'pass' : 'fail'">

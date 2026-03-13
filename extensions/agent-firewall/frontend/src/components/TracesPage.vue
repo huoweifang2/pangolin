@@ -3,7 +3,7 @@
     <div class="page-header">
       <h2>Traces</h2>
       <div class="header-actions">
-        <button @click="loadTraces" class="btn-secondary" :disabled="loading">
+        <button class="btn-secondary" :disabled="loading" @click="loadTraces">
           {{ loading ? 'Loading...' : 'Refresh' }}
         </button>
       </div>

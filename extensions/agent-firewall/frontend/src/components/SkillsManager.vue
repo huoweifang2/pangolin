@@ -66,7 +66,7 @@
                 <span class="skill-name">{{ skill.name }}</span>
                 <span class="skill-source">{{ skill.source }}</span>
               </div>
-              <div class="skill-toggle" v-if="!skill.always">
+              <div v-if="!skill.always" class="skill-toggle">
                 <label class="toggle">
                   <input
                     type="checkbox"
@@ -99,8 +99,8 @@
                   v-for="opt in skill.install"
                   :key="opt.id"
                   class="btn btn-sm btn-install"
-                  @click="handleInstall(skill.name, opt.id)"
                   :disabled="installing"
+                  @click="handleInstall(skill.name, opt.id)"
                 >
                   Install via {{ opt.kind }}
                 </button>
@@ -118,13 +118,13 @@
                   type="password"
                   :placeholder="`Enter ${skill.primaryEnv}`"
                   :value="apiKeyInputs[skill.skillKey] || ''"
-                  @input="(e) => apiKeyInputs[skill.skillKey] = (e.target as HTMLInputElement).value"
                   class="apikey-input"
+                  @input="(e) => apiKeyInputs[skill.skillKey] = (e.target as HTMLInputElement).value"
                 />
                 <button
                   class="btn btn-sm btn-primary"
-                  @click="saveApiKey(skill)"
                   :disabled="!apiKeyInputs[skill.skillKey]"
+                  @click="saveApiKey(skill)"
                 >
                   Save
                 </button>

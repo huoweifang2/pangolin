@@ -16,8 +16,8 @@
             <label>Requests per Second</label>
             <div class="range-group">
               <input
-                type="range"
                 v-model.number="localRps"
+                type="range"
                 min="1"
                 max="1000"
                 step="1"
@@ -30,8 +30,8 @@
             <label>Burst Size</label>
             <div class="range-group">
               <input
-                type="range"
                 v-model.number="localBurst"
+                type="range"
                 min="1"
                 max="2000"
                 step="10"
@@ -41,7 +41,7 @@
             </div>
             <span class="form-hint">Maximum concurrent requests allowed in a burst window</span>
           </div>
-          <button class="btn-primary" @click="saveRateLimit" :disabled="!hasChanges">
+          <button class="btn-primary" :disabled="!hasChanges" @click="saveRateLimit">
             Apply Changes
           </button>
         </div>
@@ -76,7 +76,7 @@
 
           <div class="scenarios">
             <h4>Impact Scenarios</h4>
-            <div class="scenario" v-for="s in scenarios" :key="s.label">
+            <div v-for="s in scenarios" :key="s.label" class="scenario">
               <span class="scenario-label">{{ s.label }}</span>
               <span class="scenario-value" :class="s.status">{{ s.result }}</span>
             </div>

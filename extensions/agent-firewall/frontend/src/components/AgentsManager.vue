@@ -129,7 +129,7 @@
             <div class="editor-header">
               <span class="editor-filename">{{ editingFile }}</span>
               <div class="editor-actions">
-                <button class="btn btn-sm btn-primary" @click="saveFile" :disabled="fileSaving">
+                <button class="btn btn-sm btn-primary" :disabled="fileSaving" @click="saveFile">
                   {{ fileSaving ? 'Saving...' : 'Save' }}
                 </button>
                 <button class="btn btn-sm btn-secondary" @click="editingFile = null">Close</button>
@@ -279,7 +279,7 @@
                     <input v-model="mcpForm.description" class="form-input" placeholder="What this server provides..." />
                   </label>
                   <label class="form-check">
-                    <input type="checkbox" v-model="mcpForm.enabled" />
+                    <input v-model="mcpForm.enabled" type="checkbox" />
                     <span>Enabled</span>
                   </label>
                 </div>
@@ -362,7 +362,7 @@
                     <input v-model="skillForm.args_template" class="form-input mono" placeholder="--query {query} --output {format}" />
                   </label>
                   <label class="form-check">
-                    <input type="checkbox" v-model="skillForm.enabled" />
+                    <input v-model="skillForm.enabled" type="checkbox" />
                     <span>Enabled</span>
                   </label>
                 </div>

@@ -8,10 +8,10 @@
         </slot>
       </div>
       <div class="trace-view-actions">
-        <button @click="toggleExpandAll" class="btn-icon" :title="allExpanded ? 'Collapse All' : 'Expand All'">
+        <button class="btn-icon" :title="allExpanded ? 'Collapse All' : 'Expand All'" @click="toggleExpandAll">
           {{ allExpanded ? '▼' : '▶' }}
         </button>
-        <button @click="copyPermalink" class="btn-icon" title="Copy Permalink">
+        <button class="btn-icon" title="Copy Permalink" @click="copyPermalink">
           🔗
         </button>
       </div>
@@ -20,7 +20,7 @@
     <!-- Main Content -->
     <div class="trace-view-content">
       <!-- Trace Messages -->
-      <div class="trace-view-messages" ref="messagesContainer">
+      <div ref="messagesContainer" class="trace-view-messages">
         <TraceLine
           v-for="(message, index) in messages"
           :key="index"
@@ -40,7 +40,7 @@
       <div v-if="sideBySide && showEditor" class="trace-view-editor">
         <div class="editor-header">
           <span>JSON Editor</span>
-          <button @click="showEditor = false" class="btn-close">×</button>
+          <button class="btn-close" @click="showEditor = false">×</button>
         </div>
         <textarea
           v-model="editableTrace"
@@ -55,7 +55,7 @@
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>Add Annotation</h3>
-          <button @click="showAnnotationModal = false" class="btn-close">×</button>
+          <button class="btn-close" @click="showAnnotationModal = false">×</button>
         </div>
         <div class="modal-body">
           <div v-if="pendingAnnotation" class="selected-text">
@@ -81,8 +81,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button @click="showAnnotationModal = false" class="btn-secondary">Cancel</button>
-          <button @click="submitAnnotation(annotationSeverity, annotationContent)" class="btn-primary">
+          <button class="btn-secondary" @click="showAnnotationModal = false">Cancel</button>
+          <button class="btn-primary" @click="submitAnnotation(annotationSeverity, annotationContent)">
             Add Annotation
           </button>
         </div>

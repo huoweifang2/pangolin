@@ -1,25 +1,11 @@
 <template>
   <div class="feishu-page">
-    <header class="page-header">
-      <div class="header-main">
-        <div class="title-row">
-          <span class="icon-feishu">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21.5 12a9.5 9.5 0 1 1-19 0 9.5 9.5 0 0 1 19 0Z" stroke="currentColor" stroke-width="2"/>
-              <path d="M8 12h8m-4-4v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </span>
-          <h2>Feishu Integration</h2>
-        </div>
-        <p class="subtitle">Configure Feishu/Lark bot and monitor message traffic</p>
+    <div class="header-status-inline">
+      <div class="status-badge" :class="{ connected: feishuConnected }">
+        <div class="status-dot"></div>
+        <span>{{ feishuConnected ? 'Feishu Connected' : 'Feishu Disconnected' }}</span>
       </div>
-      <div class="header-status">
-        <div class="status-badge" :class="{ connected: feishuConnected }">
-          <div class="status-dot"></div>
-          <span>{{ feishuConnected ? 'Connected' : 'Disconnected' }}</span>
-        </div>
-      </div>
-    </header>
+    </div>
 
     <div class="page-content">
       <!-- Left Sidebar: Configuration -->
@@ -32,8 +18,8 @@
             <div class="form-group">
               <label>App ID</label>
               <input 
-                type="text" 
                 v-model="config.app_id" 
+                type="text" 
                 placeholder="cli_..." 
                 :disabled="feishuConnected"
                 class="input-field"
@@ -43,8 +29,8 @@
             <div class="form-group">
               <label>App Secret</label>
               <input 
-                type="password" 
                 v-model="config.app_secret" 
+                type="password" 
                 placeholder="••••••••" 
                 :disabled="feishuConnected"
                 class="input-field"
@@ -54,8 +40,8 @@
             <div class="form-group">
               <label>Upstream AI URL</label>
               <input 
-                type="text" 
                 v-model="config.upstream_url" 
+                type="text" 
                 placeholder="https://api.openai.com/v1" 
                 class="input-field"
               />
@@ -64,15 +50,15 @@
             <div class="form-group">
               <label>Model</label>
               <input 
-                type="text" 
                 v-model="config.model" 
+                type="text" 
                 placeholder="gpt-4" 
                 class="input-field"
               />
             </div>
 
             <div class="actions">
-              <button class="btn-primary" @click="saveConfig" :disabled="feishuConnected">
+              <button class="btn-primary" :disabled="feishuConnected" @click="saveConfig">
                 Save Changes
               </button>
               <button class="btn-secondary" @click="testConnection">
@@ -122,14 +108,14 @@
               <option value="ESCALATE">Escalate</option>
             </select>
           </div>
-          <button class="btn-icon" @click="clearEvents" title="Clear Logs">
+          <button class="btn-icon" title="Clear Logs" @click="clearEvents">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none">
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
             </svg>
           </button>
         </div>
 
-        <div class="traffic-list" ref="waterfallEl">
+        <div ref="waterfallEl" class="traffic-list">
           <div 
             v-for="(event, idx) in filteredEvents" 
             :key="idx"
@@ -168,7 +154,7 @@
                   <label>Agent</label>
                   <span>{{ event.agent_id }}</span>
                 </div>
-                <div class="detail-group" v-if="event.analysis?.l2_reasoning">
+                <div v-if="event.analysis?.l2_reasoning" class="detail-group">
                   <label>Reasoning</label>
                   <p class="reasoning-text">{{ event.analysis.l2_reasoning }}</p>
                 </div>
@@ -298,14 +284,10 @@ onMounted(() => {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-.page-header {
-  height: 60px;
-  padding: 0 24px;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
+.header-status-inline {
+  padding: 16px 24px 0;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: flex-end;
 }
 
 .header-main .title-row {

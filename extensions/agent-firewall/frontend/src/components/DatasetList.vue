@@ -6,7 +6,7 @@
         <span class="status-badge" :class="{ connected }">
           {{ connected ? 'Connected' : 'Disconnected' }}
         </span>
-        <button @click="clearLogs" class="btn-secondary">Clear</button>
+        <button class="btn-secondary" @click="clearLogs">Clear</button>
       </div>
     </div>
 

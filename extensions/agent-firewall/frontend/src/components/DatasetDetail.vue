@@ -6,19 +6,19 @@
 
     <div v-else-if="!dataset" class="error-state">
       <p>Dataset not found</p>
-      <button @click="$emit('back')" class="btn-primary">Back to List</button>
+      <button class="btn-primary" @click="$emit('back')">Back to List</button>
     </div>
 
     <div v-else class="dataset-content">
       <!-- Header -->
       <div class="detail-header">
-        <button @click="$emit('back')" class="btn-back">← Back</button>
+        <button class="btn-back" @click="$emit('back')">← Back</button>
         <div class="header-info">
           <h2>{{ dataset.name }}</h2>
           <span v-if="dataset.is_public" class="public-badge">Public</span>
         </div>
         <div class="header-actions">
-          <button @click="showPolicyCheck = true" class="btn-secondary">
+          <button class="btn-secondary" @click="showPolicyCheck = true">
             Check Policy
           </button>
         </div>
@@ -48,14 +48,14 @@
       <div class="traces-section">
         <div class="section-header">
           <h3>Traces</h3>
-          <button @click="showAddTrace = true" class="btn-secondary">
+          <button class="btn-secondary" @click="showAddTrace = true">
             + Add Trace
           </button>
         </div>
 
         <div v-if="traces.length === 0" class="empty-state">
           <p>No traces in this dataset</p>
-          <button @click="showAddTrace = true" class="btn-primary">
+          <button class="btn-primary" @click="showAddTrace = true">
             Add Your First Trace
           </button>
         </div>
@@ -92,9 +92,9 @@
                 {{ formatDate(trace.created_at) }}
               </span>
               <button
-                @click.stop="removeTrace(trace.id)"
                 class="btn-icon"
                 title="Remove from dataset"
+                @click.stop="removeTrace(trace.id)"
               >
                 🗑️
               </button>
@@ -109,7 +109,7 @@
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>Add Trace to Dataset</h3>
-          <button @click="showAddTrace = false" class="btn-close">×</button>
+          <button class="btn-close" @click="showAddTrace = false">×</button>
         </div>
 
         <div class="modal-body">
@@ -125,8 +125,8 @@
         </div>
 
         <div class="modal-footer">
-          <button @click="showAddTrace = false" class="btn-secondary">Cancel</button>
-          <button @click="addTrace" class="btn-primary" :disabled="!addTraceId">
+          <button class="btn-secondary" @click="showAddTrace = false">Cancel</button>
+          <button class="btn-primary" :disabled="!addTraceId" @click="addTrace">
             Add Trace
           </button>
         </div>
@@ -138,7 +138,7 @@
       <div class="modal-content modal-large" @click.stop>
         <div class="modal-header">
           <h3>Check Policy on Dataset</h3>
-          <button @click="showPolicyCheck = false" class="btn-close">×</button>
+          <button class="btn-close" @click="showPolicyCheck = false">×</button>
         </div>
 
         <div class="modal-body">
@@ -170,11 +170,11 @@
         </div>
 
         <div class="modal-footer">
-          <button @click="showPolicyCheck = false" class="btn-secondary">Close</button>
+          <button class="btn-secondary" @click="showPolicyCheck = false">Close</button>
           <button
-            @click="checkPolicy"
             class="btn-primary"
             :disabled="!policyCode || checkingPolicy"
+            @click="checkPolicy"
           >
             {{ checkingPolicy ? 'Checking...' : 'Check Policy' }}
           </button>
