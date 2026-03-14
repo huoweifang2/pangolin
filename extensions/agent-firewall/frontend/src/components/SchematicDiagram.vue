@@ -33,6 +33,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import mermaid from 'mermaid'
+import svgPanZoom from 'svg-pan-zoom'
 
 const archDiagram = ref<HTMLElement | null>(null)
 const engineDiagram = ref<HTMLElement | null>(null)
@@ -56,7 +57,7 @@ graph LR
     
     B -.->|"Contains components"| Core
     
-    classDef firewall fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff;
+    classDef firewall fill:#e0e7ff,stroke:#4f46e5,stroke-width:2px,color:#1e293b,rx:8,ry:8;
     class B,Core,B1,B2,B3,B4 firewall;
 `
 
@@ -117,30 +118,51 @@ mindmap
 onMounted(async () => {
   mermaid.initialize({
     startOnLoad: false,
-    theme: 'dark',
-    fontFamily: 'system-ui, -apple-system, sans-serif'
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#ffffff',
+      primaryTextColor: '#1e293b',
+      primaryBorderColor: '#cbd5e1',
+      lineColor: '#64748b',
+      secondaryColor: '#f1f5f9',
+      tertiaryColor: '#e2e8f0',
+      fontFamily: 'system-ui, -apple-system, sans-serif'
+    },
+    securityLevel: 'loose'
   })
   
   await nextTick()
   
-  try {
-    if (archDiagram.value) {
-      const { svg } = await mermaid.render('gArch', archCode)
-      archDiagram.value.innerHTML = svg
+  const renderAndZoom = async (id: string, code: string, container: HTMLElement | null) => {
+    if (!container) return
+    try {
+      const { svg } = await mermaid.render(id, code)
+      container.innerHTML = svg
+      
+      const svgEl = container.querySelector('svg')
+      if (svgEl) {
+        // override fixed sizing to allow zoom/pan fluidly
+        svgEl.style.width = '100%'
+        svgEl.style.height = '100%'
+        svgEl.style.maxWidth = 'none'
+        
+        svgPanZoom(svgEl, {
+          zoomEnabled: true,
+          controlIconsEnabled: true,
+          fit: true,
+          center: true,
+          minZoom: 0.5,
+          maxZoom: 10
+        })
+      }
+    } catch(e) {
+      console.error(`Mermaid render error for ${id}:`, e)
     }
-    
-    if (engineDiagram.value) {
-      const { svg } = await mermaid.render('gEngine', engineCode)
-      engineDiagram.value.innerHTML = svg
-    }
-    
-    if (strategyDiagram.value) {
-      const { svg } = await mermaid.render('gStrategy', strategyCode)
-      strategyDiagram.value.innerHTML = svg
-    }
-  } catch(e) {
-    console.error('Mermaid render error:', e)
   }
+
+  await renderAndZoom('gArch', archCode, archDiagram.value)
+  await renderAndZoom('gEngine', engineCode, engineDiagram.value)
+  await renderAndZoom('gStrategy', strategyCode, strategyDiagram.value)
 })
 </script>
 
@@ -149,12 +171,12 @@ onMounted(async () => {
   padding: 24px;
   max-width: 1200px;
   margin: 0 auto;
-  color: var(--text-color, #e5e7eb);
+  color: #334155;
 }
 
 .page-header {
   margin-bottom: 32px;
-  border-bottom: 1px solid var(--border-color, #374151);
+  border-bottom: 1px solid #e2e8f0;
   padding-bottom: 16px;
 }
 
@@ -162,12 +184,12 @@ onMounted(async () => {
   font-size: 26px;
   font-weight: 600;
   margin: 0 0 8px 0;
-  color: var(--text-color, #f3f4f6);
+  color: #0f172a;
   letter-spacing: 0.5px;
 }
 
 .subtitle {
-  color: var(--text-muted, #9ca3af);
+  color: #64748b;
   font-size: 15px;
   margin: 0;
 }
@@ -176,50 +198,54 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 40px;
+  padding-bottom: 60px;
 }
 
 .diagram-card {
-  background: var(--bg-surface, #1f2937);
-  border: 1px solid var(--border-color, #374151);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .diagram-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
 .diagram-card h3 {
   margin: 0 0 10px 0;
   font-size: 18px;
-  color: var(--primary-color, #818cf8);
+  color: #4338ca;
+  font-weight: 600;
 }
 
 .diagram-card .desc {
   font-size: 14px;
-  color: var(--text-muted, #9ca3af);
+  color: #64748b;
   margin-bottom: 24px;
 }
 
 .mermaid-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow-x: auto;
-  background: #0f172a;  /* slightly darker to match mermaid dark theme */
+  display: block;
+  overflow: hidden;
+  background: #f8fafc;
   border-radius: 8px;
-  padding: 30px;
-  min-height: 250px;
-  border: 1px solid rgba(255,255,255,0.05);
+  box-sizing: border-box;
+  min-height: 400px;
+  height: 50vh;
+  border: 1px dashed #cbd5e1;
+  position: relative;
 }
 
-/* Deep override for mermaid SVGs to fit nicely without cutting off */
-:deep(.mermaid-container svg) {
-  max-width: 100%;
-  height: auto;
-  font-family: inherit !important;
+/* Tool control icons positioning over the svg container override */
+:deep(.svg-pan-zoom-control) {
+  fill: #1e293b;
+}
+
+:deep(.svg-pan-zoom-control:hover) {
+  fill: #4338ca;
 }
 </style>

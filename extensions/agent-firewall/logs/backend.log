@@ -1,462 +1,346 @@
 INFO:     Will watch for changes in these directories: ['/Users/yingwu/main/projects/agent-firewall/extensions/agent-firewall']
 INFO:     Uvicorn running on http://127.0.0.1:9090 (Press CTRL+C to quit)
-INFO:     Started reloader process [34208] using WatchFiles
-INFO:     Started server process [34215]
+INFO:     Started reloader process [54860] using WatchFiles
+INFO:     Started server process [54865]
 INFO:     Waiting for application startup.
-2026-03-13T21:08:07 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
-2026-03-13T21:08:07 [INFO] agent_firewall.storage.jsonl: JsonlStorage initialized at data
-2026-03-13T21:08:07 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
-2026-03-13T21:08:07 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
-2026-03-13T21:08:07 [INFO] agent_firewall.storage.jsonl: JsonlStorage initialized at data
-2026-03-13T21:08:07 [INFO] agent_firewall: JsonlStorage initialized at ./data
-2026-03-13T21:08:07 [WARNING] agent-firewall.skills: Bad YAML in /Users/yingwu/main/projects/agent-firewall/skills/food-order/SKILL.md: mapping values are not allowed here
+2026-03-13T23:56:20 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+2026-03-13T23:56:20 [INFO] agent_firewall.storage.jsonl: JsonlStorage initialized at data
+2026-03-13T23:56:20 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-13T23:56:20 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-13T23:56:20 [INFO] agent_firewall.storage.jsonl: JsonlStorage initialized at data
+2026-03-13T23:56:20 [INFO] agent_firewall: JsonlStorage initialized at ./data
+2026-03-13T23:56:20 [WARNING] agent-firewall.skills: Bad YAML in /Users/yingwu/main/projects/agent-firewall/skills/food-order/SKILL.md: mapping values are not allowed here
   in "<unicode string>", line 2, column 125:
      ... explicit user approval. Triggers: order food, reorder, track ETA.
                                          ^
-2026-03-13T21:08:08 [INFO] agent-firewall.skills: Skills discovered: 49 total, 21 ready (apple-notes, apple-reminders, bluebubbles, coding-agent, discord, gog, healthcheck, notion, openai-image-gen, openai-whisper-api, session-logs, sherpa-onnx-tts, skill-creator, slack, spotify-player, summarize, things-mac, trello, video-frames, voice-call, weather)
-2026-03-13T21:08:08 [INFO] agent-firewall.gateway-tools: Gateway tools discovered: 19 (agents_list, browser, canvas, cron, gateway, image, memory_get, memory_search, message, nodes, session_status, sessions_history, sessions_list, sessions_send, sessions_spawn, subagents, tts, web_fetch, web_search)
-2026-03-13T21:08:08 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+2026-03-13T23:56:20 [INFO] agent-firewall.skills: Skills discovered: 49 total, 21 ready (apple-notes, apple-reminders, bluebubbles, coding-agent, discord, gog, healthcheck, notion, openai-image-gen, openai-whisper-api, session-logs, sherpa-onnx-tts, skill-creator, slack, spotify-player, summarize, things-mac, trello, video-frames, voice-call, weather)
+2026-03-13T23:56:20 [INFO] agent-firewall.gateway-tools: Gateway tools discovered: 19 (agents_list, browser, canvas, cron, gateway, image, memory_get, memory_search, message, nodes, session_status, sessions_history, sessions_list, sessions_send, sessions_spawn, subagents, tts, web_fetch, web_search)
+2026-03-13T23:56:20 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
 INFO:     Application startup complete.
-INFO:     127.0.0.1:54855 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54913 - "GET /api/gateway-info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54924 - "GET /api/gateway-info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60746 - "OPTIONS /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60785 - "WebSocket /ws/dashboard" [accepted]
-2026-03-13T21:41:32 [INFO] agent_firewall.dashboard: Dashboard client connected: 4559639792 (total: 1)
-INFO:     127.0.0.1:60786 - "OPTIONS /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54086 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54173 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54186 - "WebSocket /ws/dashboard" [accepted]
+2026-03-13T23:56:47 [INFO] agent_firewall.dashboard: Dashboard client connected: 4552160464 (total: 1)
+INFO:     127.0.0.1:54187 - "GET /api/stats HTTP/1.1" 200 OK
 INFO:     connection open
-INFO:     127.0.0.1:60787 - "GET /api/gateway-info HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60786 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60788 - "OPTIONS /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60789 - "OPTIONS /api/rules HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60787 - "GET /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60790 - "OPTIONS /api/audit?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60786 - "GET /api/rules HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60791 - "OPTIONS /api/custom-config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60788 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60789 - "GET /api/custom-config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60787 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60787 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60787 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60787 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60787 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60787 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60896 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60896 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60896 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60896 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60896 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60963 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60984 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60984 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60984 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60984 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61048 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61048 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61075 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61098 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61098 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61126 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61126 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61153 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61166 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61179 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61179 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61205 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61205 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61231 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61252 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61263 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61278 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61278 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61314 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61314 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61352 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61352 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61352 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61352 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61403 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61403 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61457 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61457 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61457 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61457 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61509 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61509 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61542 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61555 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61555 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61555 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61555 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61611 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61622 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61622 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61649 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61649 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54188 - "GET /api/gateway-info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54189 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54190 - "OPTIONS /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54187 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54191 - "OPTIONS /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54188 - "GET /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54189 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54190 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54190 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54190 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54190 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54190 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54325 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54325 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54325 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54364 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54364 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54364 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54364 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54419 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54419 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "OPTIONS /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54494 - "GET /api/logs/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54718 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54718 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54718 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54718 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54718 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54718 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54782 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54782 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54782 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54782 - "OPTIONS /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54782 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54782 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54782 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54782 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54782 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54956 - "GET /api/stats HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'frontend/node_modules/katex/src/metrics/parse_tfm.py', 'frontend/node_modules/katex/src/metrics/format_json.py', 'frontend/node_modules/katex/src/metrics/extract_tfms.py', 'frontend/node_modules/katex/src/metrics/extract_ttfs.py', 'frontend/node_modules/katex/src/fonts/generate_fonts.py'. Reloading...
+INFO:     Shutting down
+INFO:     connection closed
+INFO:     Waiting for background tasks to complete. (CTRL+C to force quit)
+2026-03-14T00:04:05 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4552160464 (total: 0)
+INFO:     Waiting for application shutdown.
+2026-03-14T00:04:05 [INFO] agent_firewall.agent_scan: Agent-Scan cache cleared
+2026-03-14T00:04:05 [INFO] agent_firewall.audit: Audit logger stopped, 0 entries written
+2026-03-14T00:04:05 [INFO] agent_firewall.session: Session manager stopped, 0 sessions cleared
+2026-03-14T00:04:06 [INFO] agent_firewall: Agent Firewall shut down gracefully
+INFO:     Application shutdown complete.
+INFO:     Finished server process [54865]
+INFO:     Started server process [57370]
+INFO:     Waiting for application startup.
+2026-03-14T00:05:21 [INFO] agent_firewall.agent_scan: Agent-Scan integration disabled
+2026-03-14T00:05:22 [INFO] agent_firewall.storage.jsonl: JsonlStorage initialized at data
+2026-03-14T00:05:22 [INFO] agent_firewall.session: Session manager started (buffer=64, ttl=3600s)
+2026-03-14T00:05:22 [INFO] agent_firewall.audit: Audit logger started → audit/firewall.jsonl
+2026-03-14T00:05:22 [INFO] agent_firewall.storage.jsonl: JsonlStorage initialized at data
+2026-03-14T00:05:22 [INFO] agent_firewall: JsonlStorage initialized at ./data
+2026-03-14T00:05:22 [WARNING] agent-firewall.skills: Bad YAML in /Users/yingwu/main/projects/agent-firewall/skills/food-order/SKILL.md: mapping values are not allowed here
+  in "<unicode string>", line 2, column 125:
+     ... explicit user approval. Triggers: order food, reorder, track ETA.
+                                         ^
+2026-03-14T00:05:22 [INFO] agent-firewall.skills: Skills discovered: 49 total, 21 ready (apple-notes, apple-reminders, bluebubbles, coding-agent, discord, gog, healthcheck, notion, openai-image-gen, openai-whisper-api, session-logs, sherpa-onnx-tts, skill-creator, slack, spotify-player, summarize, things-mac, trello, video-frames, voice-call, weather)
+2026-03-14T00:05:22 [INFO] agent-firewall.gateway-tools: Gateway tools discovered: 19 (agents_list, browser, canvas, cron, gateway, image, memory_get, memory_search, message, nodes, session_status, sessions_history, sessions_list, sessions_send, sessions_spawn, subagents, tts, web_fetch, web_search)
+2026-03-14T00:05:22 [INFO] agent_firewall: 🛡️  Agent Firewall started on 127.0.0.1:9090 → upstream 127.0.0.1:18789
+INFO:     Application startup complete.
+INFO:     127.0.0.1:52781 - "OPTIONS /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52781 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58444 - "OPTIONS /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58444 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58444 - "GET /api/gateway-info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58503 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58504 - "OPTIONS /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58505 - "WebSocket /ws/dashboard" [accepted]
+2026-03-14T09:46:08 [INFO] agent_firewall.dashboard: Dashboard client connected: 4560294816 (total: 1)
+INFO:     127.0.0.1:58444 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58503 - "GET /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58506 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection open
+INFO:     127.0.0.1:58507 - "OPTIONS /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58504 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58503 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58503 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58503 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58503 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58985 - "WebSocket /ws/dashboard" [accepted]
+2026-03-14T09:46:26 [INFO] agent_firewall.dashboard: Dashboard client connected: 4560292464 (total: 2)
+INFO:     127.0.0.1:58986 - "GET /api/gateway-info HTTP/1.1" 200 OK
+INFO:     connection open
+INFO:     127.0.0.1:58987 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58988 - "GET /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58989 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58503 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58986 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58503 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58986 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58503 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     connection closed
+2026-03-14T09:46:40 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4560294816 (total: 1)
+2026-03-14T09:46:40 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4560292464 (total: 0)
+INFO:     127.0.0.1:59780 - "GET /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59781 - "WebSocket /ws/dashboard" [accepted]
+2026-03-14T09:46:48 [INFO] agent_firewall.dashboard: Dashboard client connected: 4560293664 (total: 1)
+INFO:     127.0.0.1:59782 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     connection open
+INFO:     127.0.0.1:59783 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59784 - "GET /api/gateway-info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59785 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59780 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59780 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60029 - "WebSocket /ws/dashboard" [accepted]
+2026-03-14T09:47:03 [INFO] agent_firewall.dashboard: Dashboard client connected: 4560296352 (total: 2)
+INFO:     127.0.0.1:60030 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection open
+INFO:     127.0.0.1:60031 - "GET /api/gateway-info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60032 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60033 - "GET /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60034 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60035 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60030 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60034 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60030 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60030 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60030 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60030 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60030 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60030 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60030 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60030 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60030 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60619 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60619 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60619 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60884 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60926 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60973 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60973 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60973 - "OPTIONS /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60973 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60973 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60973 - "GET /api/logs/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61072 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61072 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61072 - "GET /api/logs/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61139 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61139 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61139 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61139 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61139 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61139 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61139 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61139 - "GET /api/logs/stream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61527 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61527 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61527 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61527 - "GET /api/stats HTTP/1.1" 200 OK
 INFO:     127.0.0.1:61673 - "GET /api/stats HTTP/1.1" 200 OK
 INFO:     127.0.0.1:61673 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61673 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61710 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61710 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61710 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61750 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61771 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61782 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61792 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61805 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61805 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61831 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61843 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61843 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61867 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61867 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61898 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61912 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61928 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61942 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61942 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61942 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61980 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61992 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62003 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62003 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62003 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62003 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62003 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62073 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62073 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62123 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62133 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62133 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62155 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62155 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62183 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62183 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62183 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62219 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62219 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62219 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62303 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62303 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62321 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62321 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62344 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62359 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62359 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62387 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62387 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62412 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62423 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62445 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62457 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62473 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62473 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62473 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62504 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62525 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62540 - "OPTIONS /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62540 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62540 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62540 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62540 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62586 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62602 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62612 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62626 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62633 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62633 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62678 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62678 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62715 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62715 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62715 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62715 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62715 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62779 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62808 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62808 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62827 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62827 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62854 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62867 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62881 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62881 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62904 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62904 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62929 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62959 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62973 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62973 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62973 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63001 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63017 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63017 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63055 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63055 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63077 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63077 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63103 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63113 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63134 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63141 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63141 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63163 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63173 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63188 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63198 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63198 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63230 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63230 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63255 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63270 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63284 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63284 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63284 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63284 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63324 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63324 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63324 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63324 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63380 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63380 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63469 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63484 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63498 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63508 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63521 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63521 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63543 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63564 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63564 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63564 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63604 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63604 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63629 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63643 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63643 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63661 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63661 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63683 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63696 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63706 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63706 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63735 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63735 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63764 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63797 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63824 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63834 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63834 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61780 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61780 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection closed
+2026-03-14T09:49:23 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4560296352 (total: 1)
+INFO:     127.0.0.1:61780 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61897 - "GET /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61898 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61899 - "WebSocket /ws/dashboard" [accepted]
+2026-03-14T09:49:24 [INFO] agent_firewall.dashboard: Dashboard client connected: 4562426320 (total: 2)
+INFO:     127.0.0.1:61900 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection open
+INFO:     127.0.0.1:61901 - "GET /api/gateway-info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61780 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61901 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61901 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61901 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61901 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61901 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62025 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62025 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62072 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62096 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62198 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62233 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62380 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62551 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62551 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62605 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62605 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62605 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62605 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62605 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62703 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62726 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62805 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62828 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62853 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62853 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62853 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62995 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63004 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63033 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63033 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63033 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63033 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63033 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63033 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63033 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63166 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63166 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63166 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63166 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63239 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63239 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63285 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63314 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63351 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection closed
+2026-03-14T09:55:08 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4562426320 (total: 1)
+INFO:     127.0.0.1:63374 - "WebSocket /ws/dashboard" [accepted]
+2026-03-14T09:55:09 [INFO] agent_firewall.dashboard: Dashboard client connected: 4560304320 (total: 2)
+INFO:     127.0.0.1:63375 - "GET /api/gateway-info HTTP/1.1" 200 OK
+INFO:     connection open
+INFO:     127.0.0.1:63376 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63377 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63378 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63379 - "GET /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63375 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63375 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63449 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection closed
+2026-03-14T09:55:29 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4560304320 (total: 1)
+INFO:     127.0.0.1:63474 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63475 - "WebSocket /ws/dashboard" [accepted]
+2026-03-14T09:55:30 [INFO] agent_firewall.dashboard: Dashboard client connected: 4560022288 (total: 2)
+INFO:     127.0.0.1:63476 - "GET /api/rules HTTP/1.1" 200 OK
+INFO:     connection open
+INFO:     127.0.0.1:63477 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63478 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63479 - "GET /api/gateway-info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63474 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection closed
+2026-03-14T09:55:35 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4560293664 (total: 1)
+INFO:     127.0.0.1:63474 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63474 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63474 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63474 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63474 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63600 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63639 - "OPTIONS /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63639 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63685 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63741 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63786 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63786 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63833 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63833 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63865 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63865 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63865 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63865 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63865 - "GET /api/custom-config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63909 - "GET /api/stats HTTP/1.1" 200 OK
 INFO:     127.0.0.1:63865 - "GET /api/stats HTTP/1.1" 200 OK
 INFO:     127.0.0.1:63865 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63865 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63978 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63978 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63978 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:63978 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64027 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64103 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64127 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64127 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64143 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64143 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64168 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64168 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64168 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64168 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64220 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64230 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64230 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64269 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64291 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64304 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64304 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63970 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63987 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64031 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64102 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64140 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64296 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64296 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection closed
+2026-03-14T09:59:02 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4560022288 (total: 0)
+INFO:     127.0.0.1:64322 - "WebSocket /ws/dashboard" [accepted]
+2026-03-14T09:59:03 [INFO] agent_firewall.dashboard: Dashboard client connected: 4562425360 (total: 1)
 INFO:     127.0.0.1:64323 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64339 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64354 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64354 - "OPTIONS /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64354 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64354 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64391 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64391 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64414 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64414 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection open
+INFO:     127.0.0.1:64324 - "GET /api/gateway-info HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64325 - "OPTIONS /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64323 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64326 - "OPTIONS /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64327 - "OPTIONS /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64324 - "GET /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64325 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64373 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64409 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64433 - "GET /api/stats HTTP/1.1" 200 OK
 INFO:     127.0.0.1:64454 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection closed
+2026-03-14T09:59:32 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4562425360 (total: 0)
 INFO:     127.0.0.1:64454 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64454 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64454 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64504 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64514 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64514 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64514 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64562 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64562 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64562 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64562 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64623 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64636 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64636 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64636 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64664 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64664 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64690 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64690 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64719 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64719 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64719 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64759 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64759 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64782 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64794 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64794 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64794 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64825 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64825 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64850 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64850 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64881 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64881 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64908 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64908 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64930 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64940 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64940 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64964 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64964 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64964 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64964 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64964 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65029 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65060 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65076 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65086 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65086 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65107 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65107 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65139 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65139 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65139 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65177 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65177 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65203 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65203 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65253 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65253 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65275 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65275 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65298 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65311 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65311 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65336 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65352 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65352 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65352 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65426 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65426 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65426 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65455 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65455 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65455 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65489 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65489 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65489 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49153 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49153 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49179 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49179 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49179 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49242 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49249 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49306 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49306 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49306 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49306 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49306 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49306 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49430 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49444 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49444 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49444 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49444 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49512 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49519 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49519 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49545 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49558 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49558 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49558 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49589 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49589 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49589 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49653 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49653 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49681 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49681 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49681 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49711 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49711 - "OPTIONS /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49711 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49711 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49711 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49753 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49770 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49783 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49794 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49794 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49794 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49834 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49844 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49857 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49867 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49867 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49891 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49907 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49925 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49925 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49952 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49952 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49952 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49986 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49986 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50032 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50042 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50042 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50042 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50077 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50094 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50094 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50117 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50130 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50145 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50165 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50165 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50165 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50210 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50210 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50232 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50232 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50268 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50287 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50443 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50668 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50668 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51550 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51550 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51550 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51619 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51627 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51646 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51987 - "OPTIONS /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51987 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51987 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51987 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52022 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52022 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52054 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52054 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52054 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52054 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52185 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52187 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53029 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53029 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64470 - "WebSocket /ws/dashboard" [accepted]
+2026-03-14T09:59:33 [INFO] agent_firewall.dashboard: Dashboard client connected: 4560254688 (total: 1)
+INFO:     127.0.0.1:64471 - "GET /api/gateway-info HTTP/1.1" 200 OK
+INFO:     connection open
+INFO:     127.0.0.1:64472 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64473 - "GET /api/rules HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64474 - "GET /api/audit?limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64472 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64472 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64522 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64522 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     connection closed
+2026-03-14T09:59:57 [INFO] agent_firewall.dashboard: Dashboard client disconnected: 4560254688 (total: 0)
