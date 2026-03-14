@@ -247,6 +247,7 @@ async function runBenchmark() {
 
   isRunning.value = false
   hasResult.value = true
+  currentStage.value = 4 // Set to 4 to mark stage 3 as done
   addLog('SUCCESS', `Benchmark completed.`)
 }
 </script>
