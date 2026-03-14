@@ -14,9 +14,11 @@
   "dependencies": {
     "marked": "^17.0.3",
     "mermaid": "^11.13.0",
+    "svg-pan-zoom": "^3.6.2",
     "vue": "^3.5.0"
   },
   "devDependencies": {
+    "@types/svg-pan-zoom": "^3.4.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vitejs/plugin-vue": "^5.2.0",
