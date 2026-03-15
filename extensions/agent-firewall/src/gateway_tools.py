@@ -290,9 +290,10 @@ class GatewayToolRegistry:
         """Execute a tool via the OpenClaw gateway's /tools/invoke endpoint."""
         import httpx
 
-        # Separate "action" from args if present (gateway expects top-level action)
+        # Keep `action` in args and also mirror it top-level for compatibility.
+        # Some tools consume `args.action`, others use top-level `action`.
         args = dict(arguments) if arguments else {}
-        action = args.pop("action", None)
+        action = args.get("action")
 
         body: dict[str, Any] = {"tool": tool_name, "args": args}
         if action is not None:
@@ -330,7 +331,7 @@ class GatewayToolRegistry:
                             f"{err.get('message', str(err))}"
                         )
                 elif resp.status_code == 401:
-                    return "[Gateway auth error]: Invalid or missing token"
+                    return "[Gateway auth error]: Invalid or missing gateway token/password"
                 else:
                     return f"[Gateway HTTP {resp.status_code}]: {resp.text[:500]}"
         except Exception as e:

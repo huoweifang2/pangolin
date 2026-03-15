@@ -23,14 +23,9 @@
         <span class="error-icon">⚠️</span>
         <p>{{ error }}</p>
         <p v-if="connectError" class="error-detail">Gateway rejection: {{ connectError }}</p>
+        <pre v-if="connectDetail" class="error-debug">{{ connectDetail }}</pre>
         <p class="error-hint">Make sure the Gateway is running and connected.</p>
-        <div v-if="!gwConnected" class="gateway-auth">
-          <p class="auth-hint">If the Gateway requires a token, enter it below:</p>
-          <div class="token-input-row">
-            <input v-model="tokenInput" type="password" placeholder="Gateway token" class="token-input" />
-            <button class="btn btn-primary btn-sm" @click="saveToken">Connect</button>
-          </div>
-        </div>
+        <p v-if="!gwConnected" class="error-hint">Using fixed token from backend configuration. Click Retry to reconnect.</p>
         <button class="btn btn-primary" @click="refresh">Retry</button>
       </div>
     </div>
@@ -150,6 +145,13 @@
             Control which MCP tools are available to this agent. Tools are grouped by category.
           </p>
 
+          <div class="tools-meta">
+            <span v-if="toolsLoading" class="tools-state">Loading policy...</span>
+            <span v-else-if="toolsSaving" class="tools-state">Saving changes...</span>
+            <span v-else class="tools-state">Changes are saved automatically.</span>
+            <span v-if="toolsError" class="tools-error">{{ toolsError }}</span>
+          </div>
+
           <div class="tools-section">
             <div v-for="group in toolGroups" :key="group.label" class="tool-group">
               <h4 class="tool-group-label">
@@ -162,6 +164,7 @@
                     <input
                       type="checkbox"
                       :checked="!isToolBlocked(tool.name)"
+                      :disabled="toolsLoading || toolsSaving"
                       @change="toggleTool(tool.name)"
                     />
                     <span class="toggle-slider"></span>
@@ -189,16 +192,98 @@
             <p>No skills configured for this agent.</p>
           </div>
           <div v-else class="skills-list">
-            <div v-for="skill in agentSkills" :key="skill.skillKey" class="skill-row">
-              <span class="skill-emoji">{{ skill.emoji || '🔧' }}</span>
-              <div class="skill-row-info">
-                <span class="skill-row-name">{{ skill.name }}</span>
-                <span class="skill-row-desc">{{ skill.description }}</span>
-              </div>
-              <div class="skill-row-status">
-                <span v-if="skill.eligible" class="chip chip-green">Active</span>
-                <span v-else class="chip chip-red">Inactive</span>
-                <span v-if="skill.disabled" class="chip chip-yellow">Disabled</span>
+            <div
+              v-for="skill in agentSkills"
+              :key="skill.skillKey"
+              class="skill-item"
+              :class="{ expanded: isSkillExpanded(skill.skillKey) }"
+            >
+              <button
+                type="button"
+                class="skill-row"
+                :aria-expanded="isSkillExpanded(skill.skillKey)"
+                @click="toggleSkillDetails(skill.skillKey)"
+              >
+                <span class="skill-emoji">{{ skill.emoji || '🔧' }}</span>
+                <div class="skill-row-info">
+                  <span class="skill-row-name">{{ skill.name }}</span>
+                  <span class="skill-row-desc">{{ skill.description }}</span>
+                </div>
+                <div class="skill-row-status">
+                  <span v-if="skill.eligible" class="chip chip-green">Active</span>
+                  <span v-else class="chip chip-red">Inactive</span>
+                  <span v-if="skill.disabled" class="chip chip-yellow">Disabled</span>
+                </div>
+                <span class="skill-row-expand" aria-hidden="true">▾</span>
+              </button>
+
+              <div v-if="isSkillExpanded(skill.skillKey)" class="skill-detail">
+                <div class="skill-detail-grid">
+                  <div class="skill-detail-item">
+                    <span class="skill-detail-label">Skill Key</span>
+                    <span class="skill-detail-value mono">{{ skill.skillKey }}</span>
+                  </div>
+                  <div class="skill-detail-item">
+                    <span class="skill-detail-label">Source</span>
+                    <span class="skill-detail-value">{{ skill.source }}</span>
+                  </div>
+                  <div v-if="skill.primaryEnv" class="skill-detail-item">
+                    <span class="skill-detail-label">Primary Env</span>
+                    <span class="skill-detail-value mono">{{ skill.primaryEnv }}</span>
+                  </div>
+                  <div v-if="skill.homepage" class="skill-detail-item">
+                    <span class="skill-detail-label">Homepage</span>
+                    <a class="skill-detail-link" :href="skill.homepage" target="_blank" rel="noopener noreferrer">Open Docs</a>
+                  </div>
+                  <div class="skill-detail-item">
+                    <span class="skill-detail-label">File Path</span>
+                    <span class="skill-detail-value mono">{{ skill.filePath }}</span>
+                  </div>
+                  <div class="skill-detail-item">
+                    <span class="skill-detail-label">Base Dir</span>
+                    <span class="skill-detail-value mono">{{ skill.baseDir }}</span>
+                  </div>
+                </div>
+
+                <div class="skill-detail-section">
+                  <div class="skill-detail-subtitle">Requirements</div>
+                  <div class="skill-detail-lines">
+                    <div><span class="skill-detail-key">Bins:</span> {{ formatStringList(skill.requirements.bins) }}</div>
+                    <div><span class="skill-detail-key">Env:</span> {{ formatStringList(skill.requirements.env) }}</div>
+                    <div><span class="skill-detail-key">Config:</span> {{ formatStringList(skill.requirements.config) }}</div>
+                    <div><span class="skill-detail-key">OS:</span> {{ formatStringList(skill.requirements.os) }}</div>
+                  </div>
+                </div>
+
+                <div class="skill-detail-section">
+                  <div class="skill-detail-subtitle">Missing</div>
+                  <div class="skill-detail-lines">
+                    <div><span class="skill-detail-key">Bins:</span> {{ formatStringList(skill.missing.bins) }}</div>
+                    <div><span class="skill-detail-key">Env:</span> {{ formatStringList(skill.missing.env) }}</div>
+                    <div><span class="skill-detail-key">Config:</span> {{ formatStringList(skill.missing.config) }}</div>
+                    <div><span class="skill-detail-key">OS:</span> {{ formatStringList(skill.missing.os) }}</div>
+                  </div>
+                </div>
+
+                <div v-if="skill.install.length > 0" class="skill-detail-section">
+                  <div class="skill-detail-subtitle">Install Options</div>
+                  <div class="skill-detail-lines">
+                    <div v-for="option in skill.install" :key="`${skill.skillKey}-${option.id}`">
+                      <span class="skill-detail-key">{{ option.id }}:</span>
+                      {{ option.kind }} · {{ option.label }}
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="skill.configChecks.length > 0" class="skill-detail-section">
+                  <div class="skill-detail-subtitle">Config Checks</div>
+                  <div class="skill-detail-lines">
+                    <div v-for="check in skill.configChecks" :key="`${skill.skillKey}-${check.path}`">
+                      <span class="skill-detail-key">{{ check.satisfied ? 'OK' : 'Missing' }}:</span>
+                      <span class="skill-detail-value mono">{{ check.path }}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -387,12 +472,23 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import type { GatewayAgentRow, AgentFileEntry, SkillStatusEntry, CustomMcpServer, CustomSkillDef } from '../types'
+import type { AgentFileEntry, AgentToolsPolicy, CustomMcpServer, CustomSkillDef } from '../types'
 import { useGatewayAgents, useGatewaySkills, useGatewayStatus, useCustomConfig } from '../composables'
 
-const { agents, defaultAgentId, loading, error, loadAgents, loadAgentFiles, loadAgentFile, saveAgentFile } = useGatewayAgents()
+const {
+  agents,
+  defaultAgentId,
+  loading,
+  error,
+  loadAgents,
+  loadAgentFiles,
+  loadAgentFile,
+  saveAgentFile,
+  loadAgentToolsPolicy,
+  saveAgentToolsPolicy,
+} = useGatewayAgents()
 const { skills: agentSkills, loading: agentSkillsLoading, loadSkills: loadAgentSkills } = useGatewaySkills()
-const { connected: gwConnected, connectError } = useGatewayStatus()
+const { connected: gwConnected, connectError, connectDetail, reconnect: reconnectGateway } = useGatewayStatus()
 const {
   mcpServers, customSkills, loading: customLoading, saving: customSaving,
   loadCustomConfig, saveMcpServer, deleteMcpServer, saveCustomSkill, deleteCustomSkill,
@@ -405,16 +501,11 @@ const filesLoading = ref(false)
 const editingFile = ref<string | null>(null)
 const fileContent = ref('')
 const fileSaving = ref(false)
-const blockedTools = ref<Set<string>>(new Set())
-const tokenInput = ref('')
-
-function saveToken() {
-  if (tokenInput.value) {
-    localStorage.setItem('af-gateway-token', tokenInput.value)
-    tokenInput.value = ''
-    window.location.reload()
-  }
-}
+const expandedSkillKeys = ref<string[]>([])
+const agentToolsPolicy = ref<AgentToolsPolicy>({})
+const toolsLoading = ref(false)
+const toolsSaving = ref(false)
+const toolsError = ref<string | null>(null)
 
 const selectedAgent = computed(() =>
   agents.value.find((a) => a.id === selectedAgentId.value) || null,
@@ -428,15 +519,33 @@ const panelTabs = [
   { id: 'custom' as const, label: 'Custom', icon: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>` },
 ]
 
+const TOOL_GROUP_EXPANSIONS: Record<string, string[]> = {
+  'group:memory': ['memory_search', 'memory_get'],
+  'group:web': ['web_search', 'web_fetch'],
+  'group:fs': ['read', 'write', 'edit', 'apply_patch'],
+  'group:runtime': ['exec', 'process'],
+  'group:sessions': [
+    'sessions_list',
+    'sessions_history',
+    'sessions_send',
+    'sessions_spawn',
+    'subagents',
+    'session_status',
+  ],
+  'group:ui': ['browser', 'canvas'],
+  'group:automation': ['cron', 'gateway'],
+  'group:messaging': ['message'],
+  'group:nodes': ['nodes'],
+}
+
 const toolGroups = computed(() => [
   {
     label: 'Files',
     icon: '📁',
     tools: [
-      { name: 'read_file', description: 'Read file contents' },
-      { name: 'write_file', description: 'Write/create files' },
-      { name: 'edit_file', description: 'Edit existing files' },
-      { name: 'list_directory', description: 'List directory contents' },
+      { name: 'read', description: 'Read file contents' },
+      { name: 'write', description: 'Write/create files' },
+      { name: 'edit', description: 'Edit existing files' },
       { name: 'apply_patch', description: 'Apply diff patches' },
     ],
   },
@@ -444,8 +553,8 @@ const toolGroups = computed(() => [
     label: 'Runtime',
     icon: '⚡',
     tools: [
-      { name: 'execute_command', description: 'Execute shell commands' },
-      { name: 'spawn_process', description: 'Spawn background processes' },
+      { name: 'exec', description: 'Execute shell commands' },
+      { name: 'process', description: 'Spawn background processes' },
     ],
   },
   {
@@ -454,7 +563,8 @@ const toolGroups = computed(() => [
     tools: [
       { name: 'web_search', description: 'Search the web' },
       { name: 'web_fetch', description: 'Fetch web page content' },
-      { name: 'web_screenshot', description: 'Capture web screenshots' },
+      { name: 'browser', description: 'Control browser actions' },
+      { name: 'canvas', description: 'Draw and update canvases' },
     ],
   },
   {
@@ -463,15 +573,31 @@ const toolGroups = computed(() => [
     tools: [
       { name: 'memory_search', description: 'Search memory store' },
       { name: 'memory_get', description: 'Retrieve memory entries' },
-      { name: 'memory_store', description: 'Store new memory entries' },
     ],
   },
   {
     label: 'Sessions',
     icon: '💬',
     tools: [
-      { name: 'session_list', description: 'List active sessions' },
-      { name: 'session_send', description: 'Send messages to sessions' },
+      { name: 'sessions_list', description: 'List active sessions' },
+      { name: 'sessions_history', description: 'Read session history' },
+      { name: 'sessions_send', description: 'Send messages to sessions' },
+      { name: 'sessions_spawn', description: 'Spawn subagent sessions' },
+      { name: 'session_status', description: 'Inspect session status' },
+      { name: 'subagents', description: 'Manage subagents' },
+    ],
+  },
+  {
+    label: 'Messaging & Infra',
+    icon: '🧩',
+    tools: [
+      { name: 'message', description: 'Send channel messages' },
+      { name: 'cron', description: 'Run scheduled tasks' },
+      { name: 'gateway', description: 'Gateway diagnostics and actions' },
+      { name: 'agents_list', description: 'Inspect agent roster' },
+      { name: 'nodes', description: 'Node management operations' },
+      { name: 'image', description: 'Generate or transform images' },
+      { name: 'tts', description: 'Text-to-speech operations' },
     ],
   },
 ])
@@ -601,19 +727,147 @@ async function saveFile() {
 }
 
 function isToolBlocked(toolName: string): boolean {
-  return blockedTools.value.has(toolName)
+  const normalizedName = normalizeToolName(toolName)
+  const deny = expandToolPatterns(agentToolsPolicy.value.deny)
+  if (deny.has(normalizedName)) {
+    return true
+  }
+
+  const allowRaw = agentToolsPolicy.value.allow
+  if (!Array.isArray(allowRaw) || allowRaw.length === 0) {
+    return false
+  }
+
+  const allow = expandToolPatterns(allowRaw)
+  if (allow.has('*')) {
+    return false
+  }
+  if (normalizedName === 'apply_patch' && allow.has('exec')) {
+    return false
+  }
+  return !allow.has(normalizedName)
 }
 
-function toggleTool(toolName: string) {
-  if (blockedTools.value.has(toolName)) {
-    blockedTools.value.delete(toolName)
-  } else {
-    blockedTools.value.add(toolName)
+function normalizeToolName(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+function expandToolPatterns(patterns?: string[]): Set<string> {
+  if (!Array.isArray(patterns)) {
+    return new Set()
+  }
+
+  const expanded = new Set<string>()
+  for (const raw of patterns) {
+    const normalized = normalizeToolName(raw)
+    if (!normalized) continue
+    const group = TOOL_GROUP_EXPANSIONS[normalized]
+    if (group) {
+      for (const item of group) {
+        expanded.add(normalizeToolName(item))
+      }
+      continue
+    }
+    expanded.add(normalized)
+  }
+  return expanded
+}
+
+function normalizePolicy(policy: AgentToolsPolicy): AgentToolsPolicy {
+  const normalizeList = (values?: string[]) => {
+    if (!Array.isArray(values)) return undefined
+    const normalized = Array.from(new Set(values.map(normalizeToolName).filter(Boolean)))
+    return normalized
+  }
+
+  return {
+    allow: normalizeList(policy.allow),
+    deny: normalizeList(policy.deny),
+    alsoAllow: normalizeList(policy.alsoAllow),
+    profile: typeof policy.profile === 'string' && policy.profile.trim()
+      ? policy.profile.trim().toLowerCase()
+      : undefined,
   }
 }
 
+async function loadToolsPolicy() {
+  if (!selectedAgentId.value) return
+  toolsLoading.value = true
+  toolsError.value = null
+  try {
+    const policy = await loadAgentToolsPolicy(selectedAgentId.value)
+    agentToolsPolicy.value = normalizePolicy(policy)
+  } catch (err) {
+    toolsError.value = err instanceof Error ? err.message : 'Failed to load tool policy'
+  } finally {
+    toolsLoading.value = false
+  }
+}
+
+async function persistToolsPolicy() {
+  if (!selectedAgentId.value) return
+  toolsSaving.value = true
+  toolsError.value = null
+  try {
+    const saved = await saveAgentToolsPolicy(selectedAgentId.value, normalizePolicy(agentToolsPolicy.value))
+    agentToolsPolicy.value = normalizePolicy(saved)
+  } catch (err) {
+    toolsError.value = err instanceof Error ? err.message : 'Failed to save tool policy'
+  } finally {
+    toolsSaving.value = false
+  }
+}
+
+function toggleTool(toolName: string) {
+  const normalizedName = normalizeToolName(toolName)
+  const current = normalizePolicy(agentToolsPolicy.value)
+  const denySet = new Set(current.deny ?? [])
+  const allowSet = new Set(current.allow ?? [])
+
+  if (isToolBlocked(normalizedName)) {
+    denySet.delete(normalizedName)
+    if (allowSet.size > 0 && !allowSet.has('*')) {
+      allowSet.add(normalizedName)
+    }
+  } else {
+    denySet.add(normalizedName)
+    if (allowSet.size > 0 && !allowSet.has('*')) {
+      allowSet.delete(normalizedName)
+    }
+  }
+
+  agentToolsPolicy.value = {
+    ...current,
+    allow: current.allow ? Array.from(allowSet) : undefined,
+    deny: Array.from(denySet),
+  }
+  void persistToolsPolicy()
+}
+
+function isSkillExpanded(skillKey: string): boolean {
+  return expandedSkillKeys.value.includes(skillKey)
+}
+
+function toggleSkillDetails(skillKey: string) {
+  if (isSkillExpanded(skillKey)) {
+    expandedSkillKeys.value = expandedSkillKeys.value.filter((key) => key !== skillKey)
+    return
+  }
+  expandedSkillKeys.value = [...expandedSkillKeys.value, skillKey]
+}
+
+function formatStringList(values: string[]): string {
+  return values.length > 0 ? values.join(', ') : 'None'
+}
+
 function refresh() {
+  if (!gwConnected.value) {
+    reconnectGateway()
+  }
   loadAgents()
+  if (selectedAgentId.value) {
+    loadToolsPolicy()
+  }
 }
 
 function formatFileSize(bytes: number): string {
@@ -629,14 +883,18 @@ function formatDate(ms: number): string {
 const refreshIcon = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`
 
 watch(selectedAgentId, (id) => {
+  expandedSkillKeys.value = []
+  agentToolsPolicy.value = {}
+  toolsError.value = null
   if (id) {
     loadFiles()
     loadAgentSkills(id)
+    loadToolsPolicy()
   }
 })
 
 onMounted(() => {
-  loadAgents()
+  refresh()
   loadCustomConfig()
 })
 
@@ -775,34 +1033,20 @@ watch(agents, (list) => {
   margin: 4px 0 8px;
 }
 
-.gateway-auth {
-  margin: 16px 0;
-  padding: 16px;
-  background: var(--bg-elevated, #1a1a2e);
+.error-debug {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  border: 1px solid var(--border);
-}
-
-.auth-hint {
-  color: var(--text-dim);
-  font-size: 13px;
-  margin-bottom: 8px;
-}
-
-.token-input-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.token-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 13px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
 }
 
 /* Agent selector */
@@ -1056,6 +1300,24 @@ watch(agents, (list) => {
 }
 
 /* Tools section */
+.tools-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.tools-state {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.tools-error {
+  font-size: 12px;
+  color: var(--accent-red);
+}
+
 .tool-group {
   margin-bottom: 24px;
 }
@@ -1162,17 +1424,43 @@ watch(agents, (list) => {
   gap: 6px;
 }
 
+.skill-item {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.skill-item:hover {
+  border-color: var(--border);
+  background: var(--bg-hover);
+}
+
+.skill-item.expanded {
+  border-color: rgba(68, 136, 255, 0.4);
+  background: var(--bg-hover);
+}
+
 .skill-row {
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
+  border: none;
   border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
   transition: background 0.15s;
 }
 
 .skill-row:hover {
   background: var(--bg-hover);
+}
+
+.skill-row:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
 }
 
 .skill-emoji {
@@ -1199,6 +1487,88 @@ watch(agents, (list) => {
 .skill-row-status {
   display: flex;
   gap: 6px;
+}
+
+.skill-row-expand {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: 4px;
+  transform: rotate(-90deg);
+  transition: transform 0.2s, color 0.2s;
+}
+
+.skill-item.expanded .skill-row-expand {
+  transform: rotate(0deg);
+  color: var(--accent-blue);
+}
+
+.skill-detail {
+  padding: 0 14px 14px 46px;
+  border-top: 1px dashed var(--border);
+}
+
+.skill-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.skill-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skill-detail-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.skill-detail-value {
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.skill-detail-value.mono {
+  font-family: monospace;
+}
+
+.skill-detail-link {
+  font-size: 12px;
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+
+.skill-detail-link:hover {
+  text-decoration: underline;
+}
+
+.skill-detail-section {
+  margin-top: 12px;
+}
+
+.skill-detail-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.skill-detail-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.skill-detail-key {
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .chip {

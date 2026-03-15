@@ -23,6 +23,7 @@
             <div class="form-group">
               <label>Target Agent Model</label>
               <select v-model="config.model" class="input-field">
+                <option value="deepseek/deepseek-v3.2-speciale">DeepSeek V3.2 Speciale</option>
                 <option value="gpt-4o">GPT-4o</option>
                 <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
                 <option value="llava-1.5">LLaVA-1.5 (Multimodal)</option>
@@ -49,10 +50,10 @@
                 <option value="none">None (Direct Attack)</option>
                 <option value="agent-firewall-l1">Agent-Firewall L1 (Static)</option>
                 <option value="agent-firewall-l2">Agent-Firewall L2 (Semantic)</option>
-                <option value="jailguard">JailGuard</option>
-                <option value="cider">CIDER</option>
+                <option value="jailguard">JailGuard (Perturbation Consistency)</option>
+                <option value="cider">CIDER (Intent Risk Classifier)</option>
               </select>
-              <p class="help-text">Active defense layer during generation</p>
+              <p class="help-text">All options now run real defense logic in Stage 2</p>
             </div>
 
             <div class="form-group border-top">
@@ -64,6 +65,29 @@
                 <option value="privacy">C. Privacy / PII Extraction</option>
                 <option value="sexual">D. Harassment & NSFW</option>
               </select>
+            </div>
+
+            <div class="form-group border-top">
+              <label>Case Budget</label>
+              <input
+                v-model.number="config.max_cases"
+                type="number"
+                min="1"
+                max="100"
+                class="input-field"
+              />
+              <p class="help-text">Number of cases to run in this benchmark session</p>
+            </div>
+
+            <div class="form-group border-top">
+              <label>Dataset Path (Optional)</label>
+              <input
+                v-model="config.dataset_path"
+                type="text"
+                class="input-field"
+                placeholder="data/omnisafebench_cases.jsonl"
+              />
+              <p class="help-text">If provided, Stage 1 loads this JSON/JSONL file instead of generating cases</p>
             </div>
 
           </div>
@@ -107,8 +131,39 @@
           <p>Configure your target, attack vector, and defense on the left, then start the OmniSafeBench integration.</p>
         </div>
 
+        <div v-if="isRunning || stage2DisplayCases.length > 0 || currentStage >= 2" class="stage2-cases">
+          <div class="stage2-header">
+            <h4>Running Cases (Stage 2)</h4>
+            <span class="stage2-progress">
+              {{ stage2Completed }}/{{ stage2Total || config.max_cases }} · showing {{ stage2DisplayCases.length }}
+            </span>
+          </div>
+          <div class="stage2-body">
+            <p class="help-text stage2-help">Real-time list of concrete cases already processed by Stage 2.</p>
+            <div v-if="stage2DisplayCases.length === 0" class="stage2-empty">
+              Waiting for first processed case... (you can still watch progress in logs)
+            </div>
+            <div v-else class="case-grid">
+              <article v-for="item in stage2DisplayCases" :key="`${item.test_case_id}-${item.index}`" class="case-card">
+                <div class="case-top">
+                  <span class="case-chip">#{{ item.index }}</span>
+                  <span class="case-id">{{ item.test_case_id }}</span>
+                  <span class="case-chip">{{ item.main_category || config.category }}</span>
+                  <span class="case-chip">{{ (item.attack_method || config.attack).toUpperCase() }}</span>
+                  <span class="case-status" :class="item.blocked ? 'blocked' : 'allowed'">
+                    {{ item.blocked ? 'BLOCKED' : 'PASSED' }}
+                  </span>
+                </div>
+                <p class="case-preview">{{ item.prompt_preview || '(no prompt preview in this backend event)' }}</p>
+                <p v-if="item.blocked_reason" class="case-note">Reason: {{ item.blocked_reason }}</p>
+                <p v-if="item.model_error" class="case-note error">Model Error: {{ item.model_error }}</p>
+              </article>
+            </div>
+          </div>
+        </div>
+
         <!-- In-progress Logs Viewer -->
-        <div v-if="currentStage > 0 && currentStage <= 3" class="log-stream">
+          <div v-if="isRunning || logs.length > 0 || (currentStage > 0 && currentStage <= 3)" class="log-stream">
            <div class="log-header">
               <span>Pipeline Logs</span>
               <div v-if="isRunning" class="spinner-small"></div>
@@ -149,8 +204,12 @@
             <div class="panel-body">
               <p><strong>Attack Method:</strong> {{ config.attack.toUpperCase() }}</p>
               <p><strong>Total Cases Evaluated:</strong> {{ result.total_cases }}</p>
+              <p><strong>Successful Attacks:</strong> {{ result.successful_cases }}</p>
+              <p><strong>Blocked Cases:</strong> {{ result.blocked_cases }}</p>
               <p><strong>ASR (Attack Success Rate):</strong> {{ result.asr }}%</p>
               <p><strong>Defense Efficacy (vs Baseline):</strong> {{ result.defense_delta }}</p>
+              <p><strong>Run ID:</strong> {{ result.run_id || '-' }}</p>
+              <p><strong>Persisted Traces:</strong> {{ result.persisted_traces }}</p>
               <div class="metric-bar">
                 <div class="metric-fill" :style="{ width: result.asr + '%' }"></div>
               </div>
@@ -163,13 +222,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { computed, ref, reactive } from 'vue'
 
 const config = reactive({
-  model: 'gpt-4o',
+  model: 'deepseek/deepseek-v3.2-speciale',
   attack: 'figstep',
   defense: 'agent-firewall-l2',
-  category: 'all'
+  category: 'all',
+  max_cases: 24,
+  dataset_path: ''
 })
 
 const isRunning = ref(false)
@@ -182,8 +243,83 @@ const result = ref({
   detail: 0.0,
   asr: 0.0,
   total_cases: 0,
-  defense_delta: ''
+  defense_delta: '',
+  blocked_cases: 0,
+  successful_cases: 0,
+  run_id: '',
+  persisted_traces: 0
 })
+
+interface Stage2CaseItem {
+  index: number
+  total: number
+  test_case_id: string
+  main_category: string
+  attack_method: string
+  prompt_preview: string
+  blocked: boolean
+  blocked_reason: string
+  model_error: string
+}
+
+const stage2Cases = ref<Stage2CaseItem[]>([])
+const stage2Total = ref(0)
+const stage2Completed = ref(0)
+
+const stage2RecentCases = computed(() => {
+  return [...stage2Cases.value]
+    .sort((a, b) => b.index - a.index)
+    .slice(0, 40)
+})
+
+const stage2DisplayCases = computed(() => {
+  if (stage2RecentCases.value.length > 0) {
+    return stage2RecentCases.value
+  }
+
+  // Fallback: extract case IDs from frontend progress debug logs.
+  const parsed: Stage2CaseItem[] = []
+  const seen = new Set<string>()
+  const progressRe = /Progress:\s*(\d+)\/(\d+)\s*\(([^)]+)\)/
+
+  for (let i = logs.value.length - 1; i >= 0; i -= 1) {
+    const entry = logs.value[i]
+    const matched = entry.msg.match(progressRe)
+    if (!matched) continue
+
+    const index = Number(matched[1]) || 0
+    const total = Number(matched[2]) || 0
+    const testCaseId = matched[3]?.trim() || `case-${String(index).padStart(4, '0')}`
+    const key = `${testCaseId}-${index}`
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    parsed.push({
+      index,
+      total,
+      test_case_id: testCaseId,
+      main_category: String(config.category),
+      attack_method: String(config.attack),
+      prompt_preview: '(preview pending from backend progress payload)',
+      blocked: false,
+      blocked_reason: '',
+      model_error: ''
+    })
+
+    if (parsed.length >= 40) break
+  }
+
+  return parsed
+})
+
+function upsertStage2Case(item: Stage2CaseItem) {
+  const existingIndex = stage2Cases.value.findIndex(c => c.test_case_id === item.test_case_id)
+  if (existingIndex >= 0) {
+    stage2Cases.value.splice(existingIndex, 1, item)
+    return
+  }
+  stage2Cases.value.push(item)
+}
 
 function addLog(level: string, msg: string) {
   const d = new Date()
@@ -194,61 +330,156 @@ function addLog(level: string, msg: string) {
 async function runBenchmark() {
   isRunning.value = true
   hasResult.value = false
-  currentStage.value = 1
+  currentStage.value = 0
   logs.value = []
+  stage2Cases.value = []
+  stage2Total.value = 0
+  stage2Completed.value = 0
 
-  addLog('INFO', `Initializing OmniSafeBench-MM pipeline with ${config.attack.toUpperCase()}...`)
-  await new Promise(r => setTimeout(r, 800))
-  
-  // Fake Stage 1
-  addLog('INFO', `Stage 1: Generating test cases for category [${config.category}]`)
-  addLog('DEBUG', `Applying multi-modal typography via ${config.attack} constraints...`)
-  await new Promise(r => setTimeout(r, 1200))
-  addLog('INFO', `Test cases generated. Total: 45 cases.`)
-  currentStage.value = 2
+  addLog('INFO', `Starting real OmniSafeBench pipeline with ${config.attack.toUpperCase()}...`)
 
-  // Fake Stage 2
-  addLog('INFO', `Stage 2: Firing test cases at ${config.model}`)
-  if (config.defense !== 'none') {
-    addLog('WARN', `Defense enabled: ${config.defense}. Interception activated in Firewall.`)
-  }
-  await new Promise(r => setTimeout(r, 1500))
-  if (config.defense.includes('firewall')) {
-    addLog('DEBUG', `L2 Semantic engine blocked 38/45 malicious requests.`)
-  }
-  addLog('INFO', `Response collection complete.`)
-  currentStage.value = 3
+  try {
+    const response = await fetch('/api/benchmark/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: config.model,
+        attack: config.attack,
+        defense: config.defense,
+        category: config.category,
+        max_cases: config.max_cases,
+        dataset_path: config.dataset_path || null
+      })
+    })
 
-  // Fake Stage 3
-  addLog('INFO', `Stage 3: 3D Protocol Evaluation...`)
-  await new Promise(r => setTimeout(r, 1000))
-  addLog('INFO', `Evaluating Harmfulness, Alignment, and Detail Level (1-5 scale)`)
-  
-  // Set fake results
-  if (config.defense !== 'none') {
-    result.value = {
-      harmfulness: 1.4,
-      alignment: 1.2,
-      detail: 1.1,
-      asr: 15.5,
-      total_cases: 45,
-      defense_delta: '+78% compared to direct attack'
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
     }
-  } else {
-    result.value = {
-      harmfulness: 4.8,
-      alignment: 4.7,
-      detail: 4.5,
-      asr: 92.4,
-      total_cases: 45,
-      defense_delta: 'Baseline (0%)'
-    }
-  }
 
-  isRunning.value = false
-  hasResult.value = true
-  currentStage.value = 4 // Set to 4 to mark stage 3 as done
-  addLog('SUCCESS', `Benchmark completed.`)
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('application/x-ndjson')) {
+      throw new Error(`Unexpected response type: ${contentType || 'unknown'}`)
+    }
+
+    if (!response.body) {
+      throw new Error('Empty streaming response body')
+    }
+
+    const reader = response.body.getReader()
+    const decoder = new window.TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const raw of lines) {
+        const line = raw.trim()
+        if (!line) continue
+
+        let event: any
+        try {
+          event = JSON.parse(line)
+        } catch {
+          continue
+        }
+
+        const stageNum = Number(event.stage)
+
+        if (event.type === 'stage' && Number.isFinite(stageNum)) {
+          if (event.status === 'start') {
+            currentStage.value = Math.max(currentStage.value, stageNum)
+            if (stageNum === 2 && event.total) {
+              stage2Total.value = Number(event.total) || 0
+            }
+          }
+          if (event.status === 'done' && stageNum === 2) {
+            stage2Completed.value = Math.max(stage2Completed.value, stage2Total.value)
+          }
+          if (event.status === 'done' && stageNum === 3) {
+            currentStage.value = 4
+          }
+          continue
+        }
+
+        if (event.type === 'log' && event.log) {
+          logs.value.push({
+            time: event.log.time || new Date().toLocaleTimeString(),
+            level: event.log.level || 'INFO',
+            msg: event.log.msg || ''
+          })
+          continue
+        }
+
+        if (event.type === 'progress' && stageNum === 2 && event.index && event.total) {
+          const index = Number(event.index) || 0
+          const total = Number(event.total) || 0
+
+          stage2Total.value = total || stage2Total.value
+          stage2Completed.value = Math.max(stage2Completed.value, index)
+
+          upsertStage2Case({
+            index,
+            total,
+            test_case_id: String(event.test_case_id || `case-${String(index).padStart(4, '0')}`),
+            main_category: String(event.main_category || ''),
+            attack_method: String(event.attack_method || ''),
+            prompt_preview: String(event.prompt_preview || ''),
+            blocked: Boolean(event.blocked),
+            blocked_reason: String(event.blocked_reason || ''),
+            model_error: String(event.model_error || '')
+          })
+
+          if (index % 5 === 0 || index === total) {
+            addLog('DEBUG', `Progress: ${index}/${total} (${event.test_case_id || 'case'})`)
+          }
+          continue
+        }
+
+        if (event.type === 'result' && event.result) {
+          result.value = {
+            harmfulness: event.result.harmfulness ?? 0,
+            alignment: event.result.alignment ?? 0,
+            detail: event.result.detail ?? 0,
+            asr: event.result.asr ?? 0,
+            total_cases: event.result.total_cases ?? 0,
+            defense_delta: event.result.defense_delta ?? '',
+            blocked_cases: event.result.blocked_cases ?? 0,
+            successful_cases: event.result.successful_cases ?? 0,
+            run_id: event.result.run_id ?? '',
+            persisted_traces: event.result.persisted_traces ?? 0
+          }
+          hasResult.value = true
+          continue
+        }
+
+        if (event.type === 'error') {
+          addLog('ERROR', event.error || 'Unknown benchmark error')
+          continue
+        }
+
+        if (event.type === 'done') {
+          break
+        }
+      }
+    }
+
+    if (hasResult.value) {
+      currentStage.value = 4
+      addLog('SUCCESS', 'Benchmark completed.')
+    } else {
+      addLog('WARN', 'Benchmark ended without a summary payload.')
+    }
+  } catch (error) {
+    console.error('Benchmark run failed:', error)
+    addLog('ERROR', `Benchmark failed: ${error instanceof Error ? error.message : String(error)}`)
+  } finally {
+    isRunning.value = false
+  }
 }
 </script>
 
@@ -366,7 +597,7 @@ async function runBenchmark() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px;
+  padding: 10px 12px;
   background: var(--bg-surface);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
@@ -376,7 +607,7 @@ async function runBenchmark() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   opacity: 0.4;
   transition: opacity 0.3s;
 }
@@ -384,15 +615,15 @@ async function runBenchmark() {
 .stage.done .stage-icon { background: var(--accent-green); border-color: var(--accent-green); }
 
 .stage-icon {
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  border: 2px solid var(--border-active);
+  border: 1.5px solid var(--border-active);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 12px;
   z-index: 10;
   background: var(--bg-elevated);
 }
@@ -400,12 +631,12 @@ async function runBenchmark() {
 .stage.done .stage-icon { color: #fff; }
 
 .stage-info { text-align: center; }
-.stage-info h4 { margin: 0 0 4px 0; font-size: 14px; }
+.stage-info h4 { margin: 0 0 2px 0; font-size: 12px; }
 .mllm-tag {
   background: var(--bg-elevated);
-  padding: 2px 6px;
+  padding: 1px 6px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-muted);
   border: 1px solid var(--border);
 }
@@ -414,9 +645,9 @@ async function runBenchmark() {
   flex: 1;
   height: 2px;
   background: var(--border);
-  margin: 0 16px;
+  margin: 0 8px;
   position: relative;
-  top: -20px;
+  top: -14px;
 }
 .connector.active {
   background: var(--accent);
@@ -461,6 +692,7 @@ async function runBenchmark() {
 .log-level-WARN { color: var(--accent-yellow); margin-right: 8px; }
 .log-level-DEBUG { color: var(--text-disabled); margin-right: 8px; }
 .log-level-SUCCESS { color: var(--accent-green); margin-right: 8px; }
+.log-level-ERROR { color: var(--accent-red); margin-right: 8px; }
 .log-line .msg { color: var(--text-primary); }
 
 .spinner-small {
@@ -496,4 +728,124 @@ async function runBenchmark() {
 .result-details p { margin-bottom: 8px; font-size: 14px; }
 .metric-bar { margin-top: 12px; height: 8px; background: var(--bg-elevated); border-radius: 4px; overflow: hidden; }
 .metric-fill { height: 100%; background: var(--accent-red); transition: width 0.5s; }
+
+/* Stage 2 case stream */
+.stage2-cases {
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.08);
+  overflow: hidden;
+}
+
+.stage2-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.stage2-header h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.stage2-progress {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.stage2-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 12px 14px;
+}
+
+.case-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stage2-help {
+  margin: 0;
+}
+
+.stage2-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.case-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  padding: 10px 12px;
+}
+
+.case-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.case-chip {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.case-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+.case-status {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.case-status.allowed {
+  color: var(--accent-green);
+}
+
+.case-status.blocked {
+  color: var(--accent-red);
+}
+
+.case-preview {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.case-note {
+  margin: 6px 0 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.case-note.error {
+  color: var(--accent-red);
+}
+
+@media (max-width: 900px) {
+  .case-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

@@ -20,7 +20,7 @@
         :key="tab.id"
         class="tab-btn" 
         :class="{ active: activeTab === tab.id }"
-        @click="activeTab = tab.id as 'agents' | 'skills' | 'channels'"
+        @click="activeTab = tab.id as 'agents' | 'channels'"
       >
         <span class="tab-icon">{{ tab.icon }}</span>
         {{ tab.label }}
@@ -34,11 +34,6 @@
         <AgentsManager />
       </div>
 
-      <!-- SKILLS TAB -->
-      <div v-if="activeTab === 'skills'" class="skills-view">
-        <SkillsManager />
-      </div>
-
       <!-- CHANNELS TAB -->
       <div v-if="activeTab === 'channels'" class="channels-view">
         <FeishuConfig />
@@ -49,15 +44,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import SkillsManager from './SkillsManager.vue'
 import AgentsManager from './AgentsManager.vue'
 import FeishuConfig from './FeishuConfig.vue'
 
-const activeTab = ref<'agents' | 'skills' | 'channels'>('agents')
+const activeTab = ref<'agents' | 'channels'>('agents')
 
 const tabs = [
   { id: 'agents', label: 'Agents & Tools', icon: '🤖' },
-  { id: 'skills', label: 'Skills & Servers', icon: '⚡' },
   { id: 'channels', label: 'Channels', icon: '💬' }
 ] as const
 
@@ -160,14 +153,13 @@ function refreshAll() {
 }
 
 .agents-view,
-.skills-view {
+.channels-view {
   height: 100%;
   overflow-y: auto;
 }
 
 /* Override child component styles to fit container */
-:deep(.agents-page),
-:deep(.skills-page) {
+:deep(.agents-page) {
   padding: 24px 32px;
   height: auto; /* Let parent scroll */
   overflow: visible;

@@ -18,6 +18,7 @@ import type {
   AgentsListResult,
   GatewayAgentRow,
   AgentFileEntry,
+  AgentToolsPolicy,
   GatewayConfigSnapshot,
   GatewayConfigSchema,
 } from "./types";
@@ -406,23 +407,56 @@ export function useTheme() {
 export function useNavigation() {
   const currentSection = ref<NavSection>("chat");
 
+  const validSections = new Set<NavSection>([
+    "chat",
+    "schematic",
+    "traffic",
+    "rules",
+    "engine",
+    "rate-limit",
+    "test",
+    "audit",
+    "playground",
+    "datasets",
+    "traces",
+    "skills",
+    "agents",
+    "benchmark",
+    "integrations",
+    "gateway-config",
+  ]);
+
+  function normalizeSection(section: string | null | undefined): NavSection {
+    const candidate = (section || "").trim() as NavSection;
+    if (candidate === "gateway-config") {
+      return "engine";
+    }
+    if (validSections.has(candidate)) {
+      return candidate;
+    }
+    return "chat";
+  }
+
   function navigateTo(section: NavSection) {
-    currentSection.value = section;
-    history.pushState({ section }, "", `#${section}`);
+    const normalized = normalizeSection(section);
+    currentSection.value = normalized;
+    history.pushState({ section: normalized }, "", `#${normalized}`);
   }
 
   // Handle browser back/forward
   function handlePopState(event: PopStateEvent) {
     if (event.state?.section) {
-      currentSection.value = event.state.section;
+      currentSection.value = normalizeSection(String(event.state.section));
     }
   }
 
   onMounted(() => {
     // Initialize from URL hash
-    const hash = window.location.hash.slice(1) as NavSection;
-    if (hash) {
-      currentSection.value = hash;
+    const hash = window.location.hash.slice(1);
+    const normalized = normalizeSection(hash);
+    currentSection.value = normalized;
+    if (hash && hash !== normalized) {
+      history.replaceState({ section: normalized }, "", `#${normalized}`);
     }
     window.addEventListener("popstate", handlePopState);
   });
@@ -445,11 +479,195 @@ const gwPendingRequests = new Map<
 >();
 const gwConnected = ref(false);
 const gwConnectError = ref<string | null>(null);
+const gwConnectDetail = ref<string | null>(null);
 const gwReconnectTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 let gwTokenFetched = false;
+let gwAuthRetryAttempted = false;
+let gwReconnectAttempts = 0;
+let gwDeviceIdentityPromise: Promise<GatewayDeviceIdentity | null> | null = null;
+
+type GatewayDeviceIdentity = {
+  deviceId: string;
+  publicKeyRawBase64Url: string;
+  privateKeyJwk: Record<string, unknown>;
+};
+
+const GW_DEVICE_ID_KEY = "af-gateway-device-id";
+const GW_DEVICE_PUB_RAW_KEY = "af-gateway-device-pub-raw";
+const GW_DEVICE_PRIV_JWK_KEY = "af-gateway-device-priv-jwk";
+
+function toBase64Url(bytes: Uint8Array): string {
+  const btoaFn = (globalThis as unknown as { btoa?: (input: string) => string }).btoa;
+  let binary = "";
+  for (const b of bytes) {
+    binary += String.fromCharCode(b);
+  }
+  if (btoaFn) {
+    return btoaFn(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/g, "");
+  }
+
+  // Minimal base64url encoder fallback when btoa is unavailable.
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  let out = "";
+  let i = 0;
+  for (; i + 2 < bytes.length; i += 3) {
+    const n = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+    out += alphabet[(n >> 18) & 63];
+    out += alphabet[(n >> 12) & 63];
+    out += alphabet[(n >> 6) & 63];
+    out += alphabet[n & 63];
+  }
+  const rem = bytes.length - i;
+  if (rem === 1) {
+    const n = bytes[i] << 16;
+    out += alphabet[(n >> 18) & 63];
+    out += alphabet[(n >> 12) & 63];
+  } else if (rem === 2) {
+    const n = (bytes[i] << 16) | (bytes[i + 1] << 8);
+    out += alphabet[(n >> 18) & 63];
+    out += alphabet[(n >> 12) & 63];
+    out += alphabet[(n >> 6) & 63];
+  }
+  return out;
+}
+
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function buildDeviceAuthPayload(params: {
+  deviceId: string;
+  clientId: string;
+  clientMode: string;
+  role: string;
+  scopes: string[];
+  signedAtMs: number;
+  token?: string | null;
+  nonce?: string | null;
+}): string {
+  const version = params.nonce ? "v2" : "v1";
+  const scopes = params.scopes.join(",");
+  const token = params.token ?? "";
+  const base = [
+    version,
+    params.deviceId,
+    params.clientId,
+    params.clientMode,
+    params.role,
+    scopes,
+    String(params.signedAtMs),
+    token,
+  ];
+  if (version === "v2") {
+    base.push(params.nonce ?? "");
+  }
+  return base.join("|");
+}
+
+function utf8Encode(input: string): Uint8Array {
+  const TextEncoderCtor = (
+    globalThis as unknown as {
+      TextEncoder?: new () => { encode: (value: string) => Uint8Array };
+    }
+  ).TextEncoder;
+  if (TextEncoderCtor) {
+    return new TextEncoderCtor().encode(input);
+  }
+  return Uint8Array.from(input, (ch) => ch.charCodeAt(0) & 0xff);
+}
+
+async function loadOrCreateGatewayDeviceIdentity(): Promise<GatewayDeviceIdentity | null> {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) {
+    return null;
+  }
+
+  try {
+    const deviceId = localStorage.getItem(GW_DEVICE_ID_KEY);
+    const publicKeyRawBase64Url = localStorage.getItem(GW_DEVICE_PUB_RAW_KEY);
+    const privateKeyJwkRaw = localStorage.getItem(GW_DEVICE_PRIV_JWK_KEY);
+    if (deviceId && publicKeyRawBase64Url && privateKeyJwkRaw) {
+      const privateKeyJwk = JSON.parse(privateKeyJwkRaw) as Record<string, unknown>;
+      return { deviceId, publicKeyRawBase64Url, privateKeyJwk };
+    }
+  } catch {
+    // fall through and regenerate
+  }
+
+  try {
+    const keyPair = (await subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"])) as {
+      publicKey: unknown;
+      privateKey: unknown;
+    };
+
+    const publicRaw = new Uint8Array(await subtle.exportKey("raw", keyPair.publicKey as never));
+    const digest = new Uint8Array(await subtle.digest("SHA-256", publicRaw));
+    const deviceId = toHex(digest);
+    const publicKeyRawBase64Url = toBase64Url(publicRaw);
+    const privateKeyJwk = (await subtle.exportKey("jwk", keyPair.privateKey as never)) as Record<
+      string,
+      unknown
+    >;
+
+    localStorage.setItem(GW_DEVICE_ID_KEY, deviceId);
+    localStorage.setItem(GW_DEVICE_PUB_RAW_KEY, publicKeyRawBase64Url);
+    localStorage.setItem(GW_DEVICE_PRIV_JWK_KEY, JSON.stringify(privateKeyJwk));
+
+    return { deviceId, publicKeyRawBase64Url, privateKeyJwk };
+  } catch {
+    return null;
+  }
+}
+
+async function getGatewayDeviceIdentity(): Promise<GatewayDeviceIdentity | null> {
+  if (!gwDeviceIdentityPromise) {
+    gwDeviceIdentityPromise = loadOrCreateGatewayDeviceIdentity();
+  }
+  return gwDeviceIdentityPromise;
+}
+
+function gwReadyStateLabel(state?: number): string {
+  if (state === WebSocket.CONNECTING) return "CONNECTING";
+  if (state === WebSocket.OPEN) return "OPEN";
+  if (state === WebSocket.CLOSING) return "CLOSING";
+  if (state === WebSocket.CLOSED) return "CLOSED";
+  return "NONE";
+}
+
+function gwSetConnectDetail(summary: string, extra: Record<string, unknown> = {}) {
+  gwConnectDetail.value = JSON.stringify(
+    {
+      summary,
+      wsUrl: gwWsUrl,
+      connected: gwConnected.value,
+      socketState: gwReadyStateLabel(gwSocket?.readyState),
+      reconnectAttempts: gwReconnectAttempts,
+      tokenPresent: Boolean(localStorage.getItem("af-gateway-token")),
+      passwordPresent: Boolean(localStorage.getItem("af-gateway-password")),
+      time: new Date().toISOString(),
+      ...extra,
+    },
+    null,
+    2,
+  );
+}
+
+async function waitForGatewayReady(timeoutMs = 5000): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (gwSocket && gwSocket.readyState === WebSocket.OPEN && gwConnected.value) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return false;
+}
 
 /** Auto-discover gateway token from the backend, then connect. */
 async function gwAutoConnect() {
+  gwSetConnectDetail("Starting gateway auto-connect");
   if (!gwTokenFetched) {
     gwTokenFetched = true;
     try {
@@ -457,10 +675,8 @@ async function gwAutoConnect() {
       if (resp.ok) {
         const info = await resp.json();
         if (info.configured) {
-          // Keep token in sync for default local gateway connections.
-          // This recovers from stale cached tokens after profile/config changes.
-          const hasCustomGatewayUrl = Boolean(localStorage.getItem("af-gateway-url"));
-          if (info.token && !hasCustomGatewayUrl) {
+          // Keep token in sync from backend config so UI never needs manual token input.
+          if (info.token) {
             const existingToken = localStorage.getItem("af-gateway-token");
             if (existingToken !== info.token) {
               localStorage.setItem("af-gateway-token", info.token);
@@ -468,12 +684,22 @@ async function gwAutoConnect() {
             }
           }
           // Update WS URL if port differs
-          if (info.port && !localStorage.getItem("af-gateway-url")) {
-            gwWsUrl = `ws://${window.location.hostname}:${info.port}/ws`;
+          if (info.port) {
+            const host = info.bind === "loopback" ? "127.0.0.1" : window.location.hostname;
+            const discoveredUrl = `ws://${host}:${info.port}/ws`;
+            gwWsUrl = discoveredUrl;
+            localStorage.setItem("af-gateway-url", discoveredUrl);
           }
+          gwSetConnectDetail("Synced gateway config from backend", {
+            configured: info.configured,
+            port: info.port,
+            configPath: info.configPath || null,
+          });
         }
       }
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      gwSetConnectDetail("Failed to fetch /api/gateway-info", { error: message });
       console.warn("[Gateway] Could not fetch gateway info from backend");
     }
   }
@@ -483,9 +709,14 @@ async function gwAutoConnect() {
 function gwConnect() {
   if (gwSocket?.readyState === WebSocket.OPEN) return;
 
+  gwSetConnectDetail("Opening gateway websocket");
+
   try {
     gwSocket = new WebSocket(gwWsUrl);
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    gwConnectError.value = `Failed to create websocket: ${message}`;
+    gwSetConnectDetail("Failed to create websocket", { error: message });
     console.warn("[Gateway] Failed to create WebSocket");
     scheduleGwReconnect();
     return;
@@ -493,6 +724,7 @@ function gwConnect() {
 
   gwSocket.onopen = () => {
     gwConnectError.value = null;
+    gwSetConnectDetail("WebSocket opened, waiting for connect.challenge");
     console.log("[Gateway] WebSocket opened, waiting for handshake...");
   };
 
@@ -506,40 +738,147 @@ function gwConnect() {
         const token = localStorage.getItem("af-gateway-token") || undefined;
         const password = localStorage.getItem("af-gateway-password") || undefined;
         const authObj = token || password ? { token, password } : undefined;
+        const nonce = typeof msg?.payload?.nonce === "string" ? msg.payload.nonce : undefined;
+        const role = "operator";
+        const scopes = ["operator.admin"];
+        const clientId = "gateway-client";
+        const clientMode = "backend";
+        const signedAtMs = Date.now();
+        gwSetConnectDetail("Received connect.challenge and sending connect request", {
+          requestId: connectId,
+          hasAuth: Boolean(authObj),
+        });
         gwPendingRequests.set(connectId, {
           resolve: (payload: any) => {
             // hello-ok received — connection fully established
             gwConnected.value = true;
+            gwReconnectAttempts = 0;
+            gwAuthRetryAttempted = false;
             if (payload?.auth?.deviceToken) {
               localStorage.setItem("af-gateway-token", payload.auth.deviceToken);
             }
+            gwSetConnectDetail("Gateway connected", {
+              protocol: payload?.protocol,
+              role: payload?.role,
+            });
             console.log("[Gateway] Connected (hello-ok), protocol:", payload?.protocol);
           },
           reject: (err: Error) => {
-            console.error("[Gateway] Connect rejected:", err.message);
-            gwConnectError.value = err.message;
+            const message = err.message || "connect rejected";
+            console.error("[Gateway] Connect rejected:", message);
+            gwSetConnectDetail("Gateway connect request rejected", { error: message });
+
+            const isPairingRequired = /NOT_PAIRED|device identity required/i.test(message);
+            if (isPairingRequired) {
+              gwConnectError.value = "Gateway device pairing required";
+              gwSetConnectDetail("Gateway requires device pairing approval", {
+                error: message,
+                hint: "Run `openclaw devices list` then approve the pending request.",
+              });
+              return;
+            }
+
+            // Retry once with a freshly synced backend token when auth fails.
+            const isAuthError = /unauthorized|auth|token/i.test(message);
+            if (isAuthError && !gwAuthRetryAttempted) {
+              gwAuthRetryAttempted = true;
+              gwTokenFetched = false;
+              gwConnectError.value = "Auth failed. Retrying with configured token...";
+              gwSetConnectDetail("Auth failed; retrying once with backend token", {
+                error: message,
+              });
+              gwDisconnect();
+              void gwAutoConnect();
+              return;
+            }
+
+            gwConnectError.value = message;
           },
         });
-        gwSocket?.send(
-          JSON.stringify({
-            type: "req",
-            id: connectId,
-            method: "connect",
-            params: {
-              minProtocol: 3,
-              maxProtocol: 3,
-              client: {
-                id: "gateway-client",
-                version: "1.0.0",
-                platform: "web",
-                mode: "backend",
+        void (async () => {
+          const identity = await getGatewayDeviceIdentity();
+          let device:
+            | {
+                id: string;
+                publicKey: string;
+                signature: string;
+                signedAt: number;
+                nonce?: string;
+              }
+            | undefined;
+
+          if (identity) {
+            try {
+              const subtle = globalThis.crypto?.subtle;
+              if (subtle) {
+                const privateKey = await subtle.importKey(
+                  "jwk",
+                  identity.privateKeyJwk as never,
+                  { name: "Ed25519" } as never,
+                  false,
+                  ["sign"],
+                );
+                const payload = buildDeviceAuthPayload({
+                  deviceId: identity.deviceId,
+                  clientId,
+                  clientMode,
+                  role,
+                  scopes,
+                  signedAtMs,
+                  token: token ?? null,
+                  nonce: nonce ?? null,
+                });
+                const payloadBytes = utf8Encode(payload);
+                const payloadBuffer = payloadBytes.buffer.slice(
+                  payloadBytes.byteOffset,
+                  payloadBytes.byteOffset + payloadBytes.byteLength,
+                ) as ArrayBuffer;
+                const signatureBytes = new Uint8Array(
+                  await subtle.sign({ name: "Ed25519" } as never, privateKey, payloadBuffer),
+                );
+                device = {
+                  id: identity.deviceId,
+                  publicKey: identity.publicKeyRawBase64Url,
+                  signature: toBase64Url(signatureBytes),
+                  signedAt: signedAtMs,
+                  nonce,
+                };
+                gwSetConnectDetail("Using signed device identity for connect", {
+                  deviceId: identity.deviceId,
+                });
+              }
+            } catch (err) {
+              const message = err instanceof Error ? err.message : String(err);
+              gwSetConnectDetail("Failed to sign device payload", { error: message });
+            }
+          } else {
+            gwSetConnectDetail("Device identity unavailable; connect may fail", {
+              hint: "Browser WebCrypto Ed25519 support is required.",
+            });
+          }
+
+          gwSocket?.send(
+            JSON.stringify({
+              type: "req",
+              id: connectId,
+              method: "connect",
+              params: {
+                minProtocol: 3,
+                maxProtocol: 3,
+                client: {
+                  id: clientId,
+                  version: "1.0.0",
+                  platform: "web",
+                  mode: clientMode,
+                },
+                role,
+                scopes,
+                auth: authObj,
+                device,
               },
-              role: "operator",
-              scopes: ["operator.admin"],
-              auth: authObj,
-            },
-          }),
-        );
+            }),
+          );
+        })();
         return;
       }
 
@@ -551,7 +890,9 @@ function gwConnect() {
           if (msg.ok) {
             pending.resolve(msg.payload);
           } else {
-            pending.reject(new Error(msg.error?.message || "RPC failed"));
+            const code = msg.error?.code;
+            const text = msg.error?.message || "RPC failed";
+            pending.reject(new Error(code ? `${code}: ${text}` : text));
           }
         }
         return;
@@ -561,18 +902,31 @@ function gwConnect() {
     }
   };
 
-  gwSocket.onclose = () => {
+  gwSocket.onclose = (event) => {
     gwConnected.value = false;
+    const closeMessage = `Gateway socket closed (code: ${event.code}${event.reason ? `, reason: ${event.reason}` : ""})`;
+    gwConnectError.value = closeMessage;
+    gwSetConnectDetail("WebSocket closed", {
+      code: event.code,
+      reason: event.reason || null,
+      wasClean: event.wasClean,
+    });
     scheduleGwReconnect();
   };
 
   gwSocket.onerror = () => {
     console.warn("[Gateway] WebSocket error");
+    gwConnectError.value = `Gateway websocket connection failed (url: ${gwWsUrl})`;
+    gwSetConnectDetail("WebSocket error", {
+      note: "Browser WebSocket error event does not include low-level reason",
+    });
   };
 }
 
 function scheduleGwReconnect() {
   if (gwReconnectTimer.value) clearTimeout(gwReconnectTimer.value);
+  gwReconnectAttempts += 1;
+  gwSetConnectDetail("Scheduling reconnect", { delayMs: 5000 });
   gwReconnectTimer.value = setTimeout(gwAutoConnect, 5000);
 }
 
@@ -582,15 +936,54 @@ function gwDisconnect() {
   gwSocket = null;
 }
 
-function gwRequest<T = unknown>(method: string, params: Record<string, unknown> = {}): Promise<T> {
-  return new Promise((resolve, reject) => {
-    if (!gwSocket || gwSocket.readyState !== WebSocket.OPEN || !gwConnected.value) {
-      reject(new Error("Gateway not connected"));
-      return;
+function gwForceReconnect() {
+  gwConnectError.value = null;
+  gwTokenFetched = false;
+  gwSetConnectDetail("Manual reconnect requested");
+  gwDisconnect();
+  void gwAutoConnect();
+}
+
+async function gwRequest<T = unknown>(
+  method: string,
+  params: Record<string, unknown> = {},
+): Promise<T> {
+  if (!gwSocket || gwSocket.readyState === WebSocket.CLOSED) {
+    gwForceReconnect();
+  }
+
+  if (gwSocket && gwSocket.readyState === WebSocket.CONNECTING && !gwConnected.value) {
+    gwSetConnectDetail("RPC waiting for in-flight handshake", { method, timeoutMs: 5000 });
+  }
+
+  let ready = await waitForGatewayReady(5000);
+  if (!ready || !gwSocket || gwSocket.readyState !== WebSocket.OPEN || !gwConnected.value) {
+    // One fallback reconnect if the current attempt did not become ready in time.
+    gwForceReconnect();
+    ready = await waitForGatewayReady(5000);
+    if (!ready || !gwSocket || gwSocket.readyState !== WebSocket.OPEN || !gwConnected.value) {
+      const message = `Gateway not connected (url: ${gwWsUrl}, state: ${gwReadyStateLabel(gwSocket?.readyState)})`;
+      gwConnectError.value = message;
+      gwSetConnectDetail("RPC blocked because gateway is not connected", {
+        method,
+        timeoutMs: 5000,
+      });
+      throw new Error(message);
     }
+  }
+
+  const socket = gwSocket;
+  if (!socket || socket.readyState !== WebSocket.OPEN || !gwConnected.value) {
+    const message = `Gateway not connected (url: ${gwWsUrl}, state: ${gwReadyStateLabel(socket?.readyState)})`;
+    gwConnectError.value = message;
+    gwSetConnectDetail("RPC blocked because socket is not open", { method });
+    throw new Error(message);
+  }
+
+  return new Promise((resolve, reject) => {
     const id = crypto.randomUUID();
     gwPendingRequests.set(id, { resolve, reject });
-    gwSocket.send(JSON.stringify({ type: "req", id, method, params }));
+    socket.send(JSON.stringify({ type: "req", id, method, params }));
 
     // Timeout after 30s
     setTimeout(() => {
@@ -641,10 +1034,12 @@ export function useGateway() {
   return {
     connected: gwConnected,
     connectError: gwConnectError,
+    connectDetail: gwConnectDetail,
     gatewayUrl,
     updateGatewayUrl,
     setGatewayToken,
     setGatewayPassword,
+    reconnect: gwForceReconnect,
     request: gwRequest,
   };
 }
@@ -654,6 +1049,8 @@ export function useGatewayStatus() {
   return {
     connected: gwConnected,
     connectError: gwConnectError,
+    connectDetail: gwConnectDetail,
+    reconnect: gwForceReconnect,
   };
 }
 
@@ -762,6 +1159,34 @@ export function useGatewayAgents() {
     }
   }
 
+  async function loadAgentToolsPolicy(agentId: string): Promise<AgentToolsPolicy> {
+    try {
+      error.value = null;
+      const result = await gwRequest<{ tools?: AgentToolsPolicy }>("agents.tools.get", { agentId });
+      return result.tools ?? {};
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Failed to load agent tool policy";
+      return {};
+    }
+  }
+
+  async function saveAgentToolsPolicy(
+    agentId: string,
+    tools: AgentToolsPolicy,
+  ): Promise<AgentToolsPolicy> {
+    try {
+      error.value = null;
+      const result = await gwRequest<{ tools?: AgentToolsPolicy }>("agents.tools.set", {
+        agentId,
+        tools,
+      });
+      return result.tools ?? {};
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : "Failed to save agent tool policy";
+      throw err;
+    }
+  }
+
   return {
     agents,
     defaultAgentId,
@@ -771,6 +1196,8 @@ export function useGatewayAgents() {
     loadAgentFiles,
     loadAgentFile,
     saveAgentFile,
+    loadAgentToolsPolicy,
+    saveAgentToolsPolicy,
   };
 }
 

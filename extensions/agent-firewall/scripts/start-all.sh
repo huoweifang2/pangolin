@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-ROOT_DIR="$(dirname "$PROJECT_DIR")"
+ROOT_DIR="$(dirname "$(dirname "$PROJECT_DIR")")"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 VENV_DIR="$PROJECT_DIR/.venv"
 LOG_DIR="$PROJECT_DIR/logs"
@@ -111,6 +111,33 @@ ws.onerror = () => {
 NODE
 }
 
+is_repo_gateway_process() {
+    local port="${1:-18789}"
+    local pids
+    pids=$(lsof -ti :"$port" || true)
+
+    if [ -z "$pids" ]; then
+        return 1
+    fi
+
+    for pid in $pids; do
+        local cmd
+        cmd=$(ps -p "$pid" -o command= 2>/dev/null || true)
+
+        if echo "$cmd" | grep -Fq "$ROOT_DIR/agent-shield.mjs"; then
+            return 0
+        fi
+        if echo "$cmd" | grep -Fq "$ROOT_DIR/scripts/run-node.mjs"; then
+            return 0
+        fi
+        if echo "$cmd" | grep -Fq "$ROOT_DIR"; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 # Ensure log directory exists
 mkdir -p "$LOG_DIR"
 
@@ -169,8 +196,8 @@ if [ -n "$pids_frontend" ]; then
     fi
 fi
 
-# Start OpenClaw Gateway (port 18789)
-echo "🚀 Starting OpenClaw Gateway (port 18789)..."
+# Start Gateway (prefer repository source on port 18789)
+echo "🚀 Starting Gateway (prefer repository source, port 18789)..."
 TOKEN_CANDIDATES="$(discover_gateway_tokens || true)"
 GATEWAY_TOKEN=""
 GATEWAY_TOKEN_SOURCE=""
@@ -191,19 +218,18 @@ else
     echo "   ⚠️  No gateway token found in local config files."
 fi
 
-if ! command -v openclaw &> /dev/null && [ ! -f "$ROOT_DIR/agent-shield.mjs" ]; then
-    echo "   ⚠️  Neither openclaw CLI nor agent-shield.mjs is available."
+if [ ! -f "$ROOT_DIR/agent-shield.mjs" ] && ! command -v openclaw &> /dev/null; then
+    echo "   ⚠️  Neither repository agent-shield.mjs nor openclaw CLI is available."
     echo "   Skipping gateway startup."
 else
     restart_gateway=false
 
     # Check if gateway is already running and auth is valid
     if lsof -ti :18789 > /dev/null 2>&1; then
-        echo "   ✅ Gateway already running on port 18789"
-        if [ -n "$GATEWAY_TOKEN" ] && probe_gateway_auth "$GATEWAY_TOKEN" 18789; then
-            echo "   ✅ Gateway auth probe passed"
+        if is_repo_gateway_process 18789; then
+            echo "   ✅ Repository gateway already running on port 18789"
         else
-            echo "   ⚠️  Gateway auth probe failed; restarting gateway with explicit token."
+            echo "   ⚠️  Non-repository gateway detected on port 18789; switching to repository source."
             restart_gateway=true
             pids_gateway=$(lsof -ti :18789 || true)
             if [ -n "$pids_gateway" ]; then
@@ -214,14 +240,36 @@ else
                 fi
             fi
         fi
+
+        if [ "$restart_gateway" = false ] && [ -n "$GATEWAY_TOKEN" ] && probe_gateway_auth "$GATEWAY_TOKEN" 18789; then
+            echo "   ✅ Gateway auth probe passed"
+        elif [ "$restart_gateway" = false ]; then
+            echo "   ⚠️  Gateway auth probe failed; restarting gateway with explicit token."
+            restart_gateway=true
+            pids_gateway=$(lsof -ti :18789 || true)
+            if [ -n "$pids_gateway" ]; then
+                kill $pids_gateway 2>/dev/null || true
+                sleep 1
+                if lsof -ti :18789 > /dev/null 2>&1; then
+                    kill -9 $pids_gateway 2>/dev/null || true
+                fi
+            fi
+        elif [ "$restart_gateway" = true ]; then
+            :
+        else
+            echo "   ⚠️  Gateway token not found; restarting to ensure repository source is active."
+            restart_gateway=true
+        fi
     fi
 
     if ! lsof -ti :18789 > /dev/null 2>&1 || [ "$restart_gateway" = true ]; then
         gateway_cmd=()
-        if command -v openclaw &> /dev/null; then
-            gateway_cmd=(openclaw gateway --port 18789 --allow-unconfigured)
+        if [ -f "$ROOT_DIR/agent-shield.mjs" ]; then
+            echo "   🧭 Launch mode: repository source ($ROOT_DIR/agent-shield.mjs)"
+            gateway_cmd=(node "$ROOT_DIR/agent-shield.mjs" gateway --port 18789 --allow-unconfigured --force)
         else
-            gateway_cmd=(node "$ROOT_DIR/agent-shield.mjs" gateway --port 18789 --allow-unconfigured)
+            echo "   ⚠️  Repository entrypoint missing; fallback to openclaw CLI."
+            gateway_cmd=(openclaw gateway --port 18789 --allow-unconfigured --force)
         fi
         if [ -n "$GATEWAY_TOKEN" ]; then
             gateway_cmd+=(--token "$GATEWAY_TOKEN")
@@ -288,6 +336,22 @@ if [ "$backend_ready" = false ]; then
 fi
 echo "   ✅ Backend healthy"
 
+# Start Promptfoo Backend (port 3000)
+echo "🚀 Starting Promptfoo (Security Eval Server) (port 3000)..."
+cd "$PROJECT_DIR"
+pids_promptfoo=$(lsof -ti :3000 || true)
+if [ -n "$pids_promptfoo" ]; then
+    echo "   Stopping existing promptfoo (port 3000)..."
+    kill $pids_promptfoo 2>/dev/null || true
+    sleep 1
+    if lsof -ti :3000 >/dev/null; then
+        kill -9 $pids_promptfoo 2>/dev/null || true
+    fi
+fi
+nohup npx --yes promptfoo@latest view -p 3000 > "$LOG_DIR/promptfoo.log" 2>&1 &
+PROMPTFOO_PID=$!
+echo "   Promptfoo PID: $PROMPTFOO_PID"
+
 # Start Frontend (port 9091)
 echo "🚀 Starting Frontend Dashboard (port 9091)..."
 cd "$FRONTEND_DIR"
@@ -312,10 +376,12 @@ echo "📍 Access Points:"
 echo "   Gateway:      http://localhost:18789"
 echo "   Backend API:  http://localhost:9090"
 echo "   Dashboard:    http://localhost:9091"
+echo "   Promptfoo:    http://localhost:3000"
 echo ""
 echo "📄 Logs:"
-echo "   Backend:  $LOG_DIR/backend.log"
-echo "   Frontend: $LOG_DIR/frontend.log"
+echo "   Backend:   $LOG_DIR/backend.log"
+echo "   Frontend:  $LOG_DIR/frontend.log"
+echo "   Promptfoo: $LOG_DIR/promptfoo.log"
 echo ""
 echo "🛑 To stop all manually:"
-echo "   kill $BACKEND_PID $FRONTEND_PID ${GATEWAY_PID:-}"
+echo "   kill $BACKEND_PID $FRONTEND_PID $PROMPTFOO_PID ${GATEWAY_PID:-}"
