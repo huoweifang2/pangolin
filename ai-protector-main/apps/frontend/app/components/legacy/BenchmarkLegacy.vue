@@ -330,6 +330,43 @@ function addLog(level: string, msg: string) {
   logs.value.push({ time, level, msg })
 }
 
+function parseBenchmarkEventLine(rawLine: string): any | null {
+  const line = rawLine.trim()
+  if (!line) return null
+
+  const payload = line.startsWith('data:') ? line.slice(5).trim() : line
+  if (!payload) return null
+  if (payload === '[DONE]') return { type: 'done' }
+
+  try {
+    return JSON.parse(payload)
+  } catch {
+    return null
+  }
+}
+
+function pickNumber(...candidates: unknown[]): number | null {
+  for (const candidate of candidates) {
+    const n = Number(candidate)
+    if (Number.isFinite(n)) return n
+  }
+  return null
+}
+
+function pickText(...candidates: unknown[]): string {
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate
+    }
+  }
+  for (const candidate of candidates) {
+    if (candidate !== null && candidate !== undefined) {
+      return String(candidate)
+    }
+  }
+  return ''
+}
+
 async function runBenchmark() {
   isRunning.value = true
   hasResult.value = false
@@ -360,8 +397,15 @@ async function runBenchmark() {
     }
 
     const contentType = response.headers.get('content-type') || ''
-    if (!contentType.includes('application/x-ndjson')) {
-      throw new Error(`Unexpected response type: ${contentType || 'unknown'}`)
+    const lowerContentType = contentType.toLowerCase()
+    const isSupportedStreamType =
+      lowerContentType.includes('ndjson') ||
+      lowerContentType.includes('jsonl') ||
+      lowerContentType.includes('event-stream') ||
+      lowerContentType.includes('text/plain')
+
+    if (!isSupportedStreamType) {
+      addLog('WARN', `Unexpected response type: ${contentType || 'unknown'} (trying stream parse)`)
     }
 
     if (!response.body) {
@@ -369,8 +413,117 @@ async function runBenchmark() {
     }
 
     const reader = response.body.getReader()
-    const decoder = new window.TextDecoder()
+    const decoder = new TextDecoder()
     let buffer = ''
+    let streamDone = false
+
+    const handleEvent = (event: any) => {
+      const eventType = String(event?.type ?? '').toLowerCase()
+      const stageNum = pickNumber(event?.stage)
+
+      if (
+        (eventType === 'stage' || eventType === 'stage_start' || eventType === 'stage_done') &&
+        stageNum !== null
+      ) {
+        const status = String(
+          event?.status ??
+            (eventType === 'stage_start' ? 'start' : eventType === 'stage_done' ? 'done' : ''),
+        ).toLowerCase()
+
+        if (status === 'start') {
+          currentStage.value = Math.max(currentStage.value, stageNum)
+          if (stageNum === 2) {
+            const total = pickNumber(event?.total)
+            if (total !== null) stage2Total.value = total
+          }
+        }
+
+        if (status === 'done' && stageNum === 2) {
+          stage2Completed.value = Math.max(stage2Completed.value, stage2Total.value)
+        }
+        if (status === 'done' && stageNum === 3) {
+          currentStage.value = 4
+        }
+        return
+      }
+
+      if (eventType === 'log' && event?.log) {
+        logs.value.push({
+          time: pickText(event.log.time, new Date().toLocaleTimeString()),
+          level: pickText(event.log.level, 'INFO'),
+          msg: pickText(event.log.msg, ''),
+        })
+        return
+      }
+
+      if ((eventType === 'progress' || eventType === 'stage_progress') && stageNum === 2) {
+        const index = pickNumber(event?.index, event?.current, event?.processed) ?? 0
+        const total = pickNumber(event?.total, event?.max_cases, stage2Total.value) ?? 0
+        if (index <= 0 || total <= 0) return
+
+        stage2Total.value = total || stage2Total.value
+        stage2Completed.value = Math.max(stage2Completed.value, index)
+
+        const testCaseId = pickText(event?.test_case_id, event?.testCaseId, `case-${String(index).padStart(4, '0')}`)
+        upsertStage2Case({
+          index,
+          total,
+          test_case_id: testCaseId,
+          main_category: pickText(event?.main_category, event?.mainCategory, ''),
+          attack_method: pickText(event?.attack_method, event?.attackMethod, ''),
+          prompt_preview: pickText(event?.prompt_preview, event?.promptPreview, ''),
+          blocked: Boolean(event?.blocked),
+          blocked_reason: pickText(event?.blocked_reason, event?.blockedReason, ''),
+          model_error: pickText(event?.model_error, event?.modelError, ''),
+        })
+
+        if (index % 5 === 0 || index === total) {
+          addLog('DEBUG', `Progress: ${index}/${total} (${testCaseId || 'case'})`)
+        }
+        return
+      }
+
+      if ((eventType === 'result' || eventType === 'summary') && event?.result) {
+        const summary = event.result as Record<string, unknown>
+        result.value = {
+          harmfulness: pickNumber(summary.harmfulness, summary.harmfulness_score) ?? 0,
+          alignment: pickNumber(summary.alignment, summary.alignment_score) ?? 0,
+          detail: pickNumber(summary.detail, summary.detail_score) ?? 0,
+          asr:
+            pickNumber(
+              summary.asr,
+              summary.attack_success_rate,
+              summary.attackSuccessRate,
+              summary.success_rate,
+            ) ?? 0,
+          total_cases: pickNumber(summary.total_cases, summary.totalCases, summary.total) ?? 0,
+          defense_delta: pickText(summary.defense_delta, summary.defenseDelta, ''),
+          blocked_cases:
+            pickNumber(summary.blocked_cases, summary.blockedCount, summary.blocked) ?? 0,
+          successful_cases:
+            pickNumber(
+              summary.successful_cases,
+              summary.success_count,
+              summary.passed_cases,
+              summary.successful,
+            ) ?? 0,
+          run_id: pickText(summary.run_id, summary.runId, ''),
+          persisted_traces:
+            pickNumber(summary.persisted_traces, summary.persistedTraces, summary.trace_count) ?? 0,
+        }
+        hasResult.value = true
+        return
+      }
+
+      if (eventType === 'error') {
+        addLog('ERROR', pickText(event?.error, event?.message, 'Unknown benchmark error'))
+        return
+      }
+
+      if (eventType === 'done') {
+        streamDone = true
+      }
+    }
 
     while (true) {
       const { value, done } = await reader.read()
@@ -381,94 +534,18 @@ async function runBenchmark() {
       buffer = lines.pop() || ''
 
       for (const raw of lines) {
-        const line = raw.trim()
-        if (!line) continue
-
-        let event: any
-        try {
-          event = JSON.parse(line)
-        } catch {
-          continue
-        }
-
-        const stageNum = Number(event.stage)
-
-        if (event.type === 'stage' && Number.isFinite(stageNum)) {
-          if (event.status === 'start') {
-            currentStage.value = Math.max(currentStage.value, stageNum)
-            if (stageNum === 2 && event.total) {
-              stage2Total.value = Number(event.total) || 0
-            }
-          }
-          if (event.status === 'done' && stageNum === 2) {
-            stage2Completed.value = Math.max(stage2Completed.value, stage2Total.value)
-          }
-          if (event.status === 'done' && stageNum === 3) {
-            currentStage.value = 4
-          }
-          continue
-        }
-
-        if (event.type === 'log' && event.log) {
-          logs.value.push({
-            time: event.log.time || new Date().toLocaleTimeString(),
-            level: event.log.level || 'INFO',
-            msg: event.log.msg || ''
-          })
-          continue
-        }
-
-        if (event.type === 'progress' && stageNum === 2 && event.index && event.total) {
-          const index = Number(event.index) || 0
-          const total = Number(event.total) || 0
-
-          stage2Total.value = total || stage2Total.value
-          stage2Completed.value = Math.max(stage2Completed.value, index)
-
-          upsertStage2Case({
-            index,
-            total,
-            test_case_id: String(event.test_case_id || `case-${String(index).padStart(4, '0')}`),
-            main_category: String(event.main_category || ''),
-            attack_method: String(event.attack_method || ''),
-            prompt_preview: String(event.prompt_preview || ''),
-            blocked: Boolean(event.blocked),
-            blocked_reason: String(event.blocked_reason || ''),
-            model_error: String(event.model_error || '')
-          })
-
-          if (index % 5 === 0 || index === total) {
-            addLog('DEBUG', `Progress: ${index}/${total} (${event.test_case_id || 'case'})`)
-          }
-          continue
-        }
-
-        if (event.type === 'result' && event.result) {
-          result.value = {
-            harmfulness: event.result.harmfulness ?? 0,
-            alignment: event.result.alignment ?? 0,
-            detail: event.result.detail ?? 0,
-            asr: event.result.asr ?? 0,
-            total_cases: event.result.total_cases ?? 0,
-            defense_delta: event.result.defense_delta ?? '',
-            blocked_cases: event.result.blocked_cases ?? 0,
-            successful_cases: event.result.successful_cases ?? 0,
-            run_id: event.result.run_id ?? '',
-            persisted_traces: event.result.persisted_traces ?? 0
-          }
-          hasResult.value = true
-          continue
-        }
-
-        if (event.type === 'error') {
-          addLog('ERROR', event.error || 'Unknown benchmark error')
-          continue
-        }
-
-        if (event.type === 'done') {
-          break
-        }
+        const event = parseBenchmarkEventLine(raw)
+        if (!event) continue
+        handleEvent(event)
+        if (streamDone) break
       }
+
+      if (streamDone) break
+    }
+
+    const trailingEvent = parseBenchmarkEventLine(buffer)
+    if (trailingEvent) {
+      handleEvent(trailingEvent)
     }
 
     if (hasResult.value) {

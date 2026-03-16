@@ -832,6 +832,59 @@ function scrollToBottom() { nextTick(() => { if (messagesEl.value) messagesEl.va
 function useSample(s: typeof sampleAttacks[0]) { inputMessage.value = s.content; inputEl.value?.focus() }
 function injectTemplate(t: typeof injectTemplates[0]) { modifiedMessage.value += t.template }
 
+function toStringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)) : []
+}
+
+function normalizeAnalysisPayload(payload: unknown): ChatAnalysis {
+  const data = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}
+  return {
+    request_id: String(data.request_id ?? ''),
+    verdict: String(data.verdict ?? 'ALLOW'),
+    threat_level: String(data.threat_level ?? 'NONE'),
+    l1_patterns: toStringList(data.l1_patterns ?? data.l1_matched_patterns),
+    l2_is_injection: Boolean(data.l2_is_injection),
+    l2_confidence: Number(data.l2_confidence ?? 0),
+    l2_reasoning: String(data.l2_reasoning ?? ''),
+    blocked_reason: String(data.blocked_reason ?? ''),
+  }
+}
+
+function normalizeToolCallRecord(payload: unknown): ToolCallRecord {
+  const data = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}
+  const blocked = Boolean(data.blocked ?? data.l1_blocked ?? data.l2_blocked)
+  return {
+    tool_name: String(data.tool_name ?? data.name ?? 'unknown_tool'),
+    arguments:
+      data.arguments && typeof data.arguments === 'object'
+        ? (data.arguments as Record<string, unknown>)
+        : {},
+    iteration: Number(data.iteration ?? 0),
+    l1_patterns: toStringList(data.l1_patterns ?? data.l1_matched_patterns),
+    l1_blocked: Boolean(data.l1_blocked),
+    blocked,
+    result_preview: String(data.result_preview ?? data.result ?? ''),
+    l2_confidence: data.l2_confidence === undefined ? undefined : Number(data.l2_confidence),
+    l2_reasoning: data.l2_reasoning === undefined ? undefined : String(data.l2_reasoning),
+    l2_blocked: data.l2_blocked === undefined ? undefined : Boolean(data.l2_blocked),
+  }
+}
+
+function parseStreamEventLine(rawLine: string): any | null {
+  const line = rawLine.trim()
+  if (!line) return null
+
+  const payload = line.startsWith('data:') ? line.slice(5).trim() : line
+  if (!payload) return null
+  if (payload === '[DONE]') return { type: 'done' }
+
+  try {
+    return JSON.parse(payload)
+  } catch {
+    return null
+  }
+}
+
 function handleSend() {
   const text = inputMessage.value.trim()
   if (!text || sending.value) return
@@ -906,13 +959,90 @@ async function sendMessage(content: string, modifiedContent: string | null, anal
       signal: abortController.signal,
     })
 
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '')
+      throw new Error(`Chat API error ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`)
+    }
+
+    if (!res.body) {
+      throw new Error('Empty streaming response body')
+    }
+
     // Stream NDJSON events from backend
-    const reader = res.body!.getReader()
+    const reader = res.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
     let assistantAdded = false
     const assistantMsg: ChatMessage = {
       id: generateId(), role: 'assistant', content: '', timestamp: Date.now(),
+    }
+
+    const handleStreamEvent = (event: any) => {
+      switch (event.type) {
+        case 'analysis': {
+          const analysis = normalizeAnalysisPayload(event.analysis)
+          const blocked = Boolean(event.blocked) || analysis.verdict === 'BLOCK'
+
+          userMsg.analysis = analysis
+          userMsg.verdict = analysis.verdict
+          userMsg.blocked = blocked
+
+          if (blocked) {
+            chatMessages.value.push({
+              id: generateId(), role: 'system',
+              content: `Blocked: ${analysis.blocked_reason || 'Security policy violation'}`,
+              timestamp: Date.now(), verdict: 'BLOCK',
+            })
+          }
+          scrollToBottom()
+          break
+        }
+
+        case 'tool_call': {
+          const tc = normalizeToolCallRecord(event.tool_call)
+          const patternsText = tc.l1_patterns.length > 0 ? tc.l1_patterns.join(', ') : 'none'
+          const tcContent = tc.blocked
+            ? `🛡️ **BLOCKED** \`${tc.tool_name}\`(${JSON.stringify(tc.arguments)})\nL1 patterns: ${patternsText}${tc.l2_blocked ? `\nL2: ${((tc.l2_confidence || 0) * 100).toFixed(0)}% — ${tc.l2_reasoning || ''}` : ''}`
+            : `🔧 \`${tc.tool_name}\`(${JSON.stringify(tc.arguments)})\n→ ${tc.result_preview}`
+          chatMessages.value.push({
+            id: generateId(), role: 'tool', content: tcContent, timestamp: Date.now(),
+            verdict: tc.blocked ? 'BLOCK' : 'ALLOW', blocked: tc.blocked,
+            toolCalls: [tc],
+          })
+          scrollToBottom()
+          break
+        }
+
+        case 'content': {
+          const contentText = typeof event.content === 'string' ? event.content : ''
+          const deltaText = typeof event.delta === 'string' ? event.delta : ''
+
+          if (!assistantAdded) {
+            assistantMsg.content = contentText || deltaText
+            chatMessages.value.push(assistantMsg)
+            assistantAdded = true
+          } else if (deltaText) {
+            assistantMsg.content += deltaText
+          } else if (contentText) {
+            assistantMsg.content = contentText
+          }
+
+          scrollToBottom()
+          break
+        }
+
+        case 'error':
+          chatMessages.value.push({
+            id: generateId(), role: 'system',
+            content: `Error: ${typeof event.error === 'string' ? event.error : 'Unknown stream error'}`,
+            timestamp: Date.now(),
+          })
+          scrollToBottom()
+          break
+
+        case 'done':
+          break
+      }
     }
 
     while (true) {
@@ -926,61 +1056,15 @@ async function sendMessage(content: string, modifiedContent: string | null, anal
         buffer = buffer.slice(newlineIdx + 1)
         if (!line) continue
 
-        let event: any
-        try { event = JSON.parse(line) } catch { continue }
-
-        switch (event.type) {
-          case 'analysis':
-            userMsg.analysis = event.analysis
-            userMsg.verdict = event.analysis?.verdict
-            userMsg.blocked = event.blocked
-            if (event.blocked) {
-              chatMessages.value.push({
-                id: generateId(), role: 'system',
-                content: `Blocked: ${event.analysis?.blocked_reason || 'Security policy violation'}`,
-                timestamp: Date.now(), verdict: 'BLOCK',
-              })
-            }
-            scrollToBottom()
-            break
-
-          case 'tool_call': {
-            const tc = event.tool_call as ToolCallRecord
-            const tcContent = tc.blocked
-              ? `🛡️ **BLOCKED** \`${tc.tool_name}\`(${JSON.stringify(tc.arguments)})\nL1 patterns: ${tc.l1_patterns.join(', ')}${tc.l2_blocked ? `\nL2: ${((tc.l2_confidence || 0) * 100).toFixed(0)}% — ${tc.l2_reasoning || ''}` : ''}`
-              : `🔧 \`${tc.tool_name}\`(${JSON.stringify(tc.arguments)})\n→ ${tc.result_preview}`
-            chatMessages.value.push({
-              id: generateId(), role: 'tool', content: tcContent, timestamp: Date.now(),
-              verdict: tc.blocked ? 'BLOCK' : 'ALLOW', blocked: tc.blocked,
-              toolCalls: [tc],
-            })
-            scrollToBottom()
-            break
-          }
-
-          case 'content':
-            if (!assistantAdded) {
-              assistantMsg.content = event.content
-              chatMessages.value.push(assistantMsg)
-              assistantAdded = true
-            } else {
-              assistantMsg.content = event.content
-            }
-            scrollToBottom()
-            break
-
-          case 'error':
-            chatMessages.value.push({
-              id: generateId(), role: 'system',
-              content: `Error: ${event.error}`, timestamp: Date.now(),
-            })
-            scrollToBottom()
-            break
-
-          case 'done':
-            break
-        }
+        const event = parseStreamEventLine(line)
+        if (!event) continue
+        handleStreamEvent(event)
       }
+    }
+
+    const trailingEvent = parseStreamEventLine(buffer)
+    if (trailingEvent) {
+      handleStreamEvent(trailingEvent)
     }
 
     if (analyzeOnlyFlag && !userMsg.blocked) {
