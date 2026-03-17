@@ -118,7 +118,7 @@ FeishuAdapter.send_message()
 
 ```bash
 cd /Users/yingwu/main/projects/agent-firewall
-./extensions/agent-firewall/scripts/start-all.sh
+./scripts/start-all.sh
 ```
 
 这会自动启动：

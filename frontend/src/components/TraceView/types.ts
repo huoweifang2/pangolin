@@ -27,7 +27,7 @@ export interface ToolCall {
   type: "function";
   function: {
     name: string;
-    arguments: any;
+    arguments: unknown;
   };
 }
 
@@ -35,7 +35,7 @@ export interface Trace {
   id: string;
   session_id?: string;
   messages: TraceMessage[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   created_at?: string;
   analysis?: TraceAnalysis;
 }

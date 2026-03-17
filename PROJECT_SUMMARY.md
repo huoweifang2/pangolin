@@ -56,7 +56,7 @@
 ## 四、 核心代码目录结构
 
 ```text
-extensions/agent-firewall/
+./
 ├── src/                          # FastAPI 核心业务逻辑
 │   ├── main.py                   # 服务入口、路由与生命周期管理
 │   ├── config.py                 # 环境变量驱动的防护规则与配置模块

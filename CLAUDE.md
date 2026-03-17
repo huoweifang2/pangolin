@@ -22,7 +22,7 @@ Zero-Trust Security Gateway for AI Agent Communications — a MITM proxy that in
 ## Project Structure
 
 ```
-extensions/agent-firewall/
+./
 ├── src/                          # Python backend
 │   ├── main.py                   # FastAPI app entry (routes, lifespan, CORS)
 │   ├── config.py                 # FirewallConfig (12-factor env vars)
@@ -73,12 +73,12 @@ extensions/agent-firewall/
 
 ```bash
 # Backend development (hot-reload on port 9090)
-cd extensions/agent-firewall
+cd .
 source .venv/bin/activate
 make dev
 
 # Frontend development (hot-reload on port 9091)
-cd extensions/agent-firewall/frontend
+cd frontend
 npx vite --port 9091 --host
 
 # Run tests

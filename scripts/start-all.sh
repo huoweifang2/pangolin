@@ -1,12 +1,13 @@
 #!/bin/bash
 # Agent Firewall — Start All Services (Backend + Frontend + Gateway)
-# Usage: cd extensions/agent-firewall && ./scripts/start-all.sh
+# Usage: ./scripts/start-all.sh
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-ROOT_DIR="$(dirname "$(dirname "$PROJECT_DIR")")"
+# After flattening, the project root is the parent of scripts/.
+ROOT_DIR="$PROJECT_DIR"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 VENV_DIR="$PROJECT_DIR/.venv"
 LOG_DIR="$PROJECT_DIR/logs"
