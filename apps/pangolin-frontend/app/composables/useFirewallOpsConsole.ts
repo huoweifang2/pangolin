@@ -731,6 +731,50 @@ export function useFirewallOpsConsole() {
     unifiedTrafficAlertsOnly.value = false
   }
 
+  function scrollToSection(sectionId: string): void {
+    if (!import.meta.client) {
+      return
+    }
+
+    requestAnimationFrame(() => {
+      document.getElementById(sectionId)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
+  }
+
+  function focusEscalationQueueByRequest(requestId: string | null, sessionId?: string | null): void {
+    clearOperationFeedback()
+
+    const query = cleanText(requestId ?? undefined) ?? cleanText(sessionId ?? undefined)
+    if (!query) {
+      operationError.value = 'Cannot locate queue item without request_id or session_id'
+      return
+    }
+
+    dashboardQuery.value = query
+    dashboardViewMode.value = 'escalate'
+    dashboardActionableOnly.value = false
+    scrollToSection('mcp-escalation-queue-card')
+    operationMessage.value = `Focused escalation queue on ${query}`
+  }
+
+  function focusActionHistoryByRequestId(requestId: string | null): void {
+    clearOperationFeedback()
+
+    const query = cleanText(requestId ?? undefined)
+    if (!query) {
+      operationError.value = 'Cannot locate action history without request_id'
+      return
+    }
+
+    actionHistoryQuery.value = query
+    actionHistoryFilterType.value = 'all'
+    scrollToSection('mcp-action-history-card')
+    operationMessage.value = `Focused action history on ${query}`
+  }
+
   function focusUnifiedTrafficByRequestId(requestId: string, alertsOnly = false): void {
     const normalized = requestId.trim()
     if (!normalized) {
@@ -2044,6 +2088,8 @@ export function useFirewallOpsConsole() {
     unifiedTrafficKindLabel,
     unifiedTrafficKindColor,
     applyUnifiedTrafficEntryToDashboard,
+    focusEscalationQueueByRequest,
+    focusActionHistoryByRequestId,
     dashboardVerdict,
     dashboardThreat,
     dashboardMethod,

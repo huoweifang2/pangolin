@@ -84,7 +84,7 @@ function escalationSlaChipColor(item: EscalationItem): string {
 </script>
 
 <template>
-  <v-card class="mb-4">
+  <v-card id="mcp-escalation-queue-card" class="mb-4">
     <v-card-title class="d-flex align-center flex-wrap ga-2">
       <span>Pending Escalation Queue</span>
       <v-spacer />

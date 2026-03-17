@@ -21,6 +21,8 @@ const {
   unifiedTrafficKindLabel,
   unifiedTrafficKindColor,
   applyUnifiedTrafficEntryToDashboard,
+  focusEscalationQueueByRequest,
+  focusActionHistoryByRequestId,
   clearUnifiedTrafficFilters,
 } = useInjectedFirewallOpsConsole()
 
@@ -174,6 +176,23 @@ function applySelectedEntryToTriage(): void {
               >
                 Triage
               </v-btn>
+              <v-btn
+                size="x-small"
+                variant="tonal"
+                color="deep-orange"
+                @click="focusEscalationQueueByRequest(entry.requestId, entry.sessionId)"
+              >
+                Queue
+              </v-btn>
+              <v-btn
+                size="x-small"
+                variant="tonal"
+                color="teal"
+                :disabled="!entry.requestId"
+                @click="focusActionHistoryByRequestId(entry.requestId)"
+              >
+                History
+              </v-btn>
             </div>
           </td>
         </tr>
@@ -241,6 +260,22 @@ function applySelectedEntryToTriage(): void {
         <v-divider />
 
         <v-card-actions class="pa-4 d-flex ga-2 justify-end">
+          <v-btn
+            variant="tonal"
+            color="deep-orange"
+            :disabled="!selectedUnifiedTrafficEntry"
+            @click="focusEscalationQueueByRequest(selectedUnifiedTrafficEntry?.requestId ?? null, selectedUnifiedTrafficEntry?.sessionId)"
+          >
+            Open Queue Context
+          </v-btn>
+          <v-btn
+            variant="tonal"
+            color="teal"
+            :disabled="!selectedUnifiedTrafficEntry?.requestId"
+            @click="focusActionHistoryByRequestId(selectedUnifiedTrafficEntry?.requestId ?? null)"
+          >
+            Open History Context
+          </v-btn>
           <v-btn
             variant="tonal"
             color="secondary"

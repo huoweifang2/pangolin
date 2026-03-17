@@ -21,7 +21,7 @@ const {
 </script>
 
 <template>
-  <v-card class="mb-4">
+  <v-card id="mcp-action-history-card" class="mb-4">
     <v-card-title class="d-flex align-center">
       <span>Action History</span>
       <v-spacer />
