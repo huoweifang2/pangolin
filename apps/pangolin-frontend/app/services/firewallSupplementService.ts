@@ -3,10 +3,24 @@ import type {
   FirewallAuditResponse,
   FirewallCustomConfigResponse,
   FirewallDatasetListResponse,
+  FirewallMcpServerInput,
+  FirewallSkillInput,
   FirewallTraceListResponse,
 } from '../types/firewallSupplement'
 
 const baseURL = import.meta.env.NUXT_PUBLIC_FIREWALL_API_BASE ?? 'http://localhost:9090'
+
+function toWsBase(httpBaseURL: string): string {
+  if (httpBaseURL.startsWith('https://')) {
+    return `wss://${httpBaseURL.slice('https://'.length)}`
+  }
+  if (httpBaseURL.startsWith('http://')) {
+    return `ws://${httpBaseURL.slice('http://'.length)}`
+  }
+  return httpBaseURL
+}
+
+const dashboardWsURL = `${toWsBase(baseURL)}/ws/dashboard`
 
 const firewallApi = axios.create({
   baseURL,
@@ -29,6 +43,7 @@ function toErrorMessage(error: unknown): string {
 
 export const firewallSupplementService = {
   baseURL,
+  dashboardWsURL,
   getAudit(limit = 25): Promise<FirewallAuditResponse> {
     return firewallApi
       .get<FirewallAuditResponse>('/api/audit', { params: { limit, offset: 0 } })
@@ -48,6 +63,26 @@ export const firewallSupplementService = {
     return firewallApi
       .get<FirewallCustomConfigResponse>('/api/custom-config')
       .then((r) => r.data)
+  },
+  upsertSkill(skill: FirewallSkillInput): Promise<void> {
+    return firewallApi
+      .post('/api/custom-config/skills', skill)
+      .then(() => undefined)
+  },
+  deleteSkill(skillId: string): Promise<void> {
+    return firewallApi
+      .delete(`/api/custom-config/skills/${encodeURIComponent(skillId)}`)
+      .then(() => undefined)
+  },
+  upsertMcpServer(server: FirewallMcpServerInput): Promise<void> {
+    return firewallApi
+      .post('/api/custom-config/mcp-servers', server)
+      .then(() => undefined)
+  },
+  deleteMcpServer(serverId: string): Promise<void> {
+    return firewallApi
+      .delete(`/api/custom-config/mcp-servers/${encodeURIComponent(serverId)}`)
+      .then(() => undefined)
   },
 }
 

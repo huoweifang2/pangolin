@@ -53,7 +53,20 @@ export interface FirewallSkill {
   description?: string
 }
 
+export interface FirewallSkillInput {
+  id: string
+  name?: string
+  description?: string
+}
+
 export interface FirewallMcpServer {
+  id: string
+  name?: string
+  transport?: string
+  url?: string
+}
+
+export interface FirewallMcpServerInput {
   id: string
   name?: string
   transport?: string
@@ -63,4 +76,19 @@ export interface FirewallMcpServer {
 export interface FirewallCustomConfigResponse {
   mcp_servers: FirewallMcpServer[]
   skills: FirewallSkill[]
+}
+
+export interface FirewallDashboardEvent {
+  event_type?: string
+  timestamp?: number
+  session_id?: string
+  method?: string
+  payload_preview?: string
+  verdict?: string
+  is_alert?: boolean
+  analysis?: {
+    verdict?: string
+    threat_level?: string
+    score?: number
+  }
 }
