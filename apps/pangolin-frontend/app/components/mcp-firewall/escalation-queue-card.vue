@@ -2,6 +2,7 @@
 import { useInjectedFirewallOpsConsole } from '~/composables/useFirewallOpsConsole'
 
 const {
+  dashboardThreatFilter,
   dashboardQuery,
   pendingEscalations,
   visiblePendingEscalations,
@@ -23,7 +24,7 @@ const {
         {{ totalPendingEscalations }} pending
       </v-chip>
       <v-chip
-        v-if="dashboardQuery.trim().length > 0"
+        v-if="dashboardQuery.trim().length > 0 || dashboardThreatFilter !== 'all'"
         color="primary"
         size="small"
         variant="tonal"
@@ -90,7 +91,7 @@ const {
     >
       {{ pendingEscalations.length === 0
         ? 'No pending escalations.'
-        : 'No pending escalations match the active filter.' }}
+        : 'No pending escalations match the active filters.' }}
     </v-alert>
   </v-card>
 </template>

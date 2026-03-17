@@ -9,9 +9,13 @@ const {
   totalPendingEscalations,
   dashboardReconnectDelaySeconds,
   dashboardReconnectAttempts,
+  dashboardThreatFilter,
+  dashboardActionableOnly,
   dashboardQuery,
+  dashboardThreatFilterOptions,
   reconnectDashboardStream,
   toggleStreamPaused,
+  resetDashboardFilters,
   loading,
   refresh,
 } = useInjectedFirewallOpsConsole()
@@ -90,6 +94,33 @@ const {
       clearable
       prepend-inner-icon="mdi-magnify"
     />
+
+    <v-select
+      v-model="dashboardThreatFilter"
+      class="mcp-threat-field"
+      :items="dashboardThreatFilterOptions"
+      label="Threat"
+      variant="outlined"
+      density="compact"
+      hide-details
+    />
+
+    <v-switch
+      v-model="dashboardActionableOnly"
+      color="primary"
+      label="Actionable only"
+      density="compact"
+      hide-details
+      class="mcp-actionable-switch"
+    />
+
+    <v-btn
+      variant="text"
+      prepend-icon="mdi-filter-remove-outline"
+      @click="resetDashboardFilters"
+    >
+      Reset Filters
+    </v-btn>
   </div>
 </template>
 
@@ -97,5 +128,14 @@ const {
 .mcp-query-field {
   min-width: 260px;
   max-width: 360px;
+}
+
+.mcp-threat-field {
+  min-width: 200px;
+  max-width: 260px;
+}
+
+.mcp-actionable-switch {
+  min-width: 160px;
 }
 </style>
