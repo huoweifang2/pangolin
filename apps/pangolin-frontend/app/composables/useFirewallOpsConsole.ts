@@ -1,4 +1,5 @@
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import type { InjectionKey } from 'vue'
 import { firewallSupplementService, toErrorMessage } from '../services/firewallSupplementService'
 import type {
   FirewallAuditEntry,
@@ -11,16 +12,16 @@ import type {
   FirewallTrace,
 } from '../types/firewallSupplement'
 
-interface EscalationItem {
+export interface EscalationItem {
   requestId: string
   event: FirewallDashboardEvent
   verdict: string
 }
 
-type DashboardViewMode = 'all' | 'alert' | 'escalate'
-type HumanActionType = 'allow' | 'block' | 'ack'
+export type DashboardViewMode = 'all' | 'alert' | 'escalate'
+export type HumanActionType = 'allow' | 'block' | 'ack'
 
-interface ActionHistoryItem {
+export interface ActionHistoryItem {
   requestId: string
   action: HumanActionType
   timestamp: number
@@ -611,4 +612,20 @@ export function useFirewallOpsConsole() {
     savingServer,
     deletingServerId,
   }
+}
+
+export type FirewallOpsConsoleState = ReturnType<typeof useFirewallOpsConsole>
+
+const firewallOpsConsoleKey: InjectionKey<FirewallOpsConsoleState> = Symbol('firewall-ops-console')
+
+export function provideFirewallOpsConsole(state: FirewallOpsConsoleState): void {
+  provide(firewallOpsConsoleKey, state)
+}
+
+export function useInjectedFirewallOpsConsole(): FirewallOpsConsoleState {
+  const state = inject(firewallOpsConsoleKey)
+  if (!state) {
+    throw new Error('Firewall ops console context is not available')
+  }
+  return state
 }
