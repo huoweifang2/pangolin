@@ -28,14 +28,28 @@ fail() {
   fail_count=$((fail_count + 1))
 }
 
-script_defined() {
+script_value() {
   local script_name="$1"
-  node - "$script_name" <<'NODE' >/dev/null 2>&1
+  node - "$script_name" <<'NODE'
 const scriptName = process.argv[2];
 const pkg = require("./package.json");
-const has = !!(pkg.scripts && Object.prototype.hasOwnProperty.call(pkg.scripts, scriptName));
-process.exit(has ? 0 : 1);
+const value = pkg && pkg.scripts ? pkg.scripts[scriptName] : undefined;
+if (typeof value === "string") {
+  process.stdout.write(value);
+}
 NODE
+}
+
+script_defined() {
+  local value
+  value="$(script_value "$1")"
+  [[ -n "$value" ]]
+}
+
+script_is_core_only_disabled() {
+  local value
+  value="$(script_value "$1")"
+  [[ "$value" == *"core-only-disabled.sh"* ]]
 }
 
 check_required() {
@@ -64,6 +78,11 @@ check_script_prereq() {
   local note="$3"
 
   if ! script_defined "$script_name"; then
+    return 0
+  fi
+
+  if script_is_core_only_disabled "$script_name"; then
+    pass "script $script_name is explicitly disabled in core-only mode"
     return 0
   fi
 

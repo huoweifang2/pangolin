@@ -32,7 +32,12 @@
    - `lint:all` 只执行 `lint`
    - `test:all` 不再包含 docker/live 链路
    - `prepack` 不再依赖 `ui:build`
-3. 如果未来要恢复 legacy 面，再走路径 B 并逐项恢复目录。
+3. 不在范围内的命令已显式护栏化：
+   - `android:*`、`ios:gen`、`format:swift`、`lint:swift`
+   - `ui:*`、`test:ui`
+   - `test:docker:*`
+   - 这些命令会给出 Core-Only 提示并返回非零退出码。
+4. 如果未来要恢复 legacy 面，再走路径 B 并逐项恢复目录。
 
 ## 先跑诊断
 
