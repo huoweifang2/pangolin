@@ -1,0 +1,74 @@
+<script setup lang="ts">
+import { useInjectedFirewallOpsConsole } from '~/composables/useFirewallOpsConsole'
+
+const {
+  totalAudit,
+  totalTraces,
+  totalDatasets,
+  totalSkills,
+  totalServers,
+  dashboardEventCount,
+  totalPendingEscalations,
+} = useInjectedFirewallOpsConsole()
+</script>
+
+<template>
+  <v-row class="mb-1">
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" color="primary">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">Traffic Entries</div>
+          <div class="text-h4 font-weight-bold">{{ totalAudit }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" color="secondary">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">MCP Traces</div>
+          <div class="text-h4 font-weight-bold">{{ totalTraces }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" color="info">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">Datasets</div>
+          <div class="text-h4 font-weight-bold">{{ totalDatasets }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" color="success">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">Skills</div>
+          <div class="text-h4 font-weight-bold">{{ totalSkills }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" color="warning">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">MCP Servers</div>
+          <div class="text-h4 font-weight-bold">{{ totalServers }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" color="deep-purple">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">Live Events</div>
+          <div class="text-h4 font-weight-bold">{{ dashboardEventCount }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" color="error">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">Escalation Queue</div>
+          <div class="text-h4 font-weight-bold">{{ totalPendingEscalations }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+  </v-row>
+</template>
