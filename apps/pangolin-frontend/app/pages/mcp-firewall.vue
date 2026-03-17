@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { firewallSupplementService, toErrorMessage } from '../services/firewallSupplementService'
 import type {
   FirewallAuditEntry,
@@ -43,10 +43,24 @@ interface EscalationItem {
   verdict: string
 }
 
+type DashboardViewMode = 'all' | 'alert' | 'escalate'
+type HumanActionType = 'allow' | 'block' | 'ack'
+
+interface ActionHistoryItem {
+  requestId: string
+  action: HumanActionType
+  timestamp: number
+}
+
+const HANDLED_REQUEST_STORAGE_KEY = 'pangolin.firewall.handled-requests.v1'
+
 const savingSkill = ref(false)
 const deletingSkillId = ref<string | null>(null)
 const savingServer = ref(false)
 const deletingServerId = ref<string | null>(null)
+const streamPaused = ref(false)
+const dashboardViewMode = ref<DashboardViewMode>('all')
+const actionHistory = ref<ActionHistoryItem[]>([])
 
 const newSkill = ref<FirewallSkillInput>({ id: '', name: '', description: '' })
 const newServer = ref<FirewallMcpServerInput>({ id: '', name: '', transport: 'sse', url: '' })
@@ -58,7 +72,16 @@ const totalDatasets = computed(() => datasets.value.length)
 const totalSkills = computed(() => skills.value.length)
 const totalServers = computed(() => mcpServers.value.length)
 const dashboardEventCount = computed(() => dashboardEvents.value.length)
-const recentDashboardEvents = computed(() => dashboardEvents.value.slice(0, 12))
+const filteredDashboardEvents = computed(() => {
+  if (dashboardViewMode.value === 'alert') {
+    return dashboardEvents.value.filter((event) => event.is_alert)
+  }
+  if (dashboardViewMode.value === 'escalate') {
+    return dashboardEvents.value.filter((event) => dashboardVerdict(event) === 'ESCALATE')
+  }
+  return dashboardEvents.value
+})
+const recentDashboardEvents = computed(() => filteredDashboardEvents.value.slice(0, 12))
 const escalationItems = computed<EscalationItem[]>(() => {
   const latestByRequest = new Map<string, EscalationItem>()
   for (const event of dashboardEvents.value) {
@@ -74,12 +97,20 @@ const escalationItems = computed<EscalationItem[]>(() => {
   }
   return Array.from(latestByRequest.values())
 })
-const pendingEscalations = computed(() =>
-  escalationItems.value.filter(
+const pendingEscalations = computed(() => {
+  const filtered = escalationItems.value.filter(
     (item) => item.verdict === 'ESCALATE' && !handledRequestIds.value.includes(item.requestId),
-  ),
-)
+  )
+  return filtered.sort((left, right) => {
+    const threatDelta = threatRank(dashboardThreat(right.event)) - threatRank(dashboardThreat(left.event))
+    if (threatDelta !== 0) {
+      return threatDelta
+    }
+    return dashboardEventTimestamp(right.event) - dashboardEventTimestamp(left.event)
+  })
+})
 const totalPendingEscalations = computed(() => pendingEscalations.value.length)
+const recentActionHistory = computed(() => actionHistory.value.slice(0, 12))
 
 const canAddSkill = computed(() => newSkill.value.id.trim().length > 0)
 const canAddServer = computed(() => newServer.value.id.trim().length > 0)
@@ -163,6 +194,86 @@ function clearOperationFeedback(): void {
   operationMessage.value = null
 }
 
+function dashboardEventTimestamp(event: FirewallDashboardEvent): number {
+  const raw = event.timestamp
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return raw
+  }
+  if (typeof raw === 'string') {
+    const parsed = Date.parse(raw)
+    if (!Number.isNaN(parsed)) {
+      return parsed / 1000
+    }
+  }
+  return 0
+}
+
+function threatRank(level: string): number {
+  const rank: Record<string, number> = {
+    CRITICAL: 4,
+    HIGH: 3,
+    MEDIUM: 2,
+    LOW: 1,
+    NONE: 0,
+  }
+  return rank[level] ?? 0
+}
+
+function actionLabel(action: HumanActionType): string {
+  if (action === 'allow') return 'ALLOW'
+  if (action === 'block') return 'BLOCK'
+  return 'ACK'
+}
+
+function actionColor(action: HumanActionType): string {
+  if (action === 'allow') return 'success'
+  if (action === 'block') return 'error'
+  return 'grey'
+}
+
+function pushActionHistory(action: HumanActionType, requestId: string): void {
+  actionHistory.value = [{ action, requestId, timestamp: Date.now() / 1000 }, ...actionHistory.value].slice(0, 100)
+}
+
+function loadHandledRequestIdsFromStorage(): void {
+  if (!import.meta.client) {
+    return
+  }
+
+  try {
+    const raw = localStorage.getItem(HANDLED_REQUEST_STORAGE_KEY)
+    if (!raw) {
+      return
+    }
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      handledRequestIds.value = parsed.filter((value): value is string => typeof value === 'string').slice(0, 200)
+    }
+  } catch {
+    // Ignore local storage parsing failures.
+  }
+}
+
+function persistHandledRequestIdsToStorage(): void {
+  if (!import.meta.client) {
+    return
+  }
+
+  try {
+    localStorage.setItem(HANDLED_REQUEST_STORAGE_KEY, JSON.stringify(handledRequestIds.value.slice(0, 200)))
+  } catch {
+    // Ignore storage quota errors.
+  }
+}
+
+function toggleStreamPaused(): void {
+  streamPaused.value = !streamPaused.value
+}
+
+function setDashboardViewMode(mode: DashboardViewMode): void {
+  dashboardViewMode.value = mode
+}
+
 function clearDashboardReconnectTimer(): void {
   if (dashboardReconnectTimer) {
     clearTimeout(dashboardReconnectTimer)
@@ -194,6 +305,9 @@ function cleanText(value?: string): string | undefined {
 }
 
 function pushDashboardEvent(event: FirewallDashboardEvent): void {
+  if (streamPaused.value) {
+    return
+  }
   dashboardEvents.value = [event, ...dashboardEvents.value].slice(0, 50)
 }
 
@@ -262,6 +376,7 @@ function markEscalationHandled(requestId: string): void {
 function clearEscalationQueue(): void {
   const queueIds = pendingEscalations.value.map((item) => item.requestId)
   handledRequestIds.value = Array.from(new Set([...queueIds, ...handledRequestIds.value])).slice(0, 200)
+  operationMessage.value = `Cleared ${queueIds.length} pending escalation(s)`
 }
 
 function escalationSubtitle(item: EscalationItem): string {
@@ -270,6 +385,12 @@ function escalationSubtitle(item: EscalationItem): string {
 
 function resolveEscalation(item: EscalationItem, action: 'allow' | 'block'): void {
   void sendDashboardAction(action, item.requestId)
+}
+
+function acknowledgeEscalation(item: EscalationItem): void {
+  markEscalationHandled(item.requestId)
+  pushActionHistory('ack', item.requestId)
+  operationMessage.value = `Acknowledged ${item.requestId}`
 }
 
 async function sendDashboardAction(action: 'allow' | 'block', requestId: string): Promise<void> {
@@ -284,6 +405,7 @@ async function sendDashboardAction(action: 'allow' | 'block', requestId: string)
   try {
     dashboardSocket.send(JSON.stringify({ action, request_id: requestId }))
     markEscalationHandled(requestId)
+    pushActionHistory(action, requestId)
     operationMessage.value = `Sent ${action.toUpperCase()} for ${requestId}`
   } catch {
     operationError.value = 'Failed to send dashboard action'
@@ -406,8 +528,13 @@ async function removeMcpServer(serverId: string): Promise<void> {
 }
 
 onMounted(() => {
+  loadHandledRequestIdsFromStorage()
   void refresh()
   openDashboardStream()
+})
+
+watch(handledRequestIds, () => {
+  persistHandledRequestIdsToStorage()
 })
 
 onBeforeUnmount(() => {
@@ -438,6 +565,10 @@ onBeforeUnmount(() => {
         {{ dashboardConnected ? 'Dashboard Connected' : 'Dashboard Disconnected' }}
       </v-chip>
 
+      <v-chip :color="streamPaused ? 'amber' : 'green'" variant="tonal" size="small">
+        Capture {{ streamPaused ? 'Paused' : 'Active' }}
+      </v-chip>
+
       <v-chip :color="totalPendingEscalations > 0 ? 'error' : 'green'" variant="tonal" size="small">
         Pending Escalations: {{ totalPendingEscalations }}
       </v-chip>
@@ -457,6 +588,14 @@ onBeforeUnmount(() => {
         @click="reconnectDashboardStream"
       >
         Reconnect Stream
+      </v-btn>
+
+      <v-btn
+        variant="text"
+        :prepend-icon="streamPaused ? 'mdi-play-circle-outline' : 'mdi-pause-circle-outline'"
+        @click="toggleStreamPaused"
+      >
+        {{ streamPaused ? 'Resume Stream' : 'Pause Stream' }}
       </v-btn>
 
       <v-btn
@@ -572,6 +711,9 @@ onBeforeUnmount(() => {
       <v-card-title class="d-flex align-center">
         <span>Pending Escalation Queue</span>
         <v-spacer />
+        <v-chip color="error" size="small" variant="tonal" class="mr-2">
+          {{ totalPendingEscalations }} pending
+        </v-chip>
         <v-btn
           variant="text"
           size="small"
@@ -610,6 +752,14 @@ onBeforeUnmount(() => {
               >
                 Block
               </v-btn>
+              <v-btn
+                size="x-small"
+                color="grey"
+                variant="tonal"
+                @click="acknowledgeEscalation(item)"
+              >
+                Ack
+              </v-btn>
             </div>
           </template>
         </v-list-item>
@@ -627,8 +777,67 @@ onBeforeUnmount(() => {
 
     <v-card class="mb-4">
       <v-card-title class="d-flex align-center">
+        <span>Action History</span>
+        <v-spacer />
+        <v-chip size="small" variant="tonal">{{ recentActionHistory.length }}</v-chip>
+      </v-card-title>
+      <v-divider />
+
+      <v-list lines="two" density="compact">
+        <v-list-item
+          v-for="record in recentActionHistory"
+          :key="`${record.requestId}-${record.timestamp}-${record.action}`"
+          :title="record.requestId"
+          :subtitle="formatTimestamp(record.timestamp)"
+        >
+          <template #append>
+            <v-chip :color="actionColor(record.action)" size="x-small" variant="tonal">
+              {{ actionLabel(record.action) }}
+            </v-chip>
+          </template>
+        </v-list-item>
+      </v-list>
+
+      <v-alert
+        v-if="recentActionHistory.length === 0"
+        type="info"
+        variant="tonal"
+        class="ma-4"
+      >
+        No actions yet.
+      </v-alert>
+    </v-card>
+
+    <v-card class="mb-4">
+      <v-card-title class="d-flex align-center">
         <span>Dashboard Live Stream</span>
         <v-spacer />
+        <div class="d-flex ga-2 mr-3">
+          <v-btn
+            size="x-small"
+            :variant="dashboardViewMode === 'all' ? 'flat' : 'tonal'"
+            color="primary"
+            @click="setDashboardViewMode('all')"
+          >
+            All
+          </v-btn>
+          <v-btn
+            size="x-small"
+            :variant="dashboardViewMode === 'alert' ? 'flat' : 'tonal'"
+            color="warning"
+            @click="setDashboardViewMode('alert')"
+          >
+            Alert
+          </v-btn>
+          <v-btn
+            size="x-small"
+            :variant="dashboardViewMode === 'escalate' ? 'flat' : 'tonal'"
+            color="error"
+            @click="setDashboardViewMode('escalate')"
+          >
+            Escalate
+          </v-btn>
+        </div>
         <v-chip :color="dashboardConnected ? 'green' : 'grey'" size="small" variant="tonal">
           {{ dashboardConnected ? 'Online' : 'Offline' }}
         </v-chip>
