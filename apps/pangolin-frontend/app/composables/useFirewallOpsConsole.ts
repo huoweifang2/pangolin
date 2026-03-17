@@ -76,6 +76,8 @@ interface UnifiedTrafficEntry {
   verdict: string
   threatLevel: string
   isAlert: boolean
+  score: number | null
+  payloadPreview: string | null
 }
 
 const HANDLED_REQUEST_STORAGE_KEY = 'pangolin.firewall.handled-requests.v1'
@@ -432,6 +434,8 @@ export function useFirewallOpsConsole() {
         verdict,
         threatLevel,
         isAlert: event.is_alert === true || verdict === 'ESCALATE' || verdict === 'BLOCK',
+        score: typeof event.analysis?.score === 'number' ? event.analysis.score : null,
+        payloadPreview: cleanText(event.payload_preview) ?? null,
       }
     })
 
@@ -453,6 +457,8 @@ export function useFirewallOpsConsole() {
         verdict,
         threatLevel,
         isAlert: verdict === 'ESCALATE' || verdict === 'BLOCK' || threatLevel === 'CRITICAL' || threatLevel === 'HIGH',
+        score: null,
+        payloadPreview: cleanText(entry.payload_preview) ?? null,
       }
     })
 
@@ -723,6 +729,34 @@ export function useFirewallOpsConsole() {
     unifiedTrafficSourceFilter.value = 'all'
     unifiedTrafficKindFilter.value = 'all'
     unifiedTrafficAlertsOnly.value = false
+  }
+
+  function applyUnifiedTrafficEntryToDashboard(entry: UnifiedTrafficEntry): void {
+    clearOperationFeedback()
+
+    const queryCandidate = entry.requestId ?? entry.sessionId
+    const query = queryCandidate && queryCandidate !== 'n/a' ? queryCandidate : entry.method
+    dashboardQuery.value = query
+
+    if (entry.verdict === 'ESCALATE') {
+      dashboardViewMode.value = 'escalate'
+      dashboardActionableOnly.value = true
+    } else if (entry.isAlert) {
+      dashboardViewMode.value = 'alert'
+      dashboardActionableOnly.value = false
+    } else {
+      dashboardViewMode.value = 'all'
+      dashboardActionableOnly.value = false
+    }
+
+    const threat = entry.threatLevel.toLowerCase()
+    if (threat === 'critical' || threat === 'high' || threat === 'medium' || threat === 'low' || threat === 'none') {
+      dashboardThreatFilter.value = threat
+    } else {
+      dashboardThreatFilter.value = 'all'
+    }
+
+    operationMessage.value = `Applied triage context from ${unifiedTrafficSourceLabel(entry.source)} entry`
   }
 
   function dashboardVerdict(event: FirewallDashboardEvent): string {
@@ -1996,6 +2030,7 @@ export function useFirewallOpsConsole() {
     unifiedTrafficSourceColor,
     unifiedTrafficKindLabel,
     unifiedTrafficKindColor,
+    applyUnifiedTrafficEntryToDashboard,
     dashboardVerdict,
     dashboardThreat,
     dashboardMethod,

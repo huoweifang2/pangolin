@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { useInjectedFirewallOpsConsole } from '~/composables/useFirewallOpsConsole'
 
 const {
   recentUnifiedTrafficEntries,
+  filteredUnifiedTrafficEntries,
   visibleUnifiedTrafficCount,
   hasUnifiedTrafficFilters,
   unifiedTrafficQuery,
@@ -18,8 +20,37 @@ const {
   unifiedTrafficSourceColor,
   unifiedTrafficKindLabel,
   unifiedTrafficKindColor,
+  applyUnifiedTrafficEntryToDashboard,
   clearUnifiedTrafficFilters,
 } = useInjectedFirewallOpsConsole()
+
+const unifiedTrafficDetailsOpen = ref(false)
+const selectedUnifiedTrafficEntryId = ref<string | null>(null)
+
+const selectedUnifiedTrafficEntry = computed(() => {
+  const targetId = selectedUnifiedTrafficEntryId.value
+  if (!targetId) {
+    return null
+  }
+  return filteredUnifiedTrafficEntries.value.find((entry) => entry.id === targetId) ?? null
+})
+
+function openUnifiedTrafficDetails(entryId: string): void {
+  selectedUnifiedTrafficEntryId.value = entryId
+  unifiedTrafficDetailsOpen.value = true
+}
+
+function closeUnifiedTrafficDetails(): void {
+  unifiedTrafficDetailsOpen.value = false
+}
+
+function applySelectedEntryToTriage(): void {
+  const entry = selectedUnifiedTrafficEntry.value
+  if (!entry) {
+    return
+  }
+  applyUnifiedTrafficEntryToDashboard(entry)
+}
 </script>
 
 <template>
@@ -96,6 +127,7 @@ const {
           <th>Verdict</th>
           <th>Threat</th>
           <th>Session</th>
+          <th>Action</th>
         </tr>
       </thead>
       <tbody>
@@ -124,6 +156,26 @@ const {
             </v-chip>
           </td>
           <td class="mono text-caption">{{ entry.sessionId }}</td>
+          <td>
+            <div class="d-flex ga-2">
+              <v-btn
+                size="x-small"
+                variant="tonal"
+                color="primary"
+                @click="openUnifiedTrafficDetails(entry.id)"
+              >
+                Details
+              </v-btn>
+              <v-btn
+                size="x-small"
+                variant="tonal"
+                color="secondary"
+                @click="applyUnifiedTrafficEntryToDashboard(entry)"
+              >
+                Triage
+              </v-btn>
+            </div>
+          </td>
         </tr>
       </tbody>
     </v-table>
@@ -138,6 +190,69 @@ const {
         ? 'No unified traffic entries match current filters.'
         : 'No unified traffic entries yet.' }}
     </v-alert>
+
+    <v-navigation-drawer
+      v-model="unifiedTrafficDetailsOpen"
+      location="right"
+      temporary
+      width="420"
+    >
+      <v-card flat>
+        <v-card-title class="d-flex align-center">
+          <span>Unified Entry Details</span>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="closeUnifiedTrafficDetails" />
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text v-if="selectedUnifiedTrafficEntry" class="d-flex flex-column ga-3">
+          <div class="d-flex ga-2 flex-wrap">
+            <v-chip :color="unifiedTrafficSourceColor(selectedUnifiedTrafficEntry.source)" size="small" variant="tonal">
+              {{ unifiedTrafficSourceLabel(selectedUnifiedTrafficEntry.source) }}
+            </v-chip>
+            <v-chip :color="unifiedTrafficKindColor(selectedUnifiedTrafficEntry.kind)" size="small" variant="tonal">
+              {{ unifiedTrafficKindLabel(selectedUnifiedTrafficEntry.kind) }}
+            </v-chip>
+            <v-chip :color="verdictColor(selectedUnifiedTrafficEntry.verdict)" size="small" variant="tonal">
+              {{ selectedUnifiedTrafficEntry.verdict }}
+            </v-chip>
+            <v-chip :color="threatColor(selectedUnifiedTrafficEntry.threatLevel)" size="small" variant="tonal">
+              {{ selectedUnifiedTrafficEntry.threatLevel }}
+            </v-chip>
+          </div>
+
+          <div class="text-body-2"><strong>Time:</strong> {{ formatTimestamp(selectedUnifiedTrafficEntry.rawTimestamp ?? selectedUnifiedTrafficEntry.timestamp) }}</div>
+          <div class="text-body-2"><strong>Method:</strong> {{ selectedUnifiedTrafficEntry.method }}</div>
+          <div class="text-body-2"><strong>Session:</strong> {{ selectedUnifiedTrafficEntry.sessionId }}</div>
+          <div class="text-body-2"><strong>Request:</strong> {{ selectedUnifiedTrafficEntry.requestId ?? 'n/a' }}</div>
+          <div class="text-body-2"><strong>Score:</strong> {{ selectedUnifiedTrafficEntry.score ?? 'n/a' }}</div>
+
+          <div>
+            <div class="text-caption text-medium-emphasis mb-2">Payload Preview</div>
+            <pre class="payload-preview">{{ selectedUnifiedTrafficEntry.payloadPreview ?? 'No payload preview available.' }}</pre>
+          </div>
+        </v-card-text>
+
+        <v-card-text v-else>
+          <v-alert type="info" variant="tonal">Entry is not available under current filters.</v-alert>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="pa-4 d-flex ga-2 justify-end">
+          <v-btn
+            variant="tonal"
+            color="secondary"
+            :disabled="!selectedUnifiedTrafficEntry"
+            @click="applySelectedEntryToTriage"
+          >
+            Apply To Triage
+          </v-btn>
+          <v-btn variant="text" @click="closeUnifiedTrafficDetails">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-navigation-drawer>
   </v-card>
 </template>
 
@@ -159,5 +274,17 @@ const {
 
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.payload-preview {
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: rgba(0, 0, 0, 0.02);
 }
 </style>
