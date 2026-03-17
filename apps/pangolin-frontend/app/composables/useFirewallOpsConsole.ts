@@ -20,13 +20,17 @@ export interface EscalationItem {
 
 export type DashboardViewMode = 'all' | 'alert' | 'escalate'
 export type DashboardThreatFilter = 'all' | 'critical' | 'high' | 'medium' | 'low' | 'none'
+export type EscalationThreatLevel = Exclude<DashboardThreatFilter, 'all'>
 export type HumanActionType = 'allow' | 'block' | 'ack'
+export type EscalationSortMode = 'risk' | 'newest' | 'oldest'
 
 export interface DashboardFilterSnapshot {
   query: string
   viewMode: DashboardViewMode
   threatFilter: DashboardThreatFilter
   actionableOnly: boolean
+  escalationSortMode: EscalationSortMode
+  escalationSlaMinutes: number
 }
 
 export interface DashboardFilterPreset extends DashboardFilterSnapshot {
@@ -39,6 +43,14 @@ interface DashboardPresetImportPayload {
   presets?: Array<Partial<DashboardFilterPreset>>
 }
 
+interface EscalationThreatSummary {
+  critical: number
+  high: number
+  medium: number
+  low: number
+  none: number
+}
+
 export interface ActionHistoryItem {
   requestId: string
   action: HumanActionType
@@ -46,12 +58,17 @@ export interface ActionHistoryItem {
 }
 
 type ActionHistoryFilterType = 'all' | HumanActionType
+type StaleEscalationLevel = 'all' | 'warning' | 'critical'
+type EscalationSlaLevel = 'ok' | 'warning' | 'critical' | 'unknown'
 
 const HANDLED_REQUEST_STORAGE_KEY = 'pangolin.firewall.handled-requests.v1'
 const DASHBOARD_FILTER_STORAGE_KEY = 'pangolin.firewall.dashboard-filters.v1'
 const DASHBOARD_PRESET_STORAGE_KEY = 'pangolin.firewall.dashboard-presets.v1'
 const ACTION_HISTORY_STORAGE_KEY = 'pangolin.firewall.action-history.v1'
 const ACTION_HISTORY_LIMIT = 200
+const ESCALATION_SLA_DEFAULT_MINUTES = 15
+const ESCALATION_SLA_MIN_MINUTES = 1
+const ESCALATION_SLA_MAX_MINUTES = 24 * 60
 
 export function useFirewallOpsConsole() {
   const loading = ref(false)
@@ -86,6 +103,8 @@ export function useFirewallOpsConsole() {
   const dashboardViewMode = ref<DashboardViewMode>('all')
   const dashboardThreatFilter = ref<DashboardThreatFilter>('all')
   const dashboardActionableOnly = ref(false)
+  const escalationSortMode = ref<EscalationSortMode>('risk')
+  const escalationSlaMinutes = ref<number>(ESCALATION_SLA_DEFAULT_MINUTES)
   const dashboardQuery = ref('')
   const dashboardFilterPresets = ref<DashboardFilterPreset[]>([])
   const dashboardPresetName = ref('')
@@ -109,6 +128,12 @@ export function useFirewallOpsConsole() {
     { title: 'Medium', value: 'medium' },
     { title: 'Low', value: 'low' },
     { title: 'None', value: 'none' },
+  ]
+
+  const escalationSortModeOptions: Array<{ title: string; value: EscalationSortMode }> = [
+    { title: 'Risk First', value: 'risk' },
+    { title: 'Newest First', value: 'newest' },
+    { title: 'Oldest First', value: 'oldest' },
   ]
 
   const dashboardPresetOptions = computed(() => {
@@ -137,6 +162,8 @@ export function useFirewallOpsConsole() {
       || dashboardViewMode.value !== 'all'
       || dashboardThreatFilter.value !== 'all'
       || dashboardActionableOnly.value
+      || escalationSortMode.value !== 'risk'
+      || escalationSlaMinutes.value !== ESCALATION_SLA_DEFAULT_MINUTES
     )
   })
   const activeDashboardFilterCount = computed(() => {
@@ -151,6 +178,12 @@ export function useFirewallOpsConsole() {
       count += 1
     }
     if (dashboardActionableOnly.value) {
+      count += 1
+    }
+    if (escalationSortMode.value !== 'risk') {
+      count += 1
+    }
+    if (escalationSlaMinutes.value !== ESCALATION_SLA_DEFAULT_MINUTES) {
       count += 1
     }
     return count
@@ -202,6 +235,16 @@ export function useFirewallOpsConsole() {
     const filtered = escalationItems.value.filter(
       (item) => item.verdict === 'ESCALATE' && !handledRequestIds.value.includes(item.requestId),
     )
+
+    const sortMode = escalationSortMode.value
+    if (sortMode === 'newest') {
+      return filtered.toSorted((left, right) => dashboardEventTimestamp(right.event) - dashboardEventTimestamp(left.event))
+    }
+
+    if (sortMode === 'oldest') {
+      return filtered.toSorted((left, right) => dashboardEventTimestamp(left.event) - dashboardEventTimestamp(right.event))
+    }
+
     return filtered.toSorted((left, right) => {
       const threatDelta = threatRank(dashboardThreat(right.event)) - threatRank(dashboardThreat(left.event))
       if (threatDelta !== 0) {
@@ -225,6 +268,92 @@ export function useFirewallOpsConsole() {
     return threatFilteredEscalations.filter((item) => escalationMatchesQuery(item, query))
   })
   const visiblePendingEscalationCount = computed(() => visiblePendingEscalations.value.length)
+  const escalationSlaSeconds = computed(() => escalationSlaMinutes.value * 60)
+  const visibleEscalationThreatSummary = computed<EscalationThreatSummary>(() => {
+    const summary: EscalationThreatSummary = {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      none: 0,
+    }
+
+    for (const item of visiblePendingEscalations.value) {
+      const threat = dashboardThreat(item.event).toLowerCase()
+      if (threat === 'critical') {
+        summary.critical += 1
+      } else if (threat === 'high') {
+        summary.high += 1
+      } else if (threat === 'medium') {
+        summary.medium += 1
+      } else if (threat === 'low') {
+        summary.low += 1
+      } else {
+        summary.none += 1
+      }
+    }
+
+    return summary
+  })
+  const oldestVisibleEscalationAgeSeconds = computed<number | null>(() => {
+    let maxAge: number | null = null
+    const nowSeconds = Date.now() / 1000
+
+    for (const item of visiblePendingEscalations.value) {
+      const timestamp = dashboardEventTimestamp(item.event)
+      if (timestamp <= 0) {
+        continue
+      }
+      const age = Math.max(0, nowSeconds - timestamp)
+      if (maxAge == null || age > maxAge) {
+        maxAge = age
+      }
+    }
+
+    return maxAge
+  })
+  const oldestVisibleEscalationAgeLabel = computed(() => {
+    const seconds = oldestVisibleEscalationAgeSeconds.value
+    if (seconds == null) {
+      return 'n/a'
+    }
+    return formatDurationSeconds(seconds)
+  })
+  const staleVisibleEscalationCount = computed(() => {
+    const threshold = escalationSlaSeconds.value
+    let staleCount = 0
+    const nowSeconds = Date.now() / 1000
+
+    for (const item of visiblePendingEscalations.value) {
+      const age = escalationAgeSeconds(item, nowSeconds)
+      if (age == null) {
+        continue
+      }
+      if (age >= threshold) {
+        staleCount += 1
+      }
+    }
+
+    return staleCount
+  })
+  const staleCriticalVisibleEscalationCount = computed(() => {
+    const criticalThreshold = escalationSlaSeconds.value * 2
+    let count = 0
+    const nowSeconds = Date.now() / 1000
+
+    for (const item of visiblePendingEscalations.value) {
+      const age = escalationAgeSeconds(item, nowSeconds)
+      if (age != null && age >= criticalThreshold) {
+        count += 1
+      }
+    }
+
+    return count
+  })
+  const staleWarningVisibleEscalationCount = computed(() => {
+    return Math.max(0, staleVisibleEscalationCount.value - staleCriticalVisibleEscalationCount.value)
+  })
+  const hasVisibleEscalationSlaBreach = computed(() => staleVisibleEscalationCount.value > 0)
   const actionHistoryCount = computed(() => actionHistory.value.length)
   const normalizedActionHistoryQuery = computed(() => actionHistoryQuery.value.trim().toLowerCase())
   const hasActionHistoryFilters = computed(() => {
@@ -270,6 +399,8 @@ export function useFirewallOpsConsole() {
       || snapshot.viewMode !== preset.viewMode
       || snapshot.threatFilter !== preset.threatFilter
       || snapshot.actionableOnly !== preset.actionableOnly
+      || snapshot.escalationSortMode !== preset.escalationSortMode
+      || snapshot.escalationSlaMinutes !== preset.escalationSlaMinutes
     )
   })
   const canUpdateSelectedDashboardPreset = computed(() => selectedDashboardPresetDirty.value)
@@ -309,6 +440,72 @@ export function useFirewallOpsConsole() {
     if (Number.isNaN(value)) {return String(timestamp)}
 
     return new Date(value).toLocaleString()
+  }
+
+  function formatDurationSeconds(seconds: number): string {
+    const safeSeconds = Math.max(0, Math.floor(seconds))
+    if (safeSeconds < 60) {
+      return `${safeSeconds}s`
+    }
+
+    const minutes = Math.floor(safeSeconds / 60)
+    const remainSeconds = safeSeconds % 60
+    if (minutes < 60) {
+      return remainSeconds > 0 ? `${minutes}m ${remainSeconds}s` : `${minutes}m`
+    }
+
+    const hours = Math.floor(minutes / 60)
+    const remainMinutes = minutes % 60
+    if (hours < 24) {
+      return remainMinutes > 0 ? `${hours}h ${remainMinutes}m` : `${hours}h`
+    }
+
+    const days = Math.floor(hours / 24)
+    const remainHours = hours % 24
+    return remainHours > 0 ? `${days}d ${remainHours}h` : `${days}d`
+  }
+
+  function escalationAgeSeconds(item: EscalationItem, nowSeconds = Date.now() / 1000): number | null {
+    const timestamp = dashboardEventTimestamp(item.event)
+    if (timestamp <= 0) {
+      return null
+    }
+    return Math.max(0, nowSeconds - timestamp)
+  }
+
+  function escalationAgeLabel(item: EscalationItem): string {
+    const age = escalationAgeSeconds(item)
+    if (age == null) {
+      return 'n/a'
+    }
+    return formatDurationSeconds(age)
+  }
+
+  function escalationSlaLevel(item: EscalationItem, nowSeconds = Date.now() / 1000): EscalationSlaLevel {
+    const age = escalationAgeSeconds(item, nowSeconds)
+    if (age == null) {
+      return 'unknown'
+    }
+
+    const warningThreshold = escalationSlaSeconds.value
+    const criticalThreshold = warningThreshold * 2
+    if (age >= criticalThreshold) {
+      return 'critical'
+    }
+    if (age >= warningThreshold) {
+      return 'warning'
+    }
+    return 'ok'
+  }
+
+  function staleEscalationLevelLabel(level: StaleEscalationLevel): string {
+    if (level === 'critical') {
+      return 'critical stale'
+    }
+    if (level === 'warning') {
+      return 'warning stale'
+    }
+    return 'stale'
   }
 
   function traceIdentifier(trace: FirewallTrace): string {
@@ -373,6 +570,37 @@ export function useFirewallOpsConsole() {
     return dashboardThreat(event).toLowerCase() === filter
   }
 
+  function isEscalationThreatLevel(value: string): value is EscalationThreatLevel {
+    return value === 'critical' || value === 'high' || value === 'medium' || value === 'low' || value === 'none'
+  }
+
+  function normalizeEscalationSlaMinutes(value: unknown): number {
+    const numeric = typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number.parseFloat(value)
+        : Number.NaN
+    if (!Number.isFinite(numeric)) {
+      return ESCALATION_SLA_DEFAULT_MINUTES
+    }
+
+    const clamped = Math.round(Math.min(ESCALATION_SLA_MAX_MINUTES, Math.max(ESCALATION_SLA_MIN_MINUTES, numeric)))
+    return clamped
+  }
+
+  function formatThreatLevelsLabel(levels: EscalationThreatLevel[]): string {
+    const order: EscalationThreatLevel[] = ['critical', 'high', 'medium', 'low', 'none']
+    const unique = new Set(Array.from(new Set(levels)))
+    const sorted = order.filter((level) => unique.has(level))
+    if (sorted.length === 0) {
+      return 'selected'
+    }
+    if (sorted.length === 1) {
+      return sorted[0].toUpperCase()
+    }
+    return sorted.map((level) => level.toUpperCase()).join('/')
+  }
+
   function clearOperationFeedback(): void {
     operationError.value = null
     operationMessage.value = null
@@ -384,6 +612,8 @@ export function useFirewallOpsConsole() {
       viewMode: dashboardViewMode.value,
       threatFilter: dashboardThreatFilter.value,
       actionableOnly: dashboardActionableOnly.value,
+      escalationSortMode: escalationSortMode.value,
+      escalationSlaMinutes: escalationSlaMinutes.value,
     }
   }
 
@@ -392,6 +622,8 @@ export function useFirewallOpsConsole() {
     dashboardViewMode.value = snapshot.viewMode
     dashboardThreatFilter.value = snapshot.threatFilter
     dashboardActionableOnly.value = snapshot.actionableOnly
+    escalationSortMode.value = snapshot.escalationSortMode
+    escalationSlaMinutes.value = normalizeEscalationSlaMinutes(snapshot.escalationSlaMinutes)
   }
 
   function dashboardEventTimestamp(event: FirewallDashboardEvent): number {
@@ -581,6 +813,8 @@ export function useFirewallOpsConsole() {
         viewMode?: DashboardViewMode
         threatFilter?: DashboardThreatFilter
         actionableOnly?: boolean
+        escalationSortMode?: EscalationSortMode
+        escalationSlaMinutes?: number
       }
 
       if (typeof parsed.query === 'string') {
@@ -594,6 +828,12 @@ export function useFirewallOpsConsole() {
       }
       if (typeof parsed.actionableOnly === 'boolean') {
         dashboardActionableOnly.value = parsed.actionableOnly
+      }
+      if (parsed.escalationSortMode === 'risk' || parsed.escalationSortMode === 'newest' || parsed.escalationSortMode === 'oldest') {
+        escalationSortMode.value = parsed.escalationSortMode
+      }
+      if (typeof parsed.escalationSlaMinutes === 'number' && Number.isFinite(parsed.escalationSlaMinutes)) {
+        escalationSlaMinutes.value = normalizeEscalationSlaMinutes(parsed.escalationSlaMinutes)
       }
     } catch {
       // Ignore local storage parsing failures.
@@ -644,6 +884,8 @@ export function useFirewallOpsConsole() {
           viewMode: dashboardViewMode.value,
           threatFilter: dashboardThreatFilter.value,
           actionableOnly: dashboardActionableOnly.value,
+          escalationSortMode: escalationSortMode.value,
+          escalationSlaMinutes: escalationSlaMinutes.value,
         }),
       )
     } catch {
@@ -684,6 +926,11 @@ export function useFirewallOpsConsole() {
       preset.threatFilter && dashboardThreatFilterOptions.some((option) => option.value === preset.threatFilter)
         ? preset.threatFilter
         : 'all'
+    const escalationSortMode =
+      preset.escalationSortMode === 'newest' || preset.escalationSortMode === 'oldest' || preset.escalationSortMode === 'risk'
+        ? preset.escalationSortMode
+        : 'risk'
+    const escalationSlaMinutes = normalizeEscalationSlaMinutes(preset.escalationSlaMinutes)
 
     return {
       id,
@@ -692,6 +939,8 @@ export function useFirewallOpsConsole() {
       viewMode,
       threatFilter,
       actionableOnly: Boolean(preset.actionableOnly),
+      escalationSortMode,
+      escalationSlaMinutes,
       updatedAt: typeof preset.updatedAt === 'number' && Number.isFinite(preset.updatedAt)
         ? preset.updatedAt
         : Date.now(),
@@ -738,6 +987,16 @@ export function useFirewallOpsConsole() {
     dashboardViewMode.value = 'all'
     dashboardThreatFilter.value = 'all'
     dashboardActionableOnly.value = false
+    escalationSortMode.value = 'risk'
+    escalationSlaMinutes.value = ESCALATION_SLA_DEFAULT_MINUTES
+  }
+
+  function setEscalationSortMode(mode: EscalationSortMode): void {
+    escalationSortMode.value = mode
+  }
+
+  function setEscalationSlaMinutes(value: unknown): void {
+    escalationSlaMinutes.value = normalizeEscalationSlaMinutes(value)
   }
 
   function saveDashboardPreset(): void {
@@ -1087,8 +1346,42 @@ export function useFirewallOpsConsole() {
     operationMessage.value = `Acknowledged ${item.requestId}`
   }
 
-  function visibleEscalationRequestIds(): string[] {
-    return Array.from(new Set(visiblePendingEscalations.value.map((item) => item.requestId)))
+  function visibleEscalationRequestIds(levels?: EscalationThreatLevel[]): string[] {
+    if (!levels || levels.length === 0) {
+      return Array.from(new Set(visiblePendingEscalations.value.map((item) => item.requestId)))
+    }
+
+    const levelSet = new Set(levels)
+    return Array.from(
+      new Set(
+        visiblePendingEscalations.value
+          .filter((item) => {
+            const level = dashboardThreat(item.event).toLowerCase()
+            return isEscalationThreatLevel(level) && levelSet.has(level)
+          })
+          .map((item) => item.requestId),
+      ),
+    )
+  }
+
+  function staleVisibleEscalationRequestIds(level: StaleEscalationLevel = 'all'): string[] {
+    const nowSeconds = Date.now() / 1000
+    return Array.from(
+      new Set(
+        visiblePendingEscalations.value
+          .filter((item) => {
+            const slaLevel = escalationSlaLevel(item, nowSeconds)
+            if (level === 'critical') {
+              return slaLevel === 'critical'
+            }
+            if (level === 'warning') {
+              return slaLevel === 'warning'
+            }
+            return slaLevel === 'warning' || slaLevel === 'critical'
+          })
+          .map((item) => item.requestId),
+      ),
+    )
   }
 
   async function resolveVisibleEscalations(action: 'allow' | 'block'): Promise<void> {
@@ -1139,6 +1432,113 @@ export function useFirewallOpsConsole() {
     }
 
     operationMessage.value = `Acknowledged ${requestIds.length} visible escalation(s)`
+  }
+
+  async function resolveStaleVisibleEscalations(
+    action: 'allow' | 'block',
+    level: StaleEscalationLevel = 'all',
+  ): Promise<void> {
+    clearOperationFeedback()
+
+    const requestIds = staleVisibleEscalationRequestIds(level)
+    if (requestIds.length === 0) {
+      operationMessage.value = `No ${staleEscalationLevelLabel(level)} escalations to resolve`
+      return
+    }
+
+    if (!dashboardSocket || dashboardSocket.readyState !== WebSocket.OPEN) {
+      operationError.value = 'Dashboard WebSocket is not connected'
+      return
+    }
+
+    dashboardBatchActionPending.value = true
+    let sentCount = 0
+
+    try {
+      for (const requestId of requestIds) {
+        dashboardSocket.send(JSON.stringify({ action, request_id: requestId }))
+        markEscalationHandled(requestId)
+        pushActionHistory(action, requestId)
+        sentCount += 1
+      }
+
+      operationMessage.value = `Sent ${action.toUpperCase()} for ${sentCount} ${staleEscalationLevelLabel(level)} escalation(s)`
+    } catch {
+      operationError.value = `Failed after sending ${sentCount}/${requestIds.length} actions`
+    } finally {
+      dashboardBatchActionPending.value = false
+    }
+  }
+
+  function acknowledgeStaleVisibleEscalations(level: StaleEscalationLevel = 'all'): void {
+    clearOperationFeedback()
+
+    const requestIds = staleVisibleEscalationRequestIds(level)
+    if (requestIds.length === 0) {
+      operationMessage.value = `No ${staleEscalationLevelLabel(level)} escalations to acknowledge`
+      return
+    }
+
+    for (const requestId of requestIds) {
+      markEscalationHandled(requestId)
+      pushActionHistory('ack', requestId)
+    }
+
+    operationMessage.value = `Acknowledged ${requestIds.length} ${staleEscalationLevelLabel(level)} escalation(s)`
+  }
+
+  async function resolveVisibleEscalationsByThreat(
+    action: 'allow' | 'block',
+    levels: EscalationThreatLevel[],
+  ): Promise<void> {
+    clearOperationFeedback()
+
+    const requestIds = visibleEscalationRequestIds(levels)
+    if (requestIds.length === 0) {
+      operationMessage.value = `No visible ${formatThreatLevelsLabel(levels)} escalations to resolve`
+      return
+    }
+
+    if (!dashboardSocket || dashboardSocket.readyState !== WebSocket.OPEN) {
+      operationError.value = 'Dashboard WebSocket is not connected'
+      return
+    }
+
+    const levelsLabel = formatThreatLevelsLabel(levels)
+    dashboardBatchActionPending.value = true
+    let sentCount = 0
+
+    try {
+      for (const requestId of requestIds) {
+        dashboardSocket.send(JSON.stringify({ action, request_id: requestId }))
+        markEscalationHandled(requestId)
+        pushActionHistory(action, requestId)
+        sentCount += 1
+      }
+
+      operationMessage.value = `Sent ${action.toUpperCase()} for ${sentCount} visible ${levelsLabel} escalation(s)`
+    } catch {
+      operationError.value = `Failed after sending ${sentCount}/${requestIds.length} actions`
+    } finally {
+      dashboardBatchActionPending.value = false
+    }
+  }
+
+  function acknowledgeVisibleEscalationsByThreat(levels: EscalationThreatLevel[]): void {
+    clearOperationFeedback()
+
+    const requestIds = visibleEscalationRequestIds(levels)
+    if (requestIds.length === 0) {
+      operationMessage.value = `No visible ${formatThreatLevelsLabel(levels)} escalations to acknowledge`
+      return
+    }
+
+    for (const requestId of requestIds) {
+      markEscalationHandled(requestId)
+      pushActionHistory('ack', requestId)
+    }
+
+    operationMessage.value = `Acknowledged ${requestIds.length} visible ${formatThreatLevelsLabel(levels)} escalation(s)`
   }
 
   async function sendDashboardAction(action: 'allow' | 'block', requestId: string): Promise<void> {
@@ -1292,7 +1692,7 @@ export function useFirewallOpsConsole() {
     persistActionHistoryToStorage()
   })
 
-  watch([dashboardQuery, dashboardViewMode, dashboardThreatFilter, dashboardActionableOnly], () => {
+  watch([dashboardQuery, dashboardViewMode, dashboardThreatFilter, dashboardActionableOnly, escalationSortMode, escalationSlaMinutes], () => {
     persistDashboardFiltersToStorage()
   })
 
@@ -1332,6 +1732,8 @@ export function useFirewallOpsConsole() {
     dashboardViewMode,
     dashboardThreatFilter,
     dashboardActionableOnly,
+    escalationSortMode,
+    escalationSlaMinutes,
     dashboardQuery,
     dashboardFilterPresets,
     dashboardPresetName,
@@ -1340,6 +1742,7 @@ export function useFirewallOpsConsole() {
     selectedDashboardPreset,
     selectedDashboardPresetDirty,
     dashboardThreatFilterOptions,
+    escalationSortModeOptions,
     dashboardPresetOptions,
     actionHistory,
     actionHistoryQuery,
@@ -1359,6 +1762,13 @@ export function useFirewallOpsConsole() {
     pendingEscalations,
     visiblePendingEscalations,
     visiblePendingEscalationCount,
+    visibleEscalationThreatSummary,
+    oldestVisibleEscalationAgeSeconds,
+    oldestVisibleEscalationAgeLabel,
+    staleVisibleEscalationCount,
+    staleWarningVisibleEscalationCount,
+    staleCriticalVisibleEscalationCount,
+    hasVisibleEscalationSlaBreach,
     actionHistoryCount,
     visibleActionHistoryCount,
     hasActionHistoryFilters,
@@ -1374,6 +1784,9 @@ export function useFirewallOpsConsole() {
     verdictColor,
     threatColor,
     formatTimestamp,
+    formatDurationSeconds,
+    escalationAgeLabel,
+    escalationSlaLevel,
     traceIdentifier,
     traceCreatedAt,
     skillLabel,
@@ -1390,6 +1803,8 @@ export function useFirewallOpsConsole() {
     clearActionHistoryFilters,
     toggleStreamPaused,
     setDashboardViewMode,
+    setEscalationSortMode,
+    setEscalationSlaMinutes,
     resetDashboardFilters,
     saveDashboardPreset,
     applySelectedDashboardPreset,
@@ -1404,6 +1819,10 @@ export function useFirewallOpsConsole() {
     acknowledgeEscalation,
     resolveVisibleEscalations,
     acknowledgeVisibleEscalations,
+    resolveStaleVisibleEscalations,
+    acknowledgeStaleVisibleEscalations,
+    resolveVisibleEscalationsByThreat,
+    acknowledgeVisibleEscalationsByThreat,
     onHumanAction,
     refresh,
     addSkill,

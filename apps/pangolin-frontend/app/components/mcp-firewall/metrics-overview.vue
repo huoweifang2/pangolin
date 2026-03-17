@@ -9,6 +9,12 @@ const {
   totalServers,
   dashboardEventCount,
   totalPendingEscalations,
+  visibleEscalationThreatSummary,
+  oldestVisibleEscalationAgeLabel,
+  escalationSlaMinutes,
+  staleVisibleEscalationCount,
+  staleCriticalVisibleEscalationCount,
+  hasVisibleEscalationSlaBreach,
 } = useInjectedFirewallOpsConsole()
 </script>
 
@@ -67,6 +73,38 @@ const {
         <v-card-text>
           <div class="text-caption text-medium-emphasis">Escalation Queue</div>
           <div class="text-h4 font-weight-bold">{{ totalPendingEscalations }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" color="red-darken-2">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">Visible Critical</div>
+          <div class="text-h4 font-weight-bold">{{ visibleEscalationThreatSummary.critical }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" color="orange-darken-2">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">Oldest Escalation</div>
+          <div class="text-h5 font-weight-bold">{{ oldestVisibleEscalationAgeLabel }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" :color="hasVisibleEscalationSlaBreach ? 'error' : 'green'">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">SLA Breaches (>{{ escalationSlaMinutes }}m)</div>
+          <div class="text-h4 font-weight-bold">{{ staleVisibleEscalationCount }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" :color="staleCriticalVisibleEscalationCount > 0 ? 'red-darken-2' : 'green'">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">SLA Critical (>{{ escalationSlaMinutes * 2 }}m)</div>
+          <div class="text-h4 font-weight-bold">{{ staleCriticalVisibleEscalationCount }}</div>
         </v-card-text>
       </v-card>
     </v-col>
