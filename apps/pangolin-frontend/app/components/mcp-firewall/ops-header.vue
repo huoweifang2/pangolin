@@ -20,17 +20,21 @@ const {
   hasActiveDashboardFilters,
   activeDashboardFilterCount,
   canSaveDashboardPreset,
+  dashboardPresetImportPending,
   reconnectDashboardStream,
   toggleStreamPaused,
   resetDashboardFilters,
   saveDashboardPreset,
   applySelectedDashboardPreset,
   deleteSelectedDashboardPreset,
+  exportDashboardPresets,
+  importDashboardPresets,
   loading,
   refresh,
 } = useInjectedFirewallOpsConsole()
 
 const queryInputRef = ref<{ focus?: () => void } | null>(null)
+const presetFileInputRef = ref<HTMLInputElement | null>(null)
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -53,6 +57,19 @@ function handleGlobalFilterShortcut(event: KeyboardEvent): void {
   queryInputRef.value?.focus?.()
 }
 
+function openPresetImportDialog(): void {
+  presetFileInputRef.value?.click()
+}
+
+function handlePresetFileChange(event: Event): void {
+  const input = event.target as HTMLInputElement | null
+  const file = input?.files?.[0] ?? null
+  void importDashboardPresets(file)
+  if (input) {
+    input.value = ''
+  }
+}
+
 onMounted(() => {
   if (!import.meta.client) {
     return
@@ -70,6 +87,14 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="d-flex align-center flex-wrap ga-3 mb-4">
+    <input
+      ref="presetFileInputRef"
+      type="file"
+      accept="application/json"
+      class="d-none"
+      @change="handlePresetFileChange"
+    >
+
     <div>
       <h1 class="text-h5 font-weight-bold">MCP / Skill / Traffic Supplement</h1>
       <p class="text-body-2 text-medium-emphasis mb-1">
@@ -228,6 +253,24 @@ onBeforeUnmount(() => {
       @click="deleteSelectedDashboardPreset"
     >
       Delete Preset
+    </v-btn>
+
+    <v-btn
+      variant="text"
+      prepend-icon="mdi-file-export-outline"
+      :disabled="dashboardPresetOptions.length === 0"
+      @click="exportDashboardPresets"
+    >
+      Export Presets
+    </v-btn>
+
+    <v-btn
+      variant="text"
+      prepend-icon="mdi-file-import-outline"
+      :loading="dashboardPresetImportPending"
+      @click="openPresetImportDialog"
+    >
+      Import Presets
     </v-btn>
   </div>
 </template>

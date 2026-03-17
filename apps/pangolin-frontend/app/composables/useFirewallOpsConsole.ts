@@ -35,6 +35,10 @@ export interface DashboardFilterPreset extends DashboardFilterSnapshot {
   updatedAt: number
 }
 
+interface DashboardPresetImportPayload {
+  presets?: Array<Partial<DashboardFilterPreset>>
+}
+
 export interface ActionHistoryItem {
   requestId: string
   action: HumanActionType
@@ -82,6 +86,7 @@ export function useFirewallOpsConsole() {
   const dashboardFilterPresets = ref<DashboardFilterPreset[]>([])
   const dashboardPresetName = ref('')
   const selectedDashboardPresetId = ref<string | null>(null)
+  const dashboardPresetImportPending = ref(false)
   const actionHistory = ref<ActionHistoryItem[]>([])
 
   const dashboardThreatFilterOptions: Array<{ title: string; value: DashboardThreatFilter }> = [
@@ -640,6 +645,100 @@ export function useFirewallOpsConsole() {
     operationMessage.value = `Deleted preset ${preset.name}`
   }
 
+  function exportDashboardPresets(): void {
+    clearOperationFeedback()
+
+    if (!import.meta.client) {
+      operationError.value = 'Preset export is only available in browser context'
+      return
+    }
+
+    if (dashboardFilterPresets.value.length === 0) {
+      operationError.value = 'No presets available to export'
+      return
+    }
+
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      presets: dashboardFilterPresets.value,
+    }
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `firewall-filter-presets-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.append(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+
+    operationMessage.value = `Exported ${dashboardFilterPresets.value.length} preset(s)`
+  }
+
+  async function importDashboardPresets(file: File | null): Promise<void> {
+    clearOperationFeedback()
+
+    if (!file) {
+      operationError.value = 'Select a JSON file to import'
+      return
+    }
+
+    dashboardPresetImportPending.value = true
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text) as DashboardPresetImportPayload | Array<Partial<DashboardFilterPreset>>
+      const rawPresets = Array.isArray(parsed) ? parsed : parsed.presets
+      if (!Array.isArray(rawPresets)) {
+        operationError.value = 'Invalid preset file format'
+        return
+      }
+
+      const sanitizedPresets = rawPresets
+        .map((preset) => sanitizeDashboardPreset(preset))
+        .filter((preset): preset is DashboardFilterPreset => preset != null)
+
+      if (sanitizedPresets.length === 0) {
+        operationError.value = 'No valid presets found in file'
+        return
+      }
+
+      const mergedById = new Map<string, DashboardFilterPreset>()
+      for (const preset of dashboardFilterPresets.value) {
+        mergedById.set(preset.id, preset)
+      }
+
+      let importedCount = 0
+      let updatedCount = 0
+      for (const preset of sanitizedPresets) {
+        if (mergedById.has(preset.id)) {
+          updatedCount += 1
+        } else {
+          importedCount += 1
+        }
+        mergedById.set(preset.id, {
+          ...preset,
+          updatedAt: Date.now(),
+        })
+      }
+
+      dashboardFilterPresets.value = Array.from(mergedById.values())
+        .toSorted((left, right) => right.updatedAt - left.updatedAt)
+        .slice(0, 30)
+
+      if (sanitizedPresets[0]) {
+        selectedDashboardPresetId.value = sanitizedPresets[0].id
+      }
+
+      operationMessage.value = `Imported ${importedCount} preset(s), updated ${updatedCount}`
+    } catch {
+      operationError.value = 'Failed to import preset file'
+    } finally {
+      dashboardPresetImportPending.value = false
+    }
+  }
+
   function clearDashboardReconnectTimer(): void {
     if (dashboardReconnectTimer) {
       clearTimeout(dashboardReconnectTimer)
@@ -1003,6 +1102,7 @@ export function useFirewallOpsConsole() {
     dashboardFilterPresets,
     dashboardPresetName,
     selectedDashboardPresetId,
+    dashboardPresetImportPending,
     dashboardThreatFilterOptions,
     dashboardPresetOptions,
     actionHistory,
@@ -1047,6 +1147,8 @@ export function useFirewallOpsConsole() {
     saveDashboardPreset,
     applySelectedDashboardPreset,
     deleteSelectedDashboardPreset,
+    exportDashboardPresets,
+    importDashboardPresets,
     reconnectDashboardStream,
     clearEscalationQueue,
     escalationSubtitle,
