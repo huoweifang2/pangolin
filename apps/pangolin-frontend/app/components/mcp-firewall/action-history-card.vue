@@ -3,13 +3,19 @@ import { useInjectedFirewallOpsConsole } from '~/composables/useFirewallOpsConso
 
 const {
   actionHistoryCount,
+  visibleActionHistoryCount,
+  hasActionHistoryFilters,
   canUndoAction,
   recentActionHistory,
+  actionHistoryQuery,
+  actionHistoryFilterType,
+  actionHistoryFilterOptions,
   formatTimestamp,
   actionColor,
   actionLabel,
   undoLastAction,
   clearActionHistory,
+  clearActionHistoryFilters,
 } = useInjectedFirewallOpsConsole()
 </script>
 
@@ -37,8 +43,40 @@ const {
       >
         Clear
       </v-btn>
-      <v-chip size="small" variant="tonal">{{ actionHistoryCount }}</v-chip>
+      <v-btn
+        variant="text"
+        size="small"
+        prepend-icon="mdi-filter-remove-outline"
+        :disabled="!hasActionHistoryFilters"
+        @click="clearActionHistoryFilters"
+      >
+        Reset History Filters
+      </v-btn>
+      <v-chip size="small" variant="tonal">{{ visibleActionHistoryCount }} / {{ actionHistoryCount }}</v-chip>
     </v-card-title>
+    <v-divider />
+
+    <div class="pa-4 d-flex flex-wrap ga-3">
+      <v-text-field
+        v-model="actionHistoryQuery"
+        label="Filter request id"
+        density="compact"
+        variant="outlined"
+        hide-details
+        clearable
+        class="history-filter-query"
+      />
+      <v-select
+        v-model="actionHistoryFilterType"
+        :items="actionHistoryFilterOptions"
+        label="Action"
+        density="compact"
+        variant="outlined"
+        hide-details
+        class="history-filter-type"
+      />
+    </div>
+
     <v-divider />
 
     <v-list lines="two" density="compact">
@@ -57,12 +95,24 @@ const {
     </v-list>
 
     <v-alert
-      v-if="actionHistoryCount === 0"
+      v-if="visibleActionHistoryCount === 0"
       type="info"
       variant="tonal"
       class="ma-4"
     >
-      No actions yet.
+      {{ actionHistoryCount === 0 ? 'No actions yet.' : 'No actions match the current history filters.' }}
     </v-alert>
   </v-card>
 </template>
+
+<style scoped>
+.history-filter-query {
+  min-width: 240px;
+  max-width: 360px;
+}
+
+.history-filter-type {
+  min-width: 180px;
+  max-width: 220px;
+}
+</style>

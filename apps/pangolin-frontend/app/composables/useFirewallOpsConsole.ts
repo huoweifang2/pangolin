@@ -45,6 +45,8 @@ export interface ActionHistoryItem {
   timestamp: number
 }
 
+type ActionHistoryFilterType = 'all' | HumanActionType
+
 const HANDLED_REQUEST_STORAGE_KEY = 'pangolin.firewall.handled-requests.v1'
 const DASHBOARD_FILTER_STORAGE_KEY = 'pangolin.firewall.dashboard-filters.v1'
 const DASHBOARD_PRESET_STORAGE_KEY = 'pangolin.firewall.dashboard-presets.v1'
@@ -90,6 +92,15 @@ export function useFirewallOpsConsole() {
   const selectedDashboardPresetId = ref<string | null>(null)
   const dashboardPresetImportPending = ref(false)
   const actionHistory = ref<ActionHistoryItem[]>([])
+  const actionHistoryQuery = ref('')
+  const actionHistoryFilterType = ref<ActionHistoryFilterType>('all')
+
+  const actionHistoryFilterOptions: Array<{ title: string; value: ActionHistoryFilterType }> = [
+    { title: 'All Actions', value: 'all' },
+    { title: 'ALLOW', value: 'allow' },
+    { title: 'BLOCK', value: 'block' },
+    { title: 'ACK', value: 'ack' },
+  ]
 
   const dashboardThreatFilterOptions: Array<{ title: string; value: DashboardThreatFilter }> = [
     { title: 'All Threat Levels', value: 'all' },
@@ -215,8 +226,28 @@ export function useFirewallOpsConsole() {
   })
   const visiblePendingEscalationCount = computed(() => visiblePendingEscalations.value.length)
   const actionHistoryCount = computed(() => actionHistory.value.length)
+  const normalizedActionHistoryQuery = computed(() => actionHistoryQuery.value.trim().toLowerCase())
+  const hasActionHistoryFilters = computed(() => {
+    return normalizedActionHistoryQuery.value.length > 0 || actionHistoryFilterType.value !== 'all'
+  })
+  const filteredActionHistory = computed(() => {
+    const query = normalizedActionHistoryQuery.value
+    const typeFilter = actionHistoryFilterType.value
+
+    return actionHistory.value.filter((item) => {
+      const typeMatch = typeFilter === 'all' || item.action === typeFilter
+      if (!typeMatch) {
+        return false
+      }
+      if (!query) {
+        return true
+      }
+      return item.requestId.toLowerCase().includes(query)
+    })
+  })
+  const visibleActionHistoryCount = computed(() => filteredActionHistory.value.length)
   const canUndoAction = computed(() => actionHistory.value.length > 0)
-  const recentActionHistory = computed(() => actionHistory.value.slice(0, 12))
+  const recentActionHistory = computed(() => filteredActionHistory.value.slice(0, 12))
 
   const canAddSkill = computed(() => newSkill.value.id.trim().length > 0)
   const canAddServer = computed(() => newServer.value.id.trim().length > 0)
@@ -496,6 +527,11 @@ export function useFirewallOpsConsole() {
 
     actionHistory.value = []
     operationMessage.value = 'Cleared action history'
+  }
+
+  function clearActionHistoryFilters(): void {
+    actionHistoryQuery.value = ''
+    actionHistoryFilterType.value = 'all'
   }
 
   function loadHandledRequestIdsFromStorage(): void {
@@ -1260,6 +1296,9 @@ export function useFirewallOpsConsole() {
     dashboardThreatFilterOptions,
     dashboardPresetOptions,
     actionHistory,
+    actionHistoryQuery,
+    actionHistoryFilterType,
+    actionHistoryFilterOptions,
     newSkill,
     newServer,
     transportOptions,
@@ -1275,6 +1314,8 @@ export function useFirewallOpsConsole() {
     visiblePendingEscalations,
     visiblePendingEscalationCount,
     actionHistoryCount,
+    visibleActionHistoryCount,
+    hasActionHistoryFilters,
     canUndoAction,
     totalPendingEscalations,
     hasActiveDashboardFilters,
@@ -1300,6 +1341,7 @@ export function useFirewallOpsConsole() {
     actionColor,
     undoLastAction,
     clearActionHistory,
+    clearActionHistoryFilters,
     toggleStreamPaused,
     setDashboardViewMode,
     resetDashboardFilters,
