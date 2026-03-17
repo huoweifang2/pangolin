@@ -46,6 +46,25 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 function handleGlobalFilterShortcut(event: KeyboardEvent): void {
+  const quickPresetKeys = new Set(['1', '2', '3', '4', '5'])
+
+  if (
+    quickPresetKeys.has(event.key)
+    && !event.metaKey
+    && !event.ctrlKey
+    && !event.altKey
+    && !isEditableTarget(event.target)
+  ) {
+    const index = Number(event.key) - 1
+    const targetPreset = dashboardPresetOptions.value[index]
+    if (targetPreset) {
+      selectedDashboardPresetId.value = targetPreset.value
+      applySelectedDashboardPreset()
+      event.preventDefault()
+    }
+    return
+  }
+
   if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) {
     return
   }
@@ -175,6 +194,10 @@ onBeforeUnmount(() => {
 
     <v-chip class="mcp-shortcut-chip" variant="outlined" size="small">
       / focus
+    </v-chip>
+
+    <v-chip class="mcp-shortcut-chip" variant="outlined" size="small">
+      1-5 load
     </v-chip>
 
     <v-select
