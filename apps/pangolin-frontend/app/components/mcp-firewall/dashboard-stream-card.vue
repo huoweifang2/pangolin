@@ -3,6 +3,7 @@ import { useInjectedFirewallOpsConsole } from '~/composables/useFirewallOpsConso
 
 const {
   dashboardViewMode,
+  dashboardQuery,
   setDashboardViewMode,
   dashboardConnected,
   recentDashboardEvents,
@@ -50,6 +51,14 @@ const {
           Escalate
         </v-btn>
       </div>
+      <v-chip
+        v-if="dashboardQuery.trim().length > 0"
+        size="small"
+        variant="tonal"
+        class="mr-2"
+      >
+        Filter: {{ dashboardQuery }}
+      </v-chip>
       <v-chip :color="dashboardConnected ? 'green' : 'grey'" size="small" variant="tonal">
         {{ dashboardConnected ? 'Online' : 'Offline' }}
       </v-chip>
@@ -117,7 +126,9 @@ const {
       variant="tonal"
       class="ma-4"
     >
-      Waiting for dashboard events. Generate traffic to see live stream updates.
+      {{ dashboardQuery.trim().length > 0
+        ? 'No dashboard events match the active filter.'
+        : 'Waiting for dashboard events. Generate traffic to see live stream updates.' }}
     </v-alert>
   </v-card>
 </template>

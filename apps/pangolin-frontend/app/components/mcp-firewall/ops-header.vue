@@ -9,6 +9,7 @@ const {
   totalPendingEscalations,
   dashboardReconnectDelaySeconds,
   dashboardReconnectAttempts,
+  dashboardQuery,
   reconnectDashboardStream,
   toggleStreamPaused,
   loading,
@@ -78,5 +79,23 @@ const {
     >
       Refresh
     </v-btn>
+
+    <v-text-field
+      v-model="dashboardQuery"
+      class="mcp-query-field"
+      label="Filter request / session / method"
+      variant="outlined"
+      density="compact"
+      hide-details
+      clearable
+      prepend-inner-icon="mdi-magnify"
+    />
   </div>
 </template>
+
+<style scoped>
+.mcp-query-field {
+  min-width: 260px;
+  max-width: 360px;
+}
+</style>

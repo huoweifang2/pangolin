@@ -2,7 +2,9 @@
 import { useInjectedFirewallOpsConsole } from '~/composables/useFirewallOpsConsole'
 
 const {
+  dashboardQuery,
   pendingEscalations,
+  visiblePendingEscalations,
   totalPendingEscalations,
   dashboardActionPendingId,
   escalationSubtitle,
@@ -20,6 +22,15 @@ const {
       <v-chip color="error" size="small" variant="tonal" class="mr-2">
         {{ totalPendingEscalations }} pending
       </v-chip>
+      <v-chip
+        v-if="dashboardQuery.trim().length > 0"
+        color="primary"
+        size="small"
+        variant="tonal"
+        class="mr-2"
+      >
+        {{ visiblePendingEscalations.length }} visible
+      </v-chip>
       <v-btn
         variant="text"
         size="small"
@@ -33,7 +44,7 @@ const {
 
     <v-list lines="two" density="compact">
       <v-list-item
-        v-for="item in pendingEscalations"
+        v-for="item in visiblePendingEscalations"
         :key="item.requestId"
         :title="item.requestId"
         :subtitle="escalationSubtitle(item)"
@@ -72,12 +83,14 @@ const {
     </v-list>
 
     <v-alert
-      v-if="pendingEscalations.length === 0"
-      type="success"
+      v-if="visiblePendingEscalations.length === 0"
+      :type="pendingEscalations.length === 0 ? 'success' : 'info'"
       variant="tonal"
       class="ma-4"
     >
-      No pending escalations.
+      {{ pendingEscalations.length === 0
+        ? 'No pending escalations.'
+        : 'No pending escalations match the active filter.' }}
     </v-alert>
   </v-card>
 </template>

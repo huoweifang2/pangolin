@@ -59,6 +59,7 @@ export function useFirewallOpsConsole() {
   const deletingServerId = ref<string | null>(null)
   const streamPaused = ref(false)
   const dashboardViewMode = ref<DashboardViewMode>('all')
+  const dashboardQuery = ref('')
   const actionHistory = ref<ActionHistoryItem[]>([])
 
   const newSkill = ref<FirewallSkillInput>({ id: '', name: '', description: '' })
@@ -71,14 +72,21 @@ export function useFirewallOpsConsole() {
   const totalSkills = computed(() => skills.value.length)
   const totalServers = computed(() => mcpServers.value.length)
   const dashboardEventCount = computed(() => dashboardEvents.value.length)
+  const normalizedDashboardQuery = computed(() => dashboardQuery.value.trim().toLowerCase())
   const filteredDashboardEvents = computed(() => {
-    if (dashboardViewMode.value === 'alert') {
-      return dashboardEvents.value.filter((event) => event.is_alert)
+    const query = normalizedDashboardQuery.value
+    const visibleEvents =
+      dashboardViewMode.value === 'alert'
+        ? dashboardEvents.value.filter((event) => event.is_alert)
+        : dashboardViewMode.value === 'escalate'
+          ? dashboardEvents.value.filter((event) => dashboardVerdict(event) === 'ESCALATE')
+          : dashboardEvents.value
+
+    if (!query) {
+      return visibleEvents
     }
-    if (dashboardViewMode.value === 'escalate') {
-      return dashboardEvents.value.filter((event) => dashboardVerdict(event) === 'ESCALATE')
-    }
-    return dashboardEvents.value
+
+    return visibleEvents.filter((event) => eventMatchesQuery(event, query))
   })
   const recentDashboardEvents = computed(() => filteredDashboardEvents.value.slice(0, 12))
 
@@ -112,6 +120,13 @@ export function useFirewallOpsConsole() {
   })
 
   const totalPendingEscalations = computed(() => pendingEscalations.value.length)
+  const visiblePendingEscalations = computed(() => {
+    const query = normalizedDashboardQuery.value
+    if (!query) {
+      return pendingEscalations.value
+    }
+    return pendingEscalations.value.filter((item) => escalationMatchesQuery(item, query))
+  })
   const recentActionHistory = computed(() => actionHistory.value.slice(0, 12))
 
   const canAddSkill = computed(() => newSkill.value.id.trim().length > 0)
@@ -189,6 +204,24 @@ export function useFirewallOpsConsole() {
 
   function canResolveEvent(event: FirewallDashboardEvent): boolean {
     return dashboardVerdict(event) === 'ESCALATE' && dashboardRequestId(event) != null
+  }
+
+  function includesQuery(value: string | null | undefined, query: string): boolean {
+    return String(value ?? '').toLowerCase().includes(query)
+  }
+
+  function eventMatchesQuery(event: FirewallDashboardEvent, query: string): boolean {
+    return (
+      includesQuery(dashboardRequestId(event), query)
+      || includesQuery(dashboardMethod(event), query)
+      || includesQuery(dashboardVerdict(event), query)
+      || includesQuery(dashboardThreat(event), query)
+      || includesQuery(event.session_id, query)
+    )
+  }
+
+  function escalationMatchesQuery(item: EscalationItem, query: string): boolean {
+    return includesQuery(item.requestId, query) || eventMatchesQuery(item.event, query)
   }
 
   function clearOperationFeedback(): void {
@@ -564,6 +597,7 @@ export function useFirewallOpsConsole() {
     dashboardReconnectDelaySeconds,
     streamPaused,
     dashboardViewMode,
+    dashboardQuery,
     actionHistory,
     newSkill,
     newServer,
@@ -576,6 +610,7 @@ export function useFirewallOpsConsole() {
     dashboardEventCount,
     recentDashboardEvents,
     pendingEscalations,
+    visiblePendingEscalations,
     totalPendingEscalations,
     recentActionHistory,
     canAddSkill,
