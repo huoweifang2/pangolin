@@ -1,421 +1,75 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { firewallSupplementService, toErrorMessage } from '../services/firewallSupplementService'
-import type {
-  FirewallAuditEntry,
-  FirewallDashboardEvent,
-  FirewallDataset,
-  FirewallMcpServer,
-  FirewallMcpServerInput,
-  FirewallSkill,
-  FirewallSkillInput,
-  FirewallTrace,
-} from '../types/firewallSupplement'
+import { useFirewallOpsConsole } from '../composables/useFirewallOpsConsole'
 
 definePageMeta({ title: 'MCP Firewall' })
 
-const loading = ref(false)
-const errorMessage = ref<string | null>(null)
-const operationError = ref<string | null>(null)
-const operationMessage = ref<string | null>(null)
-const lastUpdated = ref<Date | null>(null)
-
-const auditEntries = ref<FirewallAuditEntry[]>([])
-const traces = ref<FirewallTrace[]>([])
-const datasets = ref<FirewallDataset[]>([])
-const skills = ref<FirewallSkill[]>([])
-const mcpServers = ref<FirewallMcpServer[]>([])
-
-const dashboardConnected = ref(false)
-const dashboardError = ref<string | null>(null)
-const dashboardEvents = ref<FirewallDashboardEvent[]>([])
-let dashboardSocket: WebSocket | null = null
-const dashboardActionPendingId = ref<string | null>(null)
-const handledRequestIds = ref<string[]>([])
-const dashboardReconnectAttempts = ref(0)
-const dashboardReconnectDelaySeconds = ref<number | null>(null)
-const keepDashboardReconnect = ref(true)
-let dashboardReconnectTimer: ReturnType<typeof setTimeout> | null = null
-
-interface EscalationItem {
-  requestId: string
-  event: FirewallDashboardEvent
-  verdict: string
-}
-
-const savingSkill = ref(false)
-const deletingSkillId = ref<string | null>(null)
-const savingServer = ref(false)
-const deletingServerId = ref<string | null>(null)
-
-const newSkill = ref<FirewallSkillInput>({ id: '', name: '', description: '' })
-const newServer = ref<FirewallMcpServerInput>({ id: '', name: '', transport: 'sse', url: '' })
-const transportOptions = ['sse', 'stdio', 'http', 'websocket']
-
-const totalAudit = computed(() => auditEntries.value.length)
-const totalTraces = computed(() => traces.value.length)
-const totalDatasets = computed(() => datasets.value.length)
-const totalSkills = computed(() => skills.value.length)
-const totalServers = computed(() => mcpServers.value.length)
-const dashboardEventCount = computed(() => dashboardEvents.value.length)
-const recentDashboardEvents = computed(() => dashboardEvents.value.slice(0, 12))
-const escalationItems = computed<EscalationItem[]>(() => {
-  const latestByRequest = new Map<string, EscalationItem>()
-  for (const event of dashboardEvents.value) {
-    const requestId = dashboardRequestId(event)
-    if (!requestId || latestByRequest.has(requestId)) {
-      continue
-    }
-    latestByRequest.set(requestId, {
-      requestId,
-      event,
-      verdict: dashboardVerdict(event),
-    })
-  }
-  return Array.from(latestByRequest.values())
-})
-const pendingEscalations = computed(() =>
-  escalationItems.value.filter(
-    (item) => item.verdict === 'ESCALATE' && !handledRequestIds.value.includes(item.requestId),
-  ),
-)
-const totalPendingEscalations = computed(() => pendingEscalations.value.length)
-
-const canAddSkill = computed(() => newSkill.value.id.trim().length > 0)
-const canAddServer = computed(() => newServer.value.id.trim().length > 0)
-
-function verdictColor(verdict?: string): string {
-  switch ((verdict ?? '').toUpperCase()) {
-    case 'BLOCK':
-      return 'red'
-    case 'ESCALATE':
-      return 'orange'
-    case 'ALLOW':
-      return 'green'
-    default:
-      return 'grey'
-  }
-}
-
-function threatColor(level?: string): string {
-  switch ((level ?? '').toUpperCase()) {
-    case 'CRITICAL':
-      return 'red-darken-2'
-    case 'HIGH':
-      return 'red'
-    case 'MEDIUM':
-      return 'orange'
-    case 'LOW':
-      return 'blue'
-    default:
-      return 'grey'
-  }
-}
-
-function formatTimestamp(timestamp?: number | string): string {
-  if (timestamp == null) return 'n/a'
-
-  const value = typeof timestamp === 'number' ? timestamp * 1000 : Date.parse(timestamp)
-  if (Number.isNaN(value)) return String(timestamp)
-
-  return new Date(value).toLocaleString()
-}
-
-function traceIdentifier(trace: FirewallTrace): string {
-  return trace.id ?? trace.trace_id ?? trace.session_id ?? 'unknown'
-}
-
-function traceCreatedAt(trace: FirewallTrace): string {
-  return formatTimestamp(trace.created_at)
-}
-
-function skillLabel(skill: FirewallSkill): string {
-  return skill.name ?? skill.id
-}
-
-function serverLabel(server: FirewallMcpServer): string {
-  return server.name ?? server.id
-}
-
-function dashboardVerdict(event: FirewallDashboardEvent): string {
-  return String(event.analysis?.verdict ?? event.verdict ?? 'UNKNOWN').toUpperCase()
-}
-
-function dashboardThreat(event: FirewallDashboardEvent): string {
-  return String(event.analysis?.threat_level ?? 'NONE').toUpperCase()
-}
-
-function dashboardMethod(event: FirewallDashboardEvent): string {
-  return event.method ?? event.event_type ?? 'event'
-}
-
-function dashboardRequestId(event: FirewallDashboardEvent): string | null {
-  const requestId = cleanText(event.analysis?.request_id)
-  return requestId ?? null
-}
-
-function canResolveEvent(event: FirewallDashboardEvent): boolean {
-  return dashboardVerdict(event) === 'ESCALATE' && dashboardRequestId(event) != null
-}
-
-function clearOperationFeedback(): void {
-  operationError.value = null
-  operationMessage.value = null
-}
-
-function clearDashboardReconnectTimer(): void {
-  if (dashboardReconnectTimer) {
-    clearTimeout(dashboardReconnectTimer)
-    dashboardReconnectTimer = null
-  }
-  dashboardReconnectDelaySeconds.value = null
-}
-
-function scheduleDashboardReconnect(): void {
-  if (!keepDashboardReconnect.value) {
-    return
-  }
-
-  clearDashboardReconnectTimer()
-  dashboardReconnectAttempts.value += 1
-  const delayMs = Math.min(1000 * 2 ** Math.min(dashboardReconnectAttempts.value, 4), 15000)
-  dashboardReconnectDelaySeconds.value = Math.ceil(delayMs / 1000)
-
-  dashboardReconnectTimer = setTimeout(() => {
-    dashboardReconnectTimer = null
-    dashboardReconnectDelaySeconds.value = null
-    openDashboardStream()
-  }, delayMs)
-}
-
-function cleanText(value?: string): string | undefined {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : undefined
-}
-
-function pushDashboardEvent(event: FirewallDashboardEvent): void {
-  dashboardEvents.value = [event, ...dashboardEvents.value].slice(0, 50)
-}
-
-function closeDashboardStream(): void {
-  clearDashboardReconnectTimer()
-  if (dashboardSocket) {
-    dashboardSocket.close()
-    dashboardSocket = null
-  }
-  dashboardConnected.value = false
-}
-
-function openDashboardStream(): void {
-  if (!import.meta.client) {
-    return
-  }
-
-  closeDashboardStream()
-  dashboardError.value = null
-
-  const socket = new WebSocket(firewallSupplementService.dashboardWsURL)
-  dashboardSocket = socket
-
-  socket.onopen = () => {
-    clearDashboardReconnectTimer()
-    dashboardReconnectAttempts.value = 0
-    dashboardConnected.value = true
-    dashboardError.value = null
-  }
-
-  socket.onclose = () => {
-    if (dashboardSocket !== socket) {
-      return
-    }
-    dashboardSocket = null
-    dashboardConnected.value = false
-    scheduleDashboardReconnect()
-  }
-
-  socket.onerror = () => {
-    dashboardError.value = 'Dashboard WebSocket connection error'
-  }
-
-  socket.onmessage = (message) => {
-    try {
-      const parsed = JSON.parse(String(message.data)) as FirewallDashboardEvent
-      pushDashboardEvent(parsed)
-    } catch {
-      // Ignore malformed events from mixed environments.
-    }
-  }
-}
-
-function reconnectDashboardStream(): void {
-  keepDashboardReconnect.value = true
-  dashboardReconnectAttempts.value = 0
-  openDashboardStream()
-}
-
-function markEscalationHandled(requestId: string): void {
-  if (!handledRequestIds.value.includes(requestId)) {
-    handledRequestIds.value = [requestId, ...handledRequestIds.value].slice(0, 200)
-  }
-}
-
-function clearEscalationQueue(): void {
-  const queueIds = pendingEscalations.value.map((item) => item.requestId)
-  handledRequestIds.value = Array.from(new Set([...queueIds, ...handledRequestIds.value])).slice(0, 200)
-}
-
-function escalationSubtitle(item: EscalationItem): string {
-  return `${dashboardMethod(item.event)} · ${dashboardThreat(item.event)} · ${formatTimestamp(item.event.timestamp)}`
-}
-
-function resolveEscalation(item: EscalationItem, action: 'allow' | 'block'): void {
-  void sendDashboardAction(action, item.requestId)
-}
-
-async function sendDashboardAction(action: 'allow' | 'block', requestId: string): Promise<void> {
-  clearOperationFeedback()
-
-  if (!dashboardSocket || dashboardSocket.readyState !== WebSocket.OPEN) {
-    operationError.value = 'Dashboard WebSocket is not connected'
-    return
-  }
-
-  dashboardActionPendingId.value = requestId
-  try {
-    dashboardSocket.send(JSON.stringify({ action, request_id: requestId }))
-    markEscalationHandled(requestId)
-    operationMessage.value = `Sent ${action.toUpperCase()} for ${requestId}`
-  } catch {
-    operationError.value = 'Failed to send dashboard action'
-  } finally {
-    dashboardActionPendingId.value = null
-  }
-}
-
-function onHumanAction(event: FirewallDashboardEvent, action: 'allow' | 'block'): void {
-  const requestId = dashboardRequestId(event)
-  if (!requestId) {
-    operationError.value = 'request_id missing for this event'
-    return
-  }
-  void sendDashboardAction(action, requestId)
-}
-
-async function refresh(): Promise<void> {
-  loading.value = true
-  errorMessage.value = null
-
-  try {
-    const [audit, traceList, datasetList, customConfig] = await Promise.all([
-      firewallSupplementService.getAudit(25),
-      firewallSupplementService.getTraces(25),
-      firewallSupplementService.getDatasets(10),
-      firewallSupplementService.getCustomConfig(),
-    ])
-
-    auditEntries.value = audit.entries ?? []
-    traces.value = traceList.traces ?? []
-    datasets.value = datasetList.datasets ?? []
-    skills.value = customConfig.skills ?? []
-    mcpServers.value = customConfig.mcp_servers ?? []
-    lastUpdated.value = new Date()
-  } catch (error) {
-    errorMessage.value = toErrorMessage(error)
-  } finally {
-    loading.value = false
-  }
-}
-
-async function addSkill(): Promise<void> {
-  const id = newSkill.value.id.trim()
-  if (!id) {
-    operationError.value = 'Skill id is required'
-    return
-  }
-
-  clearOperationFeedback()
-  savingSkill.value = true
-  try {
-    await firewallSupplementService.upsertSkill({
-      id,
-      name: cleanText(newSkill.value.name),
-      description: cleanText(newSkill.value.description),
-    })
-    operationMessage.value = `Skill ${id} saved`
-    newSkill.value = { id: '', name: '', description: '' }
-    await refresh()
-  } catch (error) {
-    operationError.value = toErrorMessage(error)
-  } finally {
-    savingSkill.value = false
-  }
-}
-
-async function removeSkill(skillId: string): Promise<void> {
-  clearOperationFeedback()
-  deletingSkillId.value = skillId
-  try {
-    await firewallSupplementService.deleteSkill(skillId)
-    operationMessage.value = `Skill ${skillId} deleted`
-    await refresh()
-  } catch (error) {
-    operationError.value = toErrorMessage(error)
-  } finally {
-    deletingSkillId.value = null
-  }
-}
-
-async function addMcpServer(): Promise<void> {
-  const id = newServer.value.id.trim()
-  if (!id) {
-    operationError.value = 'MCP server id is required'
-    return
-  }
-
-  clearOperationFeedback()
-  savingServer.value = true
-  try {
-    await firewallSupplementService.upsertMcpServer({
-      id,
-      name: cleanText(newServer.value.name),
-      transport: cleanText(newServer.value.transport),
-      url: cleanText(newServer.value.url),
-    })
-    operationMessage.value = `MCP server ${id} saved`
-    newServer.value = { id: '', name: '', transport: 'sse', url: '' }
-    await refresh()
-  } catch (error) {
-    operationError.value = toErrorMessage(error)
-  } finally {
-    savingServer.value = false
-  }
-}
-
-async function removeMcpServer(serverId: string): Promise<void> {
-  clearOperationFeedback()
-  deletingServerId.value = serverId
-  try {
-    await firewallSupplementService.deleteMcpServer(serverId)
-    operationMessage.value = `MCP server ${serverId} deleted`
-    await refresh()
-  } catch (error) {
-    operationError.value = toErrorMessage(error)
-  } finally {
-    deletingServerId.value = null
-  }
-}
-
-onMounted(() => {
-  void refresh()
-  openDashboardStream()
-})
-
-onBeforeUnmount(() => {
-  keepDashboardReconnect.value = false
-  closeDashboardStream()
-})
+const {
+  firewallSupplementService,
+  loading,
+  errorMessage,
+  operationError,
+  operationMessage,
+  lastUpdated,
+  auditEntries,
+  traces,
+  datasets,
+  skills,
+  mcpServers,
+  dashboardConnected,
+  dashboardError,
+  dashboardActionPendingId,
+  dashboardReconnectAttempts,
+  dashboardReconnectDelaySeconds,
+  streamPaused,
+  dashboardViewMode,
+  newSkill,
+  newServer,
+  transportOptions,
+  totalAudit,
+  totalTraces,
+  totalDatasets,
+  totalSkills,
+  totalServers,
+  dashboardEventCount,
+  recentDashboardEvents,
+  pendingEscalations,
+  totalPendingEscalations,
+  recentActionHistory,
+  canAddSkill,
+  canAddServer,
+  verdictColor,
+  threatColor,
+  formatTimestamp,
+  traceIdentifier,
+  traceCreatedAt,
+  skillLabel,
+  serverLabel,
+  dashboardVerdict,
+  dashboardThreat,
+  dashboardMethod,
+  dashboardRequestId,
+  canResolveEvent,
+  actionLabel,
+  actionColor,
+  toggleStreamPaused,
+  setDashboardViewMode,
+  reconnectDashboardStream,
+  clearEscalationQueue,
+  escalationSubtitle,
+  resolveEscalation,
+  acknowledgeEscalation,
+  onHumanAction,
+  refresh,
+  addSkill,
+  removeSkill,
+  addMcpServer,
+  removeMcpServer,
+  savingSkill,
+  deletingSkillId,
+  savingServer,
+  deletingServerId,
+} = useFirewallOpsConsole()
 </script>
-
 <template>
   <v-container fluid>
     <div class="d-flex align-center flex-wrap ga-3 mb-4">
@@ -438,6 +92,10 @@ onBeforeUnmount(() => {
         {{ dashboardConnected ? 'Dashboard Connected' : 'Dashboard Disconnected' }}
       </v-chip>
 
+      <v-chip :color="streamPaused ? 'amber' : 'green'" variant="tonal" size="small">
+        Capture {{ streamPaused ? 'Paused' : 'Active' }}
+      </v-chip>
+
       <v-chip :color="totalPendingEscalations > 0 ? 'error' : 'green'" variant="tonal" size="small">
         Pending Escalations: {{ totalPendingEscalations }}
       </v-chip>
@@ -457,6 +115,14 @@ onBeforeUnmount(() => {
         @click="reconnectDashboardStream"
       >
         Reconnect Stream
+      </v-btn>
+
+      <v-btn
+        variant="text"
+        :prepend-icon="streamPaused ? 'mdi-play-circle-outline' : 'mdi-pause-circle-outline'"
+        @click="toggleStreamPaused"
+      >
+        {{ streamPaused ? 'Resume Stream' : 'Pause Stream' }}
       </v-btn>
 
       <v-btn
@@ -572,6 +238,9 @@ onBeforeUnmount(() => {
       <v-card-title class="d-flex align-center">
         <span>Pending Escalation Queue</span>
         <v-spacer />
+        <v-chip color="error" size="small" variant="tonal" class="mr-2">
+          {{ totalPendingEscalations }} pending
+        </v-chip>
         <v-btn
           variant="text"
           size="small"
@@ -610,6 +279,14 @@ onBeforeUnmount(() => {
               >
                 Block
               </v-btn>
+              <v-btn
+                size="x-small"
+                color="grey"
+                variant="tonal"
+                @click="acknowledgeEscalation(item)"
+              >
+                Ack
+              </v-btn>
             </div>
           </template>
         </v-list-item>
@@ -627,8 +304,67 @@ onBeforeUnmount(() => {
 
     <v-card class="mb-4">
       <v-card-title class="d-flex align-center">
+        <span>Action History</span>
+        <v-spacer />
+        <v-chip size="small" variant="tonal">{{ recentActionHistory.length }}</v-chip>
+      </v-card-title>
+      <v-divider />
+
+      <v-list lines="two" density="compact">
+        <v-list-item
+          v-for="record in recentActionHistory"
+          :key="`${record.requestId}-${record.timestamp}-${record.action}`"
+          :title="record.requestId"
+          :subtitle="formatTimestamp(record.timestamp)"
+        >
+          <template #append>
+            <v-chip :color="actionColor(record.action)" size="x-small" variant="tonal">
+              {{ actionLabel(record.action) }}
+            </v-chip>
+          </template>
+        </v-list-item>
+      </v-list>
+
+      <v-alert
+        v-if="recentActionHistory.length === 0"
+        type="info"
+        variant="tonal"
+        class="ma-4"
+      >
+        No actions yet.
+      </v-alert>
+    </v-card>
+
+    <v-card class="mb-4">
+      <v-card-title class="d-flex align-center">
         <span>Dashboard Live Stream</span>
         <v-spacer />
+        <div class="d-flex ga-2 mr-3">
+          <v-btn
+            size="x-small"
+            :variant="dashboardViewMode === 'all' ? 'flat' : 'tonal'"
+            color="primary"
+            @click="setDashboardViewMode('all')"
+          >
+            All
+          </v-btn>
+          <v-btn
+            size="x-small"
+            :variant="dashboardViewMode === 'alert' ? 'flat' : 'tonal'"
+            color="warning"
+            @click="setDashboardViewMode('alert')"
+          >
+            Alert
+          </v-btn>
+          <v-btn
+            size="x-small"
+            :variant="dashboardViewMode === 'escalate' ? 'flat' : 'tonal'"
+            color="error"
+            @click="setDashboardViewMode('escalate')"
+          >
+            Escalate
+          </v-btn>
+        </div>
         <v-chip :color="dashboardConnected ? 'green' : 'grey'" size="small" variant="tonal">
           {{ dashboardConnected ? 'Online' : 'Offline' }}
         </v-chip>
