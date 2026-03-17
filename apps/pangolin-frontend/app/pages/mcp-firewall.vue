@@ -31,6 +31,17 @@ const dashboardError = ref<string | null>(null)
 const dashboardEvents = ref<FirewallDashboardEvent[]>([])
 let dashboardSocket: WebSocket | null = null
 const dashboardActionPendingId = ref<string | null>(null)
+const handledRequestIds = ref<string[]>([])
+const dashboardReconnectAttempts = ref(0)
+const dashboardReconnectDelaySeconds = ref<number | null>(null)
+const keepDashboardReconnect = ref(true)
+let dashboardReconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+interface EscalationItem {
+  requestId: string
+  event: FirewallDashboardEvent
+  verdict: string
+}
 
 const savingSkill = ref(false)
 const deletingSkillId = ref<string | null>(null)
@@ -48,6 +59,27 @@ const totalSkills = computed(() => skills.value.length)
 const totalServers = computed(() => mcpServers.value.length)
 const dashboardEventCount = computed(() => dashboardEvents.value.length)
 const recentDashboardEvents = computed(() => dashboardEvents.value.slice(0, 12))
+const escalationItems = computed<EscalationItem[]>(() => {
+  const latestByRequest = new Map<string, EscalationItem>()
+  for (const event of dashboardEvents.value) {
+    const requestId = dashboardRequestId(event)
+    if (!requestId || latestByRequest.has(requestId)) {
+      continue
+    }
+    latestByRequest.set(requestId, {
+      requestId,
+      event,
+      verdict: dashboardVerdict(event),
+    })
+  }
+  return Array.from(latestByRequest.values())
+})
+const pendingEscalations = computed(() =>
+  escalationItems.value.filter(
+    (item) => item.verdict === 'ESCALATE' && !handledRequestIds.value.includes(item.requestId),
+  ),
+)
+const totalPendingEscalations = computed(() => pendingEscalations.value.length)
 
 const canAddSkill = computed(() => newSkill.value.id.trim().length > 0)
 const canAddServer = computed(() => newServer.value.id.trim().length > 0)
@@ -131,6 +163,31 @@ function clearOperationFeedback(): void {
   operationMessage.value = null
 }
 
+function clearDashboardReconnectTimer(): void {
+  if (dashboardReconnectTimer) {
+    clearTimeout(dashboardReconnectTimer)
+    dashboardReconnectTimer = null
+  }
+  dashboardReconnectDelaySeconds.value = null
+}
+
+function scheduleDashboardReconnect(): void {
+  if (!keepDashboardReconnect.value) {
+    return
+  }
+
+  clearDashboardReconnectTimer()
+  dashboardReconnectAttempts.value += 1
+  const delayMs = Math.min(1000 * 2 ** Math.min(dashboardReconnectAttempts.value, 4), 15000)
+  dashboardReconnectDelaySeconds.value = Math.ceil(delayMs / 1000)
+
+  dashboardReconnectTimer = setTimeout(() => {
+    dashboardReconnectTimer = null
+    dashboardReconnectDelaySeconds.value = null
+    openDashboardStream()
+  }, delayMs)
+}
+
 function cleanText(value?: string): string | undefined {
   const trimmed = value?.trim()
   return trimmed ? trimmed : undefined
@@ -141,6 +198,7 @@ function pushDashboardEvent(event: FirewallDashboardEvent): void {
 }
 
 function closeDashboardStream(): void {
+  clearDashboardReconnectTimer()
   if (dashboardSocket) {
     dashboardSocket.close()
     dashboardSocket = null
@@ -160,15 +218,19 @@ function openDashboardStream(): void {
   dashboardSocket = socket
 
   socket.onopen = () => {
+    clearDashboardReconnectTimer()
+    dashboardReconnectAttempts.value = 0
     dashboardConnected.value = true
     dashboardError.value = null
   }
 
   socket.onclose = () => {
-    if (dashboardSocket === socket) {
-      dashboardSocket = null
+    if (dashboardSocket !== socket) {
+      return
     }
+    dashboardSocket = null
     dashboardConnected.value = false
+    scheduleDashboardReconnect()
   }
 
   socket.onerror = () => {
@@ -186,7 +248,28 @@ function openDashboardStream(): void {
 }
 
 function reconnectDashboardStream(): void {
+  keepDashboardReconnect.value = true
+  dashboardReconnectAttempts.value = 0
   openDashboardStream()
+}
+
+function markEscalationHandled(requestId: string): void {
+  if (!handledRequestIds.value.includes(requestId)) {
+    handledRequestIds.value = [requestId, ...handledRequestIds.value].slice(0, 200)
+  }
+}
+
+function clearEscalationQueue(): void {
+  const queueIds = pendingEscalations.value.map((item) => item.requestId)
+  handledRequestIds.value = Array.from(new Set([...queueIds, ...handledRequestIds.value])).slice(0, 200)
+}
+
+function escalationSubtitle(item: EscalationItem): string {
+  return `${dashboardMethod(item.event)} · ${dashboardThreat(item.event)} · ${formatTimestamp(item.event.timestamp)}`
+}
+
+function resolveEscalation(item: EscalationItem, action: 'allow' | 'block'): void {
+  void sendDashboardAction(action, item.requestId)
 }
 
 async function sendDashboardAction(action: 'allow' | 'block', requestId: string): Promise<void> {
@@ -200,6 +283,7 @@ async function sendDashboardAction(action: 'allow' | 'block', requestId: string)
   dashboardActionPendingId.value = requestId
   try {
     dashboardSocket.send(JSON.stringify({ action, request_id: requestId }))
+    markEscalationHandled(requestId)
     operationMessage.value = `Sent ${action.toUpperCase()} for ${requestId}`
   } catch {
     operationError.value = 'Failed to send dashboard action'
@@ -327,6 +411,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  keepDashboardReconnect.value = false
   closeDashboardStream()
 })
 </script>
@@ -351,6 +436,19 @@ onBeforeUnmount(() => {
 
       <v-chip :color="dashboardConnected ? 'green' : 'grey'" variant="tonal" size="small">
         {{ dashboardConnected ? 'Dashboard Connected' : 'Dashboard Disconnected' }}
+      </v-chip>
+
+      <v-chip :color="totalPendingEscalations > 0 ? 'error' : 'green'" variant="tonal" size="small">
+        Pending Escalations: {{ totalPendingEscalations }}
+      </v-chip>
+
+      <v-chip
+        v-if="dashboardReconnectDelaySeconds != null"
+        color="amber"
+        variant="tonal"
+        size="small"
+      >
+        Reconnect ~{{ dashboardReconnectDelaySeconds }}s (try {{ dashboardReconnectAttempts }})
       </v-chip>
 
       <v-btn
@@ -460,7 +558,72 @@ onBeforeUnmount(() => {
           </v-card-text>
         </v-card>
       </v-col>
+      <v-col cols="12" sm="6" md="4" lg="2">
+        <v-card variant="tonal" color="error">
+          <v-card-text>
+            <div class="text-caption text-medium-emphasis">Escalation Queue</div>
+            <div class="text-h4 font-weight-bold">{{ totalPendingEscalations }}</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
     </v-row>
+
+    <v-card class="mb-4">
+      <v-card-title class="d-flex align-center">
+        <span>Pending Escalation Queue</span>
+        <v-spacer />
+        <v-btn
+          variant="text"
+          size="small"
+          prepend-icon="mdi-broom"
+          @click="clearEscalationQueue"
+        >
+          Clear Queue
+        </v-btn>
+      </v-card-title>
+      <v-divider />
+
+      <v-list lines="two" density="compact">
+        <v-list-item
+          v-for="item in pendingEscalations"
+          :key="item.requestId"
+          :title="item.requestId"
+          :subtitle="escalationSubtitle(item)"
+        >
+          <template #append>
+            <div class="d-flex ga-2">
+              <v-btn
+                size="x-small"
+                color="success"
+                variant="tonal"
+                :loading="dashboardActionPendingId === item.requestId"
+                @click="resolveEscalation(item, 'allow')"
+              >
+                Allow
+              </v-btn>
+              <v-btn
+                size="x-small"
+                color="error"
+                variant="tonal"
+                :loading="dashboardActionPendingId === item.requestId"
+                @click="resolveEscalation(item, 'block')"
+              >
+                Block
+              </v-btn>
+            </div>
+          </template>
+        </v-list-item>
+      </v-list>
+
+      <v-alert
+        v-if="pendingEscalations.length === 0"
+        type="success"
+        variant="tonal"
+        class="ma-4"
+      >
+        No pending escalations.
+      </v-alert>
+    </v-card>
 
     <v-card class="mb-4">
       <v-card-title class="d-flex align-center">
