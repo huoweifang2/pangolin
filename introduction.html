@@ -1612,7 +1612,7 @@
       </p>
       <hr />
       <h2 id="九-项目结构">九、项目结构</h2>
-      <pre data-role="codeBlock" data-info="" class="language-text"><code>extensions/agent-firewall/
+      <pre data-role="codeBlock" data-info="" class="language-text"><code>./
 ├── src/                          # Python 后端
 │   ├── main.py                   # FastAPI 入口（路由、生命周期、CORS）
 │   ├── config.py                 # 配置数据类（12-factor，AF_* 环境变量）
@@ -1664,7 +1664,7 @@
         data-info="bash"
         class="language-bash bash"
       ><code><span class="token comment"># 进入项目目录</span>
-<span class="token builtin class-name">cd</span> extensions/agent-firewall
+<span class="token builtin class-name">cd</span> .
 
 <span class="token comment"># 一键启动所有服务</span>
 ./scripts/start-all.sh

@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import type { UpdateStepProgress, UpdateStepResult } from "../../infra/update-runner.js";
 import { resolveStateDir } from "../../config/paths.js";
-import { resolveAgentShieldPackageRoot } from "../../infra/agent-shield-root.js";
+import { resolveAgentShieldPackageRoot } from "../../infra/core-package-root.js";
 import { readPackageName, readPackageVersion } from "../../infra/package-json.js";
 import { trimLogTail } from "../../infra/restart-sentinel.js";
 import { parseSemver } from "../../infra/runtime-guard.js";
@@ -37,11 +37,12 @@ export type UpdateWizardOptions = {
   timeout?: string;
 };
 
-const AGENT_SHIELD_REPO_URL = "https://github.com/agent-shield/agent-shield.git";
+const AGENT_SHIELD_REPO_URL = "https://github.com/huoweifang2/pangolin.git";
 const MAX_LOG_CHARS = 8000;
 
-export const DEFAULT_PACKAGE_NAME = "agent-shield";
-const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME]);
+const LEGACY_PACKAGE_NAME = "agent-shield";
+export const DEFAULT_PACKAGE_NAME = "pangolin";
+const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME, LEGACY_PACKAGE_NAME]);
 
 export function normalizeTag(value?: string | null): string | null {
   if (!value) {
@@ -51,8 +52,8 @@ export function normalizeTag(value?: string | null): string | null {
   if (!trimmed) {
     return null;
   }
-  if (trimmed.startsWith("agent-shield@")) {
-    return trimmed.slice("agent-shield@".length);
+  if (trimmed.startsWith(`${LEGACY_PACKAGE_NAME}@`)) {
+    return trimmed.slice(`${LEGACY_PACKAGE_NAME}@`.length);
   }
   if (trimmed.startsWith(`${DEFAULT_PACKAGE_NAME}@`)) {
     return trimmed.slice(`${DEFAULT_PACKAGE_NAME}@`.length);
@@ -199,7 +200,7 @@ export async function ensureGitCheckout(params: {
     const empty = await isEmptyDir(params.dir);
     if (!empty) {
       throw new Error(
-        `AGENT_SHIELD_GIT_DIR points at a non-git directory: ${params.dir}. Set AGENT_SHIELD_GIT_DIR to an empty folder or an agent-shield checkout.`,
+        `AGENT_SHIELD_GIT_DIR points at a non-git directory: ${params.dir}. Set AGENT_SHIELD_GIT_DIR to an empty folder or a pangolin checkout.`,
       );
     }
 
@@ -245,7 +246,9 @@ export async function resolveGlobalManager(params: {
 }
 
 export async function tryWriteCompletionCache(root: string, jsonMode: boolean): Promise<void> {
-  const binPath = path.join(root, "agent-shield.mjs");
+  const preferredBinPath = path.join(root, "pangolin.mjs");
+  const legacyBinPath = path.join(root, "agent-shield.mjs");
+  const binPath = (await pathExists(preferredBinPath)) ? preferredBinPath : legacyBinPath;
   if (!(await pathExists(binPath))) {
     return;
   }

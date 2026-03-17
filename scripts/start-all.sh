@@ -1,12 +1,13 @@
 #!/bin/bash
 # Agent Firewall — Start All Services (Backend + Frontend + Gateway)
-# Usage: cd extensions/agent-firewall && ./scripts/start-all.sh
+# Usage: ./scripts/start-all.sh
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-ROOT_DIR="$(dirname "$(dirname "$PROJECT_DIR")")"
+# After flattening, the project root is the parent of scripts/.
+ROOT_DIR="$PROJECT_DIR"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 VENV_DIR="$PROJECT_DIR/.venv"
 LOG_DIR="$PROJECT_DIR/logs"
@@ -124,6 +125,9 @@ is_repo_gateway_process() {
         local cmd
         cmd=$(ps -p "$pid" -o command= 2>/dev/null || true)
 
+        if echo "$cmd" | grep -Fq "$ROOT_DIR/pangolin.mjs"; then
+            return 0
+        fi
         if echo "$cmd" | grep -Fq "$ROOT_DIR/agent-shield.mjs"; then
             return 0
         fi
@@ -218,8 +222,8 @@ else
     echo "   ⚠️  No gateway token found in local config files."
 fi
 
-if [ ! -f "$ROOT_DIR/agent-shield.mjs" ] && ! command -v openclaw &> /dev/null; then
-    echo "   ⚠️  Neither repository agent-shield.mjs nor openclaw CLI is available."
+if [ ! -f "$ROOT_DIR/pangolin.mjs" ] && [ ! -f "$ROOT_DIR/agent-shield.mjs" ] && ! command -v openclaw &> /dev/null; then
+    echo "   ⚠️  Neither repository pangolin.mjs nor openclaw CLI is available."
     echo "   Skipping gateway startup."
 else
     restart_gateway=false
@@ -264,8 +268,11 @@ else
 
     if ! lsof -ti :18789 > /dev/null 2>&1 || [ "$restart_gateway" = true ]; then
         gateway_cmd=()
-        if [ -f "$ROOT_DIR/agent-shield.mjs" ]; then
-            echo "   🧭 Launch mode: repository source ($ROOT_DIR/agent-shield.mjs)"
+        if [ -f "$ROOT_DIR/pangolin.mjs" ]; then
+            echo "   🧭 Launch mode: repository source ($ROOT_DIR/pangolin.mjs)"
+            gateway_cmd=(node "$ROOT_DIR/pangolin.mjs" gateway --port 18789 --allow-unconfigured --force)
+        elif [ -f "$ROOT_DIR/agent-shield.mjs" ]; then
+            echo "   🧭 Launch mode: repository legacy source ($ROOT_DIR/agent-shield.mjs)"
             gateway_cmd=(node "$ROOT_DIR/agent-shield.mjs" gateway --port 18789 --allow-unconfigured --force)
         else
             echo "   ⚠️  Repository entrypoint missing; fallback to openclaw CLI."

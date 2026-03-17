@@ -76,7 +76,7 @@ export function resolveMessagePrefix(
     return "";
   }
 
-  return resolveIdentityNamePrefix(cfg, agentId) ?? opts?.fallback ?? "[agent-shield]";
+  return resolveIdentityNamePrefix(cfg, agentId) ?? opts?.fallback ?? "[pangolin]";
 }
 
 /** Helper to extract a channel config value by dynamic key. */

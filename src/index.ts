@@ -32,7 +32,7 @@ import { assertSupportedRuntime } from "./infra/runtime-guard.js";
 import { installUnhandledRejectionHandler } from "./infra/unhandled-rejections.js";
 import { enableConsoleCapture } from "./logging.js";
 import { runCommandWithTimeout, runExec } from "./process/exec.js";
-import { assertWebChannel, normalizeE164, toWhatsappJid } from "./utils.js";
+import { assertWebChannel } from "./utils.js";
 
 loadDotEnv({ quiet: true });
 normalizeEnv();
@@ -81,12 +81,12 @@ if (isMain) {
   installUnhandledRejectionHandler();
 
   process.on("uncaughtException", (error) => {
-    console.error("[agent-shield] Uncaught exception:", formatUncaughtError(error));
+    console.error("[pangolin] Uncaught exception:", formatUncaughtError(error));
     process.exit(1);
   });
 
   void program.parseAsync(process.argv).catch((err) => {
-    console.error("[agent-shield] CLI failed:", formatUncaughtError(err));
+    console.error("[pangolin] CLI failed:", formatUncaughtError(err));
     process.exit(1);
   });
 }

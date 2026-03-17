@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { resolveAgentShieldPackageRoot } from "../infra/agent-shield-root.js";
+import { resolveAgentShieldPackageRoot } from "../infra/core-package-root.js";
 
 export async function resolveAgentShieldDocsPath(params: {
   workspaceDir?: string;

@@ -1,20 +1,20 @@
 {
-  "name": "agent-shield",
+  "name": "pangolin",
   "version": "0.1.0",
-  "description": "Agent Communication Security Gateway — Telegram + Agent Firewall middleware",
+  "description": "Pangolin Agent Communication Security Gateway",
   "keywords": [],
-  "homepage": "https://github.com/agent-shield/agent-shield#readme",
+  "homepage": "https://github.com/huoweifang2/pangolin#readme",
   "bugs": {
-    "url": "https://github.com/agent-shield/agent-shield/issues"
+    "url": "https://github.com/huoweifang2/pangolin/issues"
   },
   "license": "MIT",
   "author": "",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/agent-shield/agent-shield.git"
+    "url": "git+https://github.com/huoweifang2/pangolin.git"
   },
   "bin": {
-    "agent-shield": "agent-shield.mjs"
+    "pangolin": "pangolin.mjs"
   },
   "directories": {
     "doc": "docs",
@@ -23,7 +23,7 @@
   "files": [
     "CHANGELOG.md",
     "LICENSE",
-    "agent-shield.mjs",
+    "pangolin.mjs",
     "README-header.png",
     "README.md",
     "assets/",
@@ -44,11 +44,9 @@
       "types": "./dist/plugin-sdk/account-id.d.ts",
       "default": "./dist/plugin-sdk/account-id.js"
     },
-    "./cli-entry": "./agent-shield.mjs"
+    "./cli-entry": "./pangolin.mjs"
   },
   "scripts": {
-    "agent-shield": "node scripts/run-node.mjs",
-    "agent-shield:rpc": "node scripts/run-node.mjs agent --mode rpc --json",
     "android:assemble": "bash scripts/core-only-disabled.sh android:assemble",
     "android:install": "bash scripts/core-only-disabled.sh android:install",
     "android:run": "bash scripts/core-only-disabled.sh android:run",
@@ -73,26 +71,28 @@
     "gateway:dev": "AGENT_SHIELD_SKIP_CHANNELS=1 node scripts/run-node.mjs --dev gateway",
     "gateway:dev:reset": "AGENT_SHIELD_SKIP_CHANNELS=1 node scripts/run-node.mjs --dev gateway --reset",
     "gateway:watch": "node scripts/watch-node.mjs gateway --force",
-    "ios:build": "echo 'iOS removed in agent-shield edition'",
+    "ios:build": "echo 'iOS removed in pangolin edition'",
     "ios:gen": "bash scripts/core-only-disabled.sh ios:gen",
-    "ios:open": "echo 'iOS removed in agent-shield edition'",
-    "ios:run": "echo 'iOS removed in agent-shield edition'",
+    "ios:open": "echo 'iOS removed in pangolin edition'",
+    "ios:run": "echo 'iOS removed in pangolin edition'",
     "lint": "oxlint --type-aware",
     "lint:all": "pnpm lint",
     "lint:docs": "pnpm dlx markdownlint-cli2",
     "lint:docs:fix": "pnpm dlx markdownlint-cli2 --fix",
     "lint:fix": "oxlint --type-aware --fix && pnpm format",
     "lint:swift": "bash scripts/core-only-disabled.sh lint:swift",
-    "mac:open": "echo 'macOS app removed in agent-shield edition'",
+    "mac:open": "echo 'macOS app removed in pangolin edition'",
     "mac:package": "bash scripts/package-mac-app.sh",
     "mac:restart": "bash scripts/restart-mac.sh",
     "moltbot:rpc": "node scripts/run-node.mjs agent --mode rpc --json",
     "openclaw:doctor": "bash scripts/openclaw-doctor.sh",
     "openclaw:doctor:strict": "bash scripts/openclaw-doctor.sh --strict",
+    "pangolin": "node scripts/run-node.mjs",
     "pangolin:dev:all": "bash scripts/pangolin-dev-up.sh",
     "pangolin:frontend:build": "pnpm --filter ai-protector-frontend build",
     "pangolin:frontend:dev": "pnpm --filter ai-protector-frontend dev",
     "pangolin:frontend:preview": "pnpm --filter ai-protector-frontend preview",
+    "pangolin:rpc": "node scripts/run-node.mjs agent --mode rpc --json",
     "phase6:audit:legacy": "node scripts/phase6-legacy-path-audit.mjs",
     "phase6:audit:legacy:strict": "node scripts/phase6-legacy-path-audit.mjs --strict",
     "plugins:sync": "node --import tsx scripts/sync-plugin-versions.ts",

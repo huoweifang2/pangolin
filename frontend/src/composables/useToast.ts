@@ -13,11 +13,17 @@ interface ToastOptions {
   duration?: number;
 }
 
-const toastRef = ref<any>(null);
+type ToastApi = {
+  addToast: (toast: Omit<Toast, "id">) => string;
+  removeToast: (id: string) => void;
+  clearAll: () => void;
+};
+
+const toastRef = ref<ToastApi | null>(null);
 
 export function useToast() {
-  function setToastRef(ref: any) {
-    toastRef.value = ref;
+  function setToastRef(instance: ToastApi | null) {
+    toastRef.value = instance;
   }
 
   function showToast(type: Toast["type"], options: ToastOptions | string) {

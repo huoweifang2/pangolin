@@ -47,7 +47,7 @@ AF_FEISHU_VERIFICATION_TOKEN=
 ### 4. 启动Agent Firewall
 
 ```bash
-cd extensions/agent-firewall
+cd .
 source .venv/bin/activate
 make dev
 ```

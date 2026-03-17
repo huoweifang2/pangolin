@@ -63,6 +63,7 @@ function isGatewayArgv(args: string[]): boolean {
   const entryCandidates = [
     "dist/index.js",
     "dist/entry.js",
+    "pangolin.mjs",
     "agent-shield.mjs",
     "scripts/run-node.mjs",
     "src/index.ts",
@@ -72,7 +73,12 @@ function isGatewayArgv(args: string[]): boolean {
   }
 
   const exe = normalized[0] ?? "";
-  return exe.endsWith("/agent-shield") || exe === "agent-shield";
+  return (
+    exe.endsWith("/pangolin") ||
+    exe === "pangolin" ||
+    exe.endsWith("/agent-shield") ||
+    exe === "agent-shield"
+  );
 }
 
 function readLinuxCmdline(pid: number): string[] | null {

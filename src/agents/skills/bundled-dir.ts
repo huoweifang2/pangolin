@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveAgentShieldPackageRootSync } from "../../infra/agent-shield-root.js";
+import { resolveAgentShieldPackageRootSync } from "../../infra/core-package-root.js";
 
 function looksLikeSkillsDir(dir: string): boolean {
   try {

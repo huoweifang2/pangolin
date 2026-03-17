@@ -50,7 +50,7 @@ const EXCLUDED_RELATIVE_PATHS = new Set([
   "docs/refactor/phase6-repo-consolidation.md",
 ]);
 
-const PATTERNS = ["extensions/agent-firewall", "ai-protector-main", "promptfoo-main", "pangolin/"];
+const PATTERNS = ["ai-protector-main", "promptfoo-main", "pangolin/"];
 
 function parseArgs(argv) {
   return {

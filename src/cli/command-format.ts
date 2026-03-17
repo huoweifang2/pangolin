@@ -1,7 +1,8 @@
 import { replaceCliName, resolveCliName } from "./cli-name.js";
 import { normalizeProfileName } from "./profile-utils.js";
 
-const CLI_PREFIX_RE = /^(?:pnpm|npm|bunx|npx)\s+agent-shield\b|^agent-shield\b/;
+const CLI_PREFIX_RE =
+  /^(?:pnpm|npm|bunx|npx)\s+(?:agent-shield|pangolin)\b|^(?:agent-shield|pangolin)\b/;
 const PROFILE_FLAG_RE = /(?:^|\s)--profile(?:\s|=|$)/;
 const DEV_FLAG_RE = /(?:^|\s)--dev(?:\s|$)/;
 

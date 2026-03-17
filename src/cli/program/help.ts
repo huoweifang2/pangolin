@@ -17,8 +17,14 @@ const EXAMPLES = [
     "Send via your web session and print JSON result.",
   ],
   ["agent-shield gateway --port 18789", "Run the WebSocket Gateway locally."],
-  ["agent-shield --dev gateway", "Run a dev Gateway (isolated state/config) on ws://127.0.0.1:19001."],
-  ["agent-shield gateway --force", "Kill anything bound to the default gateway port, then start it."],
+  [
+    "agent-shield --dev gateway",
+    "Run a dev Gateway (isolated state/config) on ws://127.0.0.1:19001.",
+  ],
+  [
+    "agent-shield gateway --force",
+    "Kill anything bound to the default gateway port, then start it.",
+  ],
   ["agent-shield gateway ...", "Gateway control via WebSocket."],
   [
     'agent-shield agent --to +15555550123 --message "Run summary" --deliver',
@@ -37,11 +43,11 @@ export function configureProgramHelp(program: Command, ctx: ProgramContext) {
     .version(ctx.programVersion)
     .option(
       "--dev",
-      "Dev profile: isolate state under ~/.agent-shield-dev, default gateway port 19001, and shift derived ports (browser/canvas)",
+      "Dev profile: isolate state under ~/.pangolin-dev, default gateway port 19001, and shift derived ports (browser/canvas)",
     )
     .option(
       "--profile <name>",
-      "Use a named profile (isolates AGENT_SHIELD_STATE_DIR/AGENT_SHIELD_CONFIG_PATH under ~/.agent-shield-<name>)",
+      "Use a named profile (isolates AGENT_SHIELD_STATE_DIR/AGENT_SHIELD_CONFIG_PATH under ~/.pangolin-<name>)",
     );
 
   program.option("--no-color", "Disable ANSI colors", false);
@@ -92,7 +98,7 @@ export function configureProgramHelp(program: Command, ctx: ProgramContext) {
     if (command !== program) {
       return "";
     }
-    const docs = formatDocsLink("/cli", "docs.agent-shield.ai/cli");
+    const docs = formatDocsLink("/cli", "docs.pangolin.ai/cli");
     return `\n${theme.heading("Examples:")}\n${fmtExamples}\n\n${theme.muted("Docs:")} ${docs}\n`;
   });
 }

@@ -99,7 +99,7 @@ async function setupGatewayTestHome() {
   previousSkipProviders = process.env.AGENT_SHIELD_SKIP_PROVIDERS;
   previousSkipCron = process.env.AGENT_SHIELD_SKIP_CRON;
   previousMinimalGateway = process.env.AGENT_SHIELD_TEST_MINIMAL_GATEWAY;
-  tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "agent-shield-gateway-home-"));
+  tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "pangolin-gateway-home-"));
   process.env.HOME = tempHome;
   process.env.USERPROFILE = tempHome;
   process.env.AGENT_SHIELD_STATE_DIR = path.join(tempHome, ".agent-shield");

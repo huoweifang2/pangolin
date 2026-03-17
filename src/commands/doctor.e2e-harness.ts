@@ -184,7 +184,7 @@ vi.mock("../process/exec.js", () => ({
   runCommandWithTimeout,
 }));
 
-vi.mock("../infra/agent-shield-root.js", () => ({
+vi.mock("../infra/core-package-root.js", () => ({
   resolveAgentShieldPackageRoot,
 }));
 

@@ -1,6 +1,6 @@
 import type { GatewayRequestHandlers } from "./types.js";
 import { loadConfig } from "../../config/config.js";
-import { resolveAgentShieldPackageRoot } from "../../infra/agent-shield-root.js";
+import { resolveAgentShieldPackageRoot } from "../../infra/core-package-root.js";
 import {
   formatDoctorNonInteractiveHint,
   type RestartSentinelPayload,

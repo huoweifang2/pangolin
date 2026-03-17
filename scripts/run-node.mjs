@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 
 const compiler = "tsdown";
 const compilerArgs = ["exec", compiler, "--no-clean"];
+const cliEntrypoint = "pangolin.mjs";
 
 const gitWatchedPaths = ["src", "tsconfig.json", "package.json"];
 
@@ -173,11 +174,11 @@ const logRunner = (message, deps) => {
   if (deps.env.AGENT_SHIELD_RUNNER_LOG === "0") {
     return;
   }
-  deps.stderr.write(`[agent-shield] ${message}\n`);
+  deps.stderr.write(`[pangolin] ${message}\n`);
 };
 
 const runOpenClaw = async (deps) => {
-  const nodeProcess = deps.spawn(deps.execPath, ["agent-shield.mjs", ...deps.args], {
+  const nodeProcess = deps.spawn(deps.execPath, [cliEntrypoint, ...deps.args], {
     cwd: deps.cwd,
     env: deps.env,
     stdio: "inherit",

@@ -1,5 +1,5 @@
 import { formatCliCommand } from "../cli/command-format.js";
-import { resolveAgentShieldPackageRoot } from "../infra/agent-shield-root.js";
+import { resolveAgentShieldPackageRoot } from "../infra/core-package-root.js";
 import {
   checkUpdateStatus,
   compareSemverStrings,

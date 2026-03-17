@@ -93,7 +93,7 @@ function enhanceBrowserFetchError(url: string, err: unknown, timeoutMs: number):
   const isLocal = !isAbsoluteHttp(url);
   // Human-facing hint for logs/diagnostics.
   const operatorHint = isLocal
-    ? `Restart the AgentShield gateway (AgentShield.app menubar, or \`${formatCliCommand("agent-shield gateway")}\`).`
+    ? `Restart the pangolin gateway (Pangolin.app menubar, or \`${formatCliCommand("pangolin gateway")}\`).`
     : "If this is a sandboxed session, ensure the sandbox browser is running.";
   // Model-facing suffix: explicitly tell the LLM NOT to retry.
   // Without this, models see "try again" and enter an infinite tool-call loop.

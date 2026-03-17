@@ -4,7 +4,7 @@
 
 ```bash
 # 1. Clone and enter directory
-cd extensions/agent-firewall
+cd .
 
 # 2. Setup Python environment
 python3 -m venv .venv
@@ -91,7 +91,7 @@ Pre-commit hooks run automatically on `git commit`:
 
 ```bash
 # Backend (Python)
-cd extensions/agent-firewall
+cd .
 source .venv/bin/activate
 ruff check src tests      # Lint
 ruff format src tests     # Format
@@ -115,7 +115,7 @@ prek run --all-files
 
 ```bash
 # Backend
-cd extensions/agent-firewall
+cd .
 source .venv/bin/activate
 pytest                          # All tests
 pytest tests/test_rules.py      # Specific file
@@ -138,7 +138,7 @@ npm run typecheck              # Type check
 ## Directory Structure
 
 ```
-extensions/agent-firewall/
+./
 ├── src/                    # Backend source
 │   ├── main.py            # FastAPI app
 │   ├── rule_engine.py     # Rule processing

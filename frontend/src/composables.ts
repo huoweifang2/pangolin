@@ -2,7 +2,7 @@
  * Agent Firewall — State Management & API Composables
  */
 
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import type {
   Stats,
   FirewallEvent,
@@ -48,18 +48,20 @@ export function useWebSocket() {
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   function connect() {
-    if (ws?.readyState === WebSocket.OPEN) return;
+    if (ws?.readyState === WebSocket.OPEN) {
+      return;
+    }
 
     ws = new WebSocket(`${WS_BASE}/ws/dashboard`);
 
-    ws.onopen = () => {
+    ws.addEventListener("open", () => {
       connected.value = true;
       console.log("[Firewall] WebSocket connected");
-    };
+    });
 
-    ws.onmessage = (event) => {
+    ws.addEventListener("message", (event) => {
       try {
-        const data: FirewallEvent = JSON.parse(event.data);
+        const data: FirewallEvent = JSON.parse(String(event.data));
         events.value.push(data);
         // Keep last 500 events
         if (events.value.length > 500) {
@@ -68,22 +70,24 @@ export function useWebSocket() {
       } catch (err) {
         console.error("[Firewall] WebSocket parse error:", err);
       }
-    };
+    });
 
-    ws.onclose = () => {
+    ws.addEventListener("close", () => {
       connected.value = false;
       console.log("[Firewall] WebSocket disconnected");
       // Auto-reconnect
       reconnectTimer = setTimeout(connect, 3000);
-    };
+    });
 
-    ws.onerror = (err) => {
+    ws.addEventListener("error", (err) => {
       console.error("[Firewall] WebSocket error:", err);
-    };
+    });
   }
 
   function disconnect() {
-    if (reconnectTimer) clearTimeout(reconnectTimer);
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+    }
     ws?.close();
   }
 
@@ -127,12 +131,16 @@ export function useStats() {
   }
 
   onMounted(() => {
-    fetchStats();
-    interval = setInterval(fetchStats, 5000);
+    void fetchStats();
+    interval = setInterval(() => {
+      void fetchStats();
+    }, 5000);
   });
 
   onUnmounted(() => {
-    if (interval) clearInterval(interval);
+    if (interval) {
+      clearInterval(interval);
+    }
   });
 
   return { stats, loading, refresh: fetchStats };
@@ -270,7 +278,7 @@ export function useSecurityTest() {
 
       const testResult: TestResult = {
         payload_id: payload.id,
-        actual_verdict: result.verdict as any,
+        actual_verdict: result.verdict as TestResult["actual_verdict"],
         expected_verdict: payload.expected_verdict,
         passed: result.verdict === payload.expected_verdict,
         l1_patterns: result.l1_patterns,
@@ -336,10 +344,18 @@ export function useAuditLog() {
       loading.value = true;
       error.value = null;
       const params = new URLSearchParams();
-      if (options?.limit) params.set("limit", String(options.limit));
-      if (options?.offset) params.set("offset", String(options.offset));
-      if (options?.verdict) params.set("verdict", options.verdict);
-      if (options?.since) params.set("since", String(options.since));
+      if (options?.limit) {
+        params.set("limit", String(options.limit));
+      }
+      if (options?.offset) {
+        params.set("offset", String(options.offset));
+      }
+      if (options?.verdict) {
+        params.set("verdict", options.verdict);
+      }
+      if (options?.since) {
+        params.set("since", String(options.since));
+      }
 
       const result = await apiFetch<{ entries: AuditEntry[]; has_more: boolean }>(
         `/api/audit?${params}`,
@@ -354,7 +370,9 @@ export function useAuditLog() {
   }
 
   async function loadMore(limit = 50) {
-    if (!hasMore.value || loading.value) return;
+    if (!hasMore.value || loading.value) {
+      return;
+    }
 
     try {
       loading.value = true;
@@ -474,10 +492,11 @@ export function useNavigation() {
 let gwWsUrl = localStorage.getItem("af-gateway-url") || `ws://${window.location.hostname}:18789/ws`;
 
 let gwSocket: WebSocket | null = null;
-const gwPendingRequests = new Map<
-  string,
-  { resolve: (val: any) => void; reject: (err: Error) => void }
->();
+type GatewayPendingRequest = {
+  resolve: (val: unknown) => void;
+  reject: (err: Error) => void;
+};
+const gwPendingRequests = new Map<string, GatewayPendingRequest>();
 const gwConnected = ref(false);
 const gwConnectError = ref<string | null>(null);
 const gwConnectDetail = ref<string | null>(null);
@@ -630,10 +649,18 @@ async function getGatewayDeviceIdentity(): Promise<GatewayDeviceIdentity | null>
 }
 
 function gwReadyStateLabel(state?: number): string {
-  if (state === WebSocket.CONNECTING) return "CONNECTING";
-  if (state === WebSocket.OPEN) return "OPEN";
-  if (state === WebSocket.CLOSING) return "CLOSING";
-  if (state === WebSocket.CLOSED) return "CLOSED";
+  if (state === WebSocket.CONNECTING) {
+    return "CONNECTING";
+  }
+  if (state === WebSocket.OPEN) {
+    return "OPEN";
+  }
+  if (state === WebSocket.CLOSING) {
+    return "CLOSING";
+  }
+  if (state === WebSocket.CLOSED) {
+    return "CLOSED";
+  }
   return "NONE";
 }
 
@@ -708,7 +735,9 @@ async function gwAutoConnect() {
 }
 
 function gwConnect() {
-  if (gwSocket?.readyState === WebSocket.OPEN) return;
+  if (gwSocket?.readyState === WebSocket.OPEN) {
+    return;
+  }
 
   gwSetConnectDetail("Opening gateway websocket");
 
@@ -723,15 +752,22 @@ function gwConnect() {
     return;
   }
 
-  gwSocket.onopen = () => {
+  if (!gwSocket) {
+    scheduleGwReconnect();
+    return;
+  }
+
+  const socket = gwSocket;
+
+  socket.addEventListener("open", () => {
     gwConnectError.value = null;
     gwSetConnectDetail("WebSocket opened, waiting for connect.challenge");
     console.log("[Gateway] WebSocket opened, waiting for handshake...");
-  };
+  });
 
-  gwSocket.onmessage = (event) => {
+  socket.addEventListener("message", (event) => {
     try {
-      const msg = JSON.parse(event.data);
+      const msg = JSON.parse(String(event.data));
 
       // Handle challenge — auto-respond with connect using correct protocol
       if (msg.type === "event" && msg.event === "connect.challenge") {
@@ -750,19 +786,28 @@ function gwConnect() {
           hasAuth: Boolean(authObj),
         });
         gwPendingRequests.set(connectId, {
-          resolve: (payload: any) => {
+          resolve: (payload: unknown) => {
             // hello-ok received — connection fully established
             gwConnected.value = true;
             gwReconnectAttempts = 0;
             gwAuthRetryAttempted = false;
-            if (payload?.auth?.deviceToken) {
-              localStorage.setItem("af-gateway-token", payload.auth.deviceToken);
+            const payloadRecord =
+              typeof payload === "object" && payload !== null
+                ? (payload as Record<string, unknown>)
+                : {};
+            const authRecord =
+              typeof payloadRecord.auth === "object" && payloadRecord.auth !== null
+                ? (payloadRecord.auth as Record<string, unknown>)
+                : undefined;
+            const deviceToken = authRecord?.deviceToken;
+            if (typeof deviceToken === "string" && deviceToken.length > 0) {
+              localStorage.setItem("af-gateway-token", deviceToken);
             }
             gwSetConnectDetail("Gateway connected", {
-              protocol: payload?.protocol,
-              role: payload?.role,
+              protocol: payloadRecord.protocol,
+              role: payloadRecord.role,
             });
-            console.log("[Gateway] Connected (hello-ok), protocol:", payload?.protocol);
+            console.log("[Gateway] Connected (hello-ok), protocol:", payloadRecord.protocol);
           },
           reject: (err: Error) => {
             const message = err.message || "connect rejected";
@@ -858,27 +903,29 @@ function gwConnect() {
             });
           }
 
-          gwSocket?.send(
-            JSON.stringify({
-              type: "req",
-              id: connectId,
-              method: "connect",
-              params: {
-                minProtocol: 3,
-                maxProtocol: 3,
-                client: {
-                  id: clientId,
-                  version: "1.0.0",
-                  platform: "web",
-                  mode: clientMode,
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(
+              JSON.stringify({
+                type: "req",
+                id: connectId,
+                method: "connect",
+                params: {
+                  minProtocol: 3,
+                  maxProtocol: 3,
+                  client: {
+                    id: clientId,
+                    version: "1.0.0",
+                    platform: "web",
+                    mode: clientMode,
+                  },
+                  role,
+                  scopes,
+                  auth: authObj,
+                  device,
                 },
-                role,
-                scopes,
-                auth: authObj,
-                device,
-              },
-            }),
-          );
+              }),
+            );
+          }
         })();
         return;
       }
@@ -901,9 +948,9 @@ function gwConnect() {
     } catch (err) {
       console.error("[Gateway] Parse error:", err);
     }
-  };
+  });
 
-  gwSocket.onclose = (event) => {
+  socket.addEventListener("close", (event) => {
     gwConnected.value = false;
     const closeMessage = `Gateway socket closed (code: ${event.code}${event.reason ? `, reason: ${event.reason}` : ""})`;
     gwConnectError.value = closeMessage;
@@ -913,26 +960,30 @@ function gwConnect() {
       wasClean: event.wasClean,
     });
     scheduleGwReconnect();
-  };
+  });
 
-  gwSocket.onerror = () => {
+  socket.addEventListener("error", () => {
     console.warn("[Gateway] WebSocket error");
     gwConnectError.value = `Gateway websocket connection failed (url: ${gwWsUrl})`;
     gwSetConnectDetail("WebSocket error", {
       note: "Browser WebSocket error event does not include low-level reason",
     });
-  };
+  });
 }
 
 function scheduleGwReconnect() {
-  if (gwReconnectTimer.value) clearTimeout(gwReconnectTimer.value);
+  if (gwReconnectTimer.value) {
+    clearTimeout(gwReconnectTimer.value);
+  }
   gwReconnectAttempts += 1;
   gwSetConnectDetail("Scheduling reconnect", { delayMs: 5000 });
   gwReconnectTimer.value = setTimeout(gwAutoConnect, 5000);
 }
 
 function gwDisconnect() {
-  if (gwReconnectTimer.value) clearTimeout(gwReconnectTimer.value);
+  if (gwReconnectTimer.value) {
+    clearTimeout(gwReconnectTimer.value);
+  }
   gwSocket?.close();
   gwSocket = null;
 }
@@ -983,7 +1034,10 @@ async function gwRequest<T = unknown>(
 
   return new Promise((resolve, reject) => {
     const id = crypto.randomUUID();
-    gwPendingRequests.set(id, { resolve, reject });
+    gwPendingRequests.set(id, {
+      resolve: (val: unknown) => resolve(val as T),
+      reject,
+    });
     socket.send(JSON.stringify({ type: "req", id, method, params }));
 
     // Timeout after 30s
@@ -1220,7 +1274,9 @@ export function useGatewayConfig() {
         gwRequest<GatewayConfigSchema>("config.schema", {}).catch(() => null),
       ]);
       configSnapshot.value = snapshot;
-      if (schema) configSchema.value = schema;
+      if (schema) {
+        configSchema.value = schema;
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : "Failed to load gateway config";
     } finally {
