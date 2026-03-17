@@ -56,7 +56,7 @@
             <option v-for="m in customModels" :key="m.id" :value="m.id">{{ m.id.split('/').pop() }}</option>
           </template>
           <option disabled>──────────</option>
-          <option value="__custom__">⚙️ 自行配置</option>
+          <option value="__custom__">⚙️ Configure Provider</option>
         </select>
 
         <!-- Settings gear -->
@@ -70,7 +70,7 @@
           <input v-model="autoIntercept" type="checkbox" />
           <span class="toggle-label">Intercept</span>
         </label>
-        <label class="toolbar-toggle" title="Bypass firewall blocks">
+        <label class="toolbar-toggle" title="Bypass Pangolin security blocks">
           <input v-model="forceForward" type="checkbox" />
           <span class="toggle-label">Force</span>
         </label>
@@ -119,8 +119,8 @@
               <path d="M12 22s8-4 8-10V8l-8-3-8 3v4c0 6 8 10 8 10z" transform="translate(12, 10) scale(1.2)"/>
             </svg>
           </div>
-          <h3>Agent Firewall Chat Lab</h3>
-          <p>Test attack payloads against the firewall's dual-layer analysis engine.</p>
+          <h3>Pangolin Chat Lab</h3>
+          <p>Test adversarial prompts against Pangolin's dual-layer analysis pipeline.</p>
           <div class="quick-actions">
             <button v-for="sample in sampleAttacks" :key="sample.name" class="quick-btn" @click="useSample(sample)">
               <span class="quick-tag">{{ sample.category }}</span>
@@ -137,7 +137,7 @@
           </div>
           <div class="msg-content-wrap">
             <div class="msg-meta">
-              <span class="msg-sender">{{ msg.role === 'user' ? 'Attacker' : msg.role === 'system' ? 'Firewall' : msg.role === 'tool' ? 'Tool Call' : 'LLM' }}</span>
+              <span class="msg-sender">{{ msg.role === 'user' ? 'Attacker' : msg.role === 'system' ? 'Pangolin' : msg.role === 'tool' ? 'Tool Call' : 'LLM' }}</span>
               <span class="msg-time">{{ formatTime(msg.timestamp) }}</span>
               <span v-if="msg.wasModified" class="msg-tag modified">Modified</span>
               <span v-if="msg.blocked" class="msg-tag blocked">Blocked</span>
@@ -278,7 +278,7 @@
           ref="inputEl"
           v-model="inputMessage"
           class="msg-input"
-          placeholder="Message Agent Firewall..."
+          placeholder="Message Pangolin..."
           rows="1"
           @keydown.enter.exact.prevent="handleSend"
         ></textarea>
@@ -300,7 +300,7 @@
       <div class="mcp-content">
         <div class="mcp-header">
           <h3>MCP Tool Call Tester</h3>
-          <p>Send raw JSON-RPC tool calls through the firewall to test detection.</p>
+          <p>Send raw JSON-RPC tool calls through Pangolin to test detection.</p>
         </div>
 
         <div class="mcp-form">
@@ -333,7 +333,7 @@
           </div>
 
           <button class="mcp-send-btn" :disabled="mcpSending" @click="sendMcpTest">
-            {{ mcpSending ? 'Testing...' : 'Send Through Firewall' }}
+            {{ mcpSending ? 'Testing...' : 'Send Through Pangolin' }}
           </button>
         </div>
 
@@ -370,7 +370,7 @@
       <div class="skill-content">
         <div class="skill-header">
           <h3>Skills Probe</h3>
-          <p>Test skill invocations through the firewall.</p>
+          <p>Test skill invocations through Pangolin.</p>
         </div>
 
         <div v-if="skills.length" class="skill-list">
@@ -392,7 +392,7 @@
         </div>
         <div v-else class="skill-empty">
           <button class="load-skills-btn" @click="loadSkillsList">Load Skills</button>
-          <p>Load skills from the gateway to test them.</p>
+          <p>Load skills from the Pangolin gateway to test them.</p>
         </div>
       </div>
     </div>
@@ -403,13 +403,13 @@
     <div v-if="showCustomConfigModal" class="modal-overlay" @click.self="showCustomConfigModal = false">
       <div class="modal-card">
         <div class="modal-header">
-          <h3>⚙️ 自行配置 AI Provider</h3>
+          <h3>⚙️ Configure AI Provider</h3>
           <button class="modal-close" @click="showCustomConfigModal = false">&times;</button>
         </div>
         <div class="modal-body">
-          <p>Chat Lab uses the AI provider configured in <strong>Settings</strong> page. To use your own model provider:</p>
+          <p>Chat Lab uses the provider configured on the <strong>Settings</strong> page. To use your own model provider:</p>
           <ol class="config-steps">
-            <li>Go to the <strong>Settings</strong> page (sidebar → Config)</li>
+            <li>Go to the <strong>Settings</strong> page (sidebar → Settings)</li>
             <li>In <strong>AI Model Provider</strong>, set your endpoint and API key</li>
             <li>All listed models are routed through your configured provider</li>
           </ol>
@@ -432,8 +432,9 @@
 <script setup lang="ts">
 import { ref, nextTick, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import { marked } from 'marked'
-import type { FirewallEvent, SkillStatusEntry } from '../types'
-import { useGatewaySkills } from '../composables'
+import type { FirewallEvent, SkillStatusEntry } from '~/types/firewall'
+import { useGatewaySkills } from '~/composables/useFirewallSkills'
+import { useFirewallApiBase, useFirewallFileServeUrl } from '~/composables/useFirewallApi'
 
 defineProps<{
   events: FirewallEvent[]
@@ -446,7 +447,7 @@ marked.setOptions({
   gfm: true,
 })
 
-const FILE_SERVE_URL = `${window.location.protocol}//${window.location.hostname}:9090/api/file`
+const FILE_SERVE_URL = useFirewallFileServeUrl()
 
 // File extension categories
 const AUDIO_EXTS = ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'webm']
@@ -546,7 +547,7 @@ interface McpResult {
 
 // ── State ──
 
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:9090`
+const API_BASE = useFirewallApiBase()
 const CHAT_STORAGE_KEY = 'af-chat-messages'
 const CHAT_MODEL_KEY = 'af-chat-model'
 const CONV_LIST_KEY = 'af-conversations'
@@ -631,7 +632,7 @@ const getToolDisplayName = (name: string, args: any) => {
   return name
 }
 
-/** Handle "自行配置" option — show modal and revert selection */
+/** Handle the "Configure Provider" option — show modal and revert selection */
 function onModelChange() {
   if (selectedModel.value === '__custom__') {
     showCustomConfigModal.value = true
@@ -831,6 +832,59 @@ function scrollToBottom() { nextTick(() => { if (messagesEl.value) messagesEl.va
 function useSample(s: typeof sampleAttacks[0]) { inputMessage.value = s.content; inputEl.value?.focus() }
 function injectTemplate(t: typeof injectTemplates[0]) { modifiedMessage.value += t.template }
 
+function toStringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)) : []
+}
+
+function normalizeAnalysisPayload(payload: unknown): ChatAnalysis {
+  const data = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}
+  return {
+    request_id: String(data.request_id ?? ''),
+    verdict: String(data.verdict ?? 'ALLOW'),
+    threat_level: String(data.threat_level ?? 'NONE'),
+    l1_patterns: toStringList(data.l1_patterns ?? data.l1_matched_patterns),
+    l2_is_injection: Boolean(data.l2_is_injection),
+    l2_confidence: Number(data.l2_confidence ?? 0),
+    l2_reasoning: String(data.l2_reasoning ?? ''),
+    blocked_reason: String(data.blocked_reason ?? ''),
+  }
+}
+
+function normalizeToolCallRecord(payload: unknown): ToolCallRecord {
+  const data = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}
+  const blocked = Boolean(data.blocked ?? data.l1_blocked ?? data.l2_blocked)
+  return {
+    tool_name: String(data.tool_name ?? data.name ?? 'unknown_tool'),
+    arguments:
+      data.arguments && typeof data.arguments === 'object'
+        ? (data.arguments as Record<string, unknown>)
+        : {},
+    iteration: Number(data.iteration ?? 0),
+    l1_patterns: toStringList(data.l1_patterns ?? data.l1_matched_patterns),
+    l1_blocked: Boolean(data.l1_blocked),
+    blocked,
+    result_preview: String(data.result_preview ?? data.result ?? ''),
+    l2_confidence: data.l2_confidence === undefined ? undefined : Number(data.l2_confidence),
+    l2_reasoning: data.l2_reasoning === undefined ? undefined : String(data.l2_reasoning),
+    l2_blocked: data.l2_blocked === undefined ? undefined : Boolean(data.l2_blocked),
+  }
+}
+
+function parseStreamEventLine(rawLine: string): any | null {
+  const line = rawLine.trim()
+  if (!line) return null
+
+  const payload = line.startsWith('data:') ? line.slice(5).trim() : line
+  if (!payload) return null
+  if (payload === '[DONE]') return { type: 'done' }
+
+  try {
+    return JSON.parse(payload)
+  } catch {
+    return null
+  }
+}
+
 function handleSend() {
   const text = inputMessage.value.trim()
   if (!text || sending.value) return
@@ -905,13 +959,90 @@ async function sendMessage(content: string, modifiedContent: string | null, anal
       signal: abortController.signal,
     })
 
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '')
+      throw new Error(`Chat API error ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`)
+    }
+
+    if (!res.body) {
+      throw new Error('Empty streaming response body')
+    }
+
     // Stream NDJSON events from backend
-    const reader = res.body!.getReader()
+    const reader = res.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
     let assistantAdded = false
     const assistantMsg: ChatMessage = {
       id: generateId(), role: 'assistant', content: '', timestamp: Date.now(),
+    }
+
+    const handleStreamEvent = (event: any) => {
+      switch (event.type) {
+        case 'analysis': {
+          const analysis = normalizeAnalysisPayload(event.analysis)
+          const blocked = Boolean(event.blocked) || analysis.verdict === 'BLOCK'
+
+          userMsg.analysis = analysis
+          userMsg.verdict = analysis.verdict
+          userMsg.blocked = blocked
+
+          if (blocked) {
+            chatMessages.value.push({
+              id: generateId(), role: 'system',
+              content: `Blocked: ${analysis.blocked_reason || 'Security policy violation'}`,
+              timestamp: Date.now(), verdict: 'BLOCK',
+            })
+          }
+          scrollToBottom()
+          break
+        }
+
+        case 'tool_call': {
+          const tc = normalizeToolCallRecord(event.tool_call)
+          const patternsText = tc.l1_patterns.length > 0 ? tc.l1_patterns.join(', ') : 'none'
+          const tcContent = tc.blocked
+            ? `🛡️ **BLOCKED** \`${tc.tool_name}\`(${JSON.stringify(tc.arguments)})\nL1 patterns: ${patternsText}${tc.l2_blocked ? `\nL2: ${((tc.l2_confidence || 0) * 100).toFixed(0)}% — ${tc.l2_reasoning || ''}` : ''}`
+            : `🔧 \`${tc.tool_name}\`(${JSON.stringify(tc.arguments)})\n→ ${tc.result_preview}`
+          chatMessages.value.push({
+            id: generateId(), role: 'tool', content: tcContent, timestamp: Date.now(),
+            verdict: tc.blocked ? 'BLOCK' : 'ALLOW', blocked: tc.blocked,
+            toolCalls: [tc],
+          })
+          scrollToBottom()
+          break
+        }
+
+        case 'content': {
+          const contentText = typeof event.content === 'string' ? event.content : ''
+          const deltaText = typeof event.delta === 'string' ? event.delta : ''
+
+          if (!assistantAdded) {
+            assistantMsg.content = contentText || deltaText
+            chatMessages.value.push(assistantMsg)
+            assistantAdded = true
+          } else if (deltaText) {
+            assistantMsg.content += deltaText
+          } else if (contentText) {
+            assistantMsg.content = contentText
+          }
+
+          scrollToBottom()
+          break
+        }
+
+        case 'error':
+          chatMessages.value.push({
+            id: generateId(), role: 'system',
+            content: `Error: ${typeof event.error === 'string' ? event.error : 'Unknown stream error'}`,
+            timestamp: Date.now(),
+          })
+          scrollToBottom()
+          break
+
+        case 'done':
+          break
+      }
     }
 
     while (true) {
@@ -925,61 +1056,15 @@ async function sendMessage(content: string, modifiedContent: string | null, anal
         buffer = buffer.slice(newlineIdx + 1)
         if (!line) continue
 
-        let event: any
-        try { event = JSON.parse(line) } catch { continue }
-
-        switch (event.type) {
-          case 'analysis':
-            userMsg.analysis = event.analysis
-            userMsg.verdict = event.analysis?.verdict
-            userMsg.blocked = event.blocked
-            if (event.blocked) {
-              chatMessages.value.push({
-                id: generateId(), role: 'system',
-                content: `Blocked: ${event.analysis?.blocked_reason || 'Security policy violation'}`,
-                timestamp: Date.now(), verdict: 'BLOCK',
-              })
-            }
-            scrollToBottom()
-            break
-
-          case 'tool_call': {
-            const tc = event.tool_call as ToolCallRecord
-            const tcContent = tc.blocked
-              ? `🛡️ **BLOCKED** \`${tc.tool_name}\`(${JSON.stringify(tc.arguments)})\nL1 patterns: ${tc.l1_patterns.join(', ')}${tc.l2_blocked ? `\nL2: ${((tc.l2_confidence || 0) * 100).toFixed(0)}% — ${tc.l2_reasoning || ''}` : ''}`
-              : `🔧 \`${tc.tool_name}\`(${JSON.stringify(tc.arguments)})\n→ ${tc.result_preview}`
-            chatMessages.value.push({
-              id: generateId(), role: 'tool', content: tcContent, timestamp: Date.now(),
-              verdict: tc.blocked ? 'BLOCK' : 'ALLOW', blocked: tc.blocked,
-              toolCalls: [tc],
-            })
-            scrollToBottom()
-            break
-          }
-
-          case 'content':
-            if (!assistantAdded) {
-              assistantMsg.content = event.content
-              chatMessages.value.push(assistantMsg)
-              assistantAdded = true
-            } else {
-              assistantMsg.content = event.content
-            }
-            scrollToBottom()
-            break
-
-          case 'error':
-            chatMessages.value.push({
-              id: generateId(), role: 'system',
-              content: `Error: ${event.error}`, timestamp: Date.now(),
-            })
-            scrollToBottom()
-            break
-
-          case 'done':
-            break
-        }
+        const event = parseStreamEventLine(line)
+        if (!event) continue
+        handleStreamEvent(event)
       }
+    }
+
+    const trailingEvent = parseStreamEventLine(buffer)
+    if (trailingEvent) {
+      handleStreamEvent(trailingEvent)
     }
 
     if (analyzeOnlyFlag && !userMsg.blocked) {

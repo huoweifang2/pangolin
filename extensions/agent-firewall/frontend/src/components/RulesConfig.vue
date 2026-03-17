@@ -62,8 +62,8 @@
               <span class="badge type">{{ rule.type }}</span>
             </div>
             <div class="rule-actions">
-              <button class="btn-icon-sm" @click="editRule(rule)" title="Edit">✏️</button>
-              <button class="btn-icon-sm danger" @click="confirmDeleteRule(rule)" title="Delete">🗑️</button>
+              <button class="btn-icon-sm" title="Edit" @click="editRule(rule)">✏️</button>
+              <button class="btn-icon-sm danger" title="Delete" @click="confirmDeleteRule(rule)">🗑️</button>
             </div>
           </div>
           <div class="rule-pattern">
@@ -206,7 +206,7 @@
               <textarea v-model="ruleForm.description" class="form-input" rows="2" placeholder="What does this rule do?"></textarea>
             </div>
             <!-- Live Test Preview -->
-            <div class="form-group" v-if="ruleForm.pattern">
+            <div v-if="ruleForm.pattern" class="form-group">
               <label>Test Pattern</label>
               <input v-model="testInput" type="text" class="form-input" placeholder="Enter text to test against pattern..." />
               <div v-if="testInput" class="test-result" :class="{ match: testMatch, 'no-match': !testMatch }">
@@ -216,7 +216,7 @@
           </div>
           <div class="modal-footer">
             <button class="btn-secondary" @click="closeModal">Cancel</button>
-            <button class="btn-primary" @click="saveRule" :disabled="!ruleForm.name || !ruleForm.pattern">
+            <button class="btn-primary" :disabled="!ruleForm.name || !ruleForm.pattern" @click="saveRule">
               {{ editingRule ? 'Save Changes' : 'Add Rule' }}
             </button>
           </div>

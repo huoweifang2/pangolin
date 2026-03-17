@@ -197,7 +197,8 @@ export type NavSection =
   | "traces"
   | "skills"
   | "agents"
-  | "feishu"
+  | "benchmark"
+  | "pentest"
   | "integrations"
   | "gateway-config";
 
@@ -272,6 +273,13 @@ export interface AgentFileEntry {
   size?: number;
   updatedAtMs?: number;
   content?: string;
+}
+
+export interface AgentToolsPolicy {
+  allow?: string[];
+  deny?: string[];
+  alsoAllow?: string[];
+  profile?: string;
 }
 
 export interface GatewayConfigSnapshot {

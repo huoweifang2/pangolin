@@ -29,14 +29,9 @@
         <span class="error-icon">⚠️</span>
         <p>{{ error }}</p>
         <p v-if="connectError" class="error-detail">Gateway rejection: {{ connectError }}</p>
+        <pre v-if="connectDetail" class="error-debug">{{ connectDetail }}</pre>
         <p class="error-hint">Make sure the Gateway is running and connected.</p>
-        <div v-if="!gwConnected" class="gateway-auth">
-          <p class="auth-hint">If the Gateway requires a token, enter it below:</p>
-          <div class="token-input-row">
-            <input v-model="tokenInput" type="password" placeholder="Gateway token" class="token-input" />
-            <button class="btn btn-primary btn-sm" @click="saveToken">Connect</button>
-          </div>
-        </div>
+        <p v-if="!gwConnected" class="error-hint">Using fixed token from backend configuration. Click Retry to reconnect.</p>
         <button class="btn btn-primary" @click="refresh">Retry</button>
       </div>
     </div>
@@ -66,7 +61,7 @@
                 <span class="skill-name">{{ skill.name }}</span>
                 <span class="skill-source">{{ skill.source }}</span>
               </div>
-              <div class="skill-toggle" v-if="!skill.always">
+              <div v-if="!skill.always" class="skill-toggle">
                 <label class="toggle">
                   <input
                     type="checkbox"
@@ -99,8 +94,8 @@
                   v-for="opt in skill.install"
                   :key="opt.id"
                   class="btn btn-sm btn-install"
-                  @click="handleInstall(skill.name, opt.id)"
                   :disabled="installing"
+                  @click="handleInstall(skill.name, opt.id)"
                 >
                   Install via {{ opt.kind }}
                 </button>
@@ -118,13 +113,13 @@
                   type="password"
                   :placeholder="`Enter ${skill.primaryEnv}`"
                   :value="apiKeyInputs[skill.skillKey] || ''"
-                  @input="(e) => apiKeyInputs[skill.skillKey] = (e.target as HTMLInputElement).value"
                   class="apikey-input"
+                  @input="(e) => apiKeyInputs[skill.skillKey] = (e.target as HTMLInputElement).value"
                 />
                 <button
                   class="btn btn-sm btn-primary"
-                  @click="saveApiKey(skill)"
                   :disabled="!apiKeyInputs[skill.skillKey]"
+                  @click="saveApiKey(skill)"
                 >
                   Save
                 </button>
@@ -152,21 +147,11 @@ import type { SkillStatusEntry } from '../types'
 import { useGatewaySkills, useGatewayStatus } from '../composables'
 
 const { skills, loading, error, loadSkills, toggleSkill: doToggle, setSkillApiKey, installSkill } = useGatewaySkills()
-const { connected: gwConnected, connectError } = useGatewayStatus()
+const { connected: gwConnected, connectError, connectDetail, reconnect: reconnectGateway } = useGatewayStatus()
 
 const searchQuery = ref('')
 const installing = ref(false)
 const apiKeyInputs = reactive<Record<string, string>>({})
-const tokenInput = ref('')
-
-function saveToken() {
-  if (tokenInput.value) {
-    localStorage.setItem('af-gateway-token', tokenInput.value)
-    tokenInput.value = ''
-    // Trigger reconnect — page will auto-retry on next load
-    window.location.reload()
-  }
-}
 
 const filteredSkills = computed(() => {
   const q = searchQuery.value.toLowerCase()
@@ -214,13 +199,16 @@ async function handleInstall(name: string, installId: string) {
 }
 
 function refresh() {
+  if (!gwConnected.value) {
+    reconnectGateway()
+  }
   loadSkills()
 }
 
 const refreshIcon = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`
 
 onMounted(() => {
-  loadSkills()
+  refresh()
 })
 </script>
 
@@ -376,34 +364,20 @@ onMounted(() => {
   margin: 4px 0 8px;
 }
 
-.gateway-auth {
-  margin: 16px 0;
-  padding: 16px;
-  background: var(--bg-elevated, #1a1a2e);
+.error-debug {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  border: 1px solid var(--border);
-}
-
-.auth-hint {
-  color: var(--text-dim);
-  font-size: 13px;
-  margin-bottom: 8px;
-}
-
-.token-input-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.token-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 13px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
 }
 
 /* Skills grid */

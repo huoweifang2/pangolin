@@ -59,7 +59,7 @@
           </div>
           <h3>L1 Static Analyzer</h3>
           <label class="switch">
-            <input type="checkbox" v-model="localConfig.engine.l1_enabled" />
+            <input v-model="localConfig.engine.l1_enabled" type="checkbox" />
             <span class="slider"></span>
           </label>
         </div>
@@ -72,10 +72,10 @@
             <label>Blocked Commands <span class="count">({{ localConfig.blocked_commands?.length || 0 }})</span></label>
             <textarea
               :value="localConfig.blocked_commands?.join('\n') ?? ''"
-              @input="updateBlockedCommands(($event.target as HTMLTextAreaElement).value)"
               class="form-input mono"
               rows="6"
               placeholder="One blocked command per line..."
+              @input="updateBlockedCommands(($event.target as HTMLTextAreaElement).value)"
             ></textarea>
             <span class="form-hint">Aho-Corasick patterns — one per line. Case-insensitive matching.</span>
           </div>
@@ -92,7 +92,7 @@
           </div>
           <h3>L2 Semantic Analyzer</h3>
           <label class="switch">
-            <input type="checkbox" v-model="localConfig.engine.l2_enabled" />
+            <input v-model="localConfig.engine.l2_enabled" type="checkbox" />
             <span class="slider"></span>
           </label>
         </div>
@@ -184,7 +184,7 @@
       <span class="save-text">You have unsaved changes</span>
       <div class="save-actions">
         <button class="btn-secondary" @click="resetConfig">Discard</button>
-        <button class="btn-primary" @click="saveConfig" :disabled="saving">
+        <button class="btn-primary" :disabled="saving" @click="saveConfig">
           {{ saving ? 'Saving...' : 'Save Changes' }}
         </button>
       </div>

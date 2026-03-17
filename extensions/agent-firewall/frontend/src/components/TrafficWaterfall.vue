@@ -14,12 +14,12 @@
           <option value="ESCALATE">Escalate</option>
         </select>
         <input v-model="searchQuery" class="ph-search" placeholder="Filter..." />
-        <button class="ph-btn" :class="{ active: autoScroll }" @click="autoScroll = !autoScroll" title="Auto-scroll">
+        <button class="ph-btn" :class="{ active: autoScroll }" title="Auto-scroll" @click="autoScroll = !autoScroll">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </button>
-        <button class="ph-btn" @click="$emit('clear')" title="Clear">
+        <button class="ph-btn" title="Clear" @click="$emit('clear')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
           </svg>
@@ -28,7 +28,7 @@
     </div>
 
     <!-- Waterfall list -->
-    <div class="waterfall" ref="waterfallEl">
+    <div ref="waterfallEl" class="waterfall">
       <div
         v-for="(event, idx) in filteredEvents"
         :key="idx"

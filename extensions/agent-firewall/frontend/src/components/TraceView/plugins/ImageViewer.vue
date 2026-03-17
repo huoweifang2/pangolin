@@ -3,9 +3,9 @@
     <img
       :src="url"
       :alt="alt"
+      :class="{ fullscreen: isFullscreen, error: hasError }"
       @click="toggleFullscreen"
       @error="handleError"
-      :class="{ fullscreen: isFullscreen, error: hasError }"
     />
     <div v-if="hasError" class="error-message">
       Failed to load image

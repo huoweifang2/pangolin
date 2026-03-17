@@ -17,7 +17,7 @@
         <span>You have unsaved changes</span>
         <div class="save-actions">
           <button class="btn btn-secondary btn-sm" @click="resetFirewallConfig">Discard</button>
-          <button class="btn btn-primary btn-sm" @click="saveFirewallSettings" :disabled="fwSaving">
+          <button class="btn btn-primary btn-sm" :disabled="fwSaving" @click="saveFirewallSettings">
             {{ fwSaving ? 'Saving...' : 'Save' }}
           </button>
         </div>
@@ -51,7 +51,7 @@
                 class="form-input mono"
                 placeholder="sk-..."
               />
-              <button class="btn-toggle" @click="showApiKey = !showApiKey" type="button">
+              <button class="btn-toggle" type="button" @click="showApiKey = !showApiKey">
                 {{ showApiKey ? '🙈' : '👁️' }}
               </button>
             </div>
@@ -94,7 +94,7 @@
                 class="form-input mono"
                 placeholder="tvly-..."
               />
-              <button class="btn-toggle" @click="showTavilyKey = !showTavilyKey" type="button">
+              <button class="btn-toggle" type="button" @click="showTavilyKey = !showTavilyKey">
                 {{ showTavilyKey ? '🙈' : '👁️' }}
               </button>
             </div>
@@ -123,7 +123,7 @@
                 <span class="model-id">{{ model.id }}</span>
                 <span class="model-label">{{ model.label }}</span>
               </div>
-              <button v-if="model.custom" class="model-remove-btn" @click="removeCustomModel(idx)" title="Remove model">
+              <button v-if="model.custom" class="model-remove-btn" title="Remove model" @click="removeCustomModel(idx)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
@@ -136,7 +136,7 @@
               placeholder="provider/model-name"
               @keyup.enter="addCustomModel"
             />
-            <button class="btn btn-sm btn-outline" @click="addCustomModel" :disabled="!newModelId.trim()">
+            <button class="btn btn-sm btn-outline" :disabled="!newModelId.trim()" @click="addCustomModel">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add
             </button>
@@ -172,7 +172,7 @@
           <div v-if="!gwConnected" class="gw-disconnected">
             <p>⚠️ Gateway not connected</p>
             <p class="form-hint">Make sure the OpenClaw gateway is running.</p>
-            <div class="gateway-auth" v-if="true">
+            <div v-if="true" class="gateway-auth">
               <div class="token-input-row">
                 <input v-model="tokenInput" type="password" placeholder="Gateway token (if required)" class="form-input" />
                 <button class="btn btn-primary btn-sm" @click="saveToken">Connect</button>
@@ -195,10 +195,10 @@
                 <button class="btn btn-secondary btn-sm" @click="refreshGw">
                   <span v-html="refreshIcon"></span> Reload
                 </button>
-                <button class="btn btn-primary btn-sm" @click="handleGwSave" :disabled="gwSaving || !gwHasChanges">
+                <button class="btn btn-primary btn-sm" :disabled="gwSaving || !gwHasChanges" @click="handleGwSave">
                   {{ gwSaving ? 'Saving...' : 'Save' }}
                 </button>
-                <button class="btn btn-accent btn-sm" @click="handleGwApply" :disabled="gwSaving || !gwHasChanges">
+                <button class="btn btn-accent btn-sm" :disabled="gwSaving || !gwHasChanges" @click="handleGwApply">
                   Save &amp; Apply
                 </button>
               </div>
@@ -242,23 +242,23 @@
                       <input
                         v-else-if="typeof value === 'number'"
                         type="number" :value="value"
-                        @change="(e) => updateField(activeSection, String(key), Number((e.target as HTMLInputElement).value))"
                         class="form-input"
+                        @change="(e) => updateField(activeSection, String(key), Number((e.target as HTMLInputElement).value))"
                       />
                       <input
                         v-else-if="typeof value === 'string'"
                         type="text" :value="value"
-                        @change="(e) => updateField(activeSection, String(key), (e.target as HTMLInputElement).value)"
                         class="form-input"
                         :class="{ sensitive: isSensitive(String(key)) }"
+                        @change="(e) => updateField(activeSection, String(key), (e.target as HTMLInputElement).value)"
                       />
                       <textarea
                         v-else
                         :value="JSON.stringify(value, null, 2)"
-                        @change="(e) => updateFieldJson(activeSection, String(key), (e.target as HTMLTextAreaElement).value)"
                         class="form-input mono"
                         rows="4"
                         style="resize:vertical;font-family:monospace"
+                        @change="(e) => updateFieldJson(activeSection, String(key), (e.target as HTMLTextAreaElement).value)"
                       ></textarea>
                     </div>
                   </div>
@@ -273,7 +273,7 @@
             <div v-if="gwViewMode === 'raw'" class="gw-raw-view">
               <div class="raw-header">
                 <span class="raw-label">Raw Configuration</span>
-                <span class="raw-hash" v-if="configHash">Hash: {{ configHash }}</span>
+                <span v-if="configHash" class="raw-hash">Hash: {{ configHash }}</span>
               </div>
               <textarea v-model="rawContent" class="raw-editor" spellcheck="false" @input="gwRawDirty = true"></textarea>
             </div>

@@ -96,7 +96,7 @@
               </span>
             </td>
             <td class="col-actions">
-              <button class="btn-icon-xs" @click.stop="selectedEntry = entry" title="Details">👁️</button>
+              <button class="btn-icon-xs" title="Details" @click.stop="selectedEntry = entry">👁️</button>
             </td>
           </tr>
           <tr v-if="entries.length === 0">
@@ -113,7 +113,7 @@
 
     <!-- Load More -->
     <div v-if="hasMore" class="load-more">
-      <button class="btn-secondary" @click="$emit('loadMore')" :disabled="loading">
+      <button class="btn-secondary" :disabled="loading" @click="$emit('loadMore')">
         {{ loading ? 'Loading...' : 'Load More' }}
       </button>
     </div>

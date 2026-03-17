@@ -79,15 +79,21 @@
           </KeepAlive>
           <SchematicDiagram v-if="currentSection === 'schematic'" />
           <RulesConfig v-if="currentSection === 'rules'" :rules="rulesData" @save="handleSaveRule" @delete="handleDeleteRule" @toggle="handleToggleRule" @updateMethodAction="handleUpdateMethodAction" @updateDefaultAction="(a: string) => handleUpdateDefaultAction(a as RuleAction)" />
-          <EngineSettings v-if="currentSection === 'engine'" :config="config" :saving="configSaving" @save="handleSaveConfig" />
+          <div v-if="currentSection === 'engine'" class="merged-settings-page">
+            <EngineSettings :config="config" :saving="configSaving" @save="handleSaveConfig" />
+            <GatewayConfig />
+          </div>
           <SecurityTest v-if="currentSection === 'test'" :results="testResults" :running="testRunning" @run="handleRunTest" @runAll="handleRunAllTests" @clear="clearTestResults" />
           <AuditLog v-if="currentSection === 'audit'" :entries="auditEntries" :loading="auditLoading" :hasMore="auditHasMore" @load="handleLoadAudit" @loadMore="handleLoadMoreAudit" />
           <Playground v-if="currentSection === 'playground'" />
           <DatasetList v-if="currentSection === 'datasets'" />
           <TracesPage v-if="currentSection === 'traces'" />
           <IntegrationsPage v-if="currentSection === 'integrations'" />
-          <FeishuConfig v-if="currentSection === 'feishu'" />
-          <GatewayConfig v-if="currentSection === 'gateway-config'" />
+          <PenTestEval v-if="currentSection === 'pentest'" />
+          <!-- KeepAlive preserves Benchmark state and stream when switching tabs -->
+          <KeepAlive>
+            <BenchmarkPage v-if="currentSection === 'benchmark'" />
+          </KeepAlive>
         </div>
 
         <!-- Resize handle -->
@@ -151,7 +157,6 @@ import ChatLab from './components/ChatLab.vue'
 import IntegrationsPage from './components/IntegrationsPage.vue'
 import GatewayConfig from './components/GatewayConfig.vue'
 import Toast from './components/common/Toast.vue'
-import FeishuConfig from './components/FeishuConfig.vue'
 import TrafficWaterfall from './components/TrafficWaterfall.vue'
 import RulesConfig from './components/RulesConfig.vue'
 import EngineSettings from './components/EngineSettings.vue'
@@ -161,6 +166,8 @@ import SchematicDiagram from './components/SchematicDiagram.vue'
 import Playground from './components/Playground.vue'
 import DatasetList from './components/DatasetList.vue'
 import TracesPage from './components/TracesPage.vue'
+import BenchmarkPage from "./components/BenchmarkPage.vue"
+import PenTestEval from "./components/PenTestEval.vue"
 
 const icons = {
   chat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
@@ -169,13 +176,14 @@ const icons = {
   engine: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
   rateLimit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
   test: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
+  pentest: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
   audit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
   skills: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
   agents: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
   config: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>`,
-  feishu: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`,
+  benchmark: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
   playground: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
-  datasets: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
+  datasets: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M11 7h3a3 3 0 0 1 3 3v3"/><polyline points="15 10 17 10 17 8"/><path d="M13 17h-3a3 3 0 0 1-3-3v-3"/><polyline points="9 14 7 14 7 16"/></svg>`,
   traces: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
   sun: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
   moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
@@ -214,12 +222,12 @@ const navItems = computed(() => [
   { id: 'chat', label: 'Chat Lab', icon: icons.chat, group: 'main', primary: true },
   { id: 'schematic', label: '架构示意图', icon: icons.schematic, group: 'main' },
   { id: 'rules', label: 'Rules', icon: icons.rules, group: 'security', separator: true },
-  { id: 'engine', label: 'Engine', icon: icons.engine, group: 'security' },
   { id: 'integrations', label: 'Integrations', icon: icons.skills, group: 'security' },
+  { id: 'pentest', label: 'PenTest / Eval', icon: icons.pentest, group: 'security' },
   { id: 'playground', label: 'Playground', icon: icons.playground, group: 'security' },
-  { id: 'feishu', label: 'Feishu', icon: icons.feishu, group: 'security' },
-  { id: 'datasets', label: 'Datasets', icon: icons.datasets, group: 'analysis', separator: true },
-  { id: 'gateway-config', label: 'Settings', icon: icons.config, group: 'settings', separator: true },
+  { id: 'benchmark', label: 'Benchmark', icon: icons.benchmark, group: 'security' },
+  { id: 'datasets', label: 'Sync Monitor', icon: icons.datasets, group: 'analysis', separator: true },
+  { id: 'engine', label: '设置页', icon: icons.config, group: 'settings', separator: true },
 ] as NavItem[])
 
 const activePageTitle = computed(() => {
@@ -231,7 +239,7 @@ const commands = computed(() => [
   { id: 'chat', label: 'Go to Chat Lab', icon: icons.chat, action: () => navigateTo('chat') },
   { id: 'rules', label: 'Go to Rules', icon: icons.rules, action: () => navigateTo('rules') },
   { id: 'traffic-toggle', label: 'Toggle Traffic Panel', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`, action: () => { showTraffic.value = !showTraffic.value } },
-  { id: 'test', label: 'Security Test', icon: icons.test, action: () => navigateTo('test') },
+  { id: 'pentest', label: 'PenTest / Eval', icon: icons.pentest, action: () => navigateTo('pentest') },
   { id: 'audit', label: 'Audit Log', icon: icons.audit, action: () => navigateTo('audit') },
   { id: 'theme', label: 'Toggle Theme', icon: theme.value === 'dark' ? icons.sun : icons.moon, shortcut: '⌘⇧T', action: () => toggleTheme() },
   { id: 'clear', label: 'Clear Traffic', icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`, action: () => clearEvents() },
@@ -460,6 +468,18 @@ input, textarea, select, button { font-family: inherit; font-size: inherit; }
 .content-main .skills-page,
 .content-main .agents-page,
 .content-main .config-page { padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
+
+.content-main .merged-settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.content-main .merged-settings-page .settings-page {
+  height: auto;
+  overflow: visible;
+  padding-top: 0;
+}
 
 /* Cards & panels */
 .content-main .stat-card,

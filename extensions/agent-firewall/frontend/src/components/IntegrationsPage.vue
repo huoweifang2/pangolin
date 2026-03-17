@@ -7,7 +7,7 @@
         <p class="subtitle">Manage agents, MCP servers, skills, and tools</p>
       </div>
       <div class="header-actions">
-        <button class="btn-refresh" @click="refreshAll" title="Refresh">
+        <button class="btn-refresh" title="Refresh" @click="refreshAll">
           <span v-html="icons.refresh"></span>
         </button>
       </div>
@@ -20,7 +20,7 @@
         :key="tab.id"
         class="tab-btn" 
         :class="{ active: activeTab === tab.id }"
-        @click="activeTab = tab.id"
+        @click="activeTab = tab.id as 'agents' | 'channels'"
       >
         <span class="tab-icon">{{ tab.icon }}</span>
         {{ tab.label }}
@@ -34,9 +34,9 @@
         <AgentsManager />
       </div>
 
-      <!-- SKILLS TAB -->
-      <div v-if="activeTab === 'skills'" class="skills-view">
-        <SkillsManager />
+      <!-- CHANNELS TAB -->
+      <div v-if="activeTab === 'channels'" class="channels-view">
+        <FeishuConfig />
       </div>
     </div>
   </div>
@@ -44,15 +44,15 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import SkillsManager from './SkillsManager.vue'
 import AgentsManager from './AgentsManager.vue'
+import FeishuConfig from './FeishuConfig.vue'
 
-const activeTab = ref<'agents' | 'skills'>('agents')
+const activeTab = ref<'agents' | 'channels'>('agents')
 
 const tabs = [
   { id: 'agents', label: 'Agents & Tools', icon: '🤖' },
-  { id: 'skills', label: 'Skills & Servers', icon: '⚡' }
-]
+  { id: 'channels', label: 'Channels', icon: '💬' }
+] as const
 
 const icons = {
   refresh: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>`
@@ -153,14 +153,13 @@ function refreshAll() {
 }
 
 .agents-view,
-.skills-view {
+.channels-view {
   height: 100%;
   overflow-y: auto;
 }
 
 /* Override child component styles to fit container */
-:deep(.agents-page),
-:deep(.skills-page) {
+:deep(.agents-page) {
   padding: 24px 32px;
   height: auto; /* Let parent scroll */
   overflow: visible;

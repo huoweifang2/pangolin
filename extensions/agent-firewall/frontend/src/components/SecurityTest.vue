@@ -7,7 +7,7 @@
       </div>
       <div class="header-actions">
         <button class="btn-secondary" @click="showCustomPayload = true">+ Custom Payload</button>
-        <button class="btn-primary" @click="runAll" :disabled="running">
+        <button class="btn-primary" :disabled="running" @click="runAll">
           {{ running ? 'Running...' : '▶ Run All Tests' }}
         </button>
       </div>
@@ -107,7 +107,7 @@
 
         <!-- Run button -->
         <div class="payload-actions">
-          <button class="btn-run" @click="runSingle(payload)" :disabled="running">
+          <button class="btn-run" :disabled="running" @click="runSingle(payload)">
             ▶ Run
           </button>
         </div>
@@ -156,7 +156,7 @@
           </div>
           <div class="modal-footer">
             <button class="btn-secondary" @click="showCustomPayload = false">Cancel</button>
-            <button class="btn-primary" @click="addCustomPayload" :disabled="!customForm.name || !customForm.payload">
+            <button class="btn-primary" :disabled="!customForm.name || !customForm.payload" @click="addCustomPayload">
               Add & Run
             </button>
           </div>
