@@ -3,6 +3,8 @@ import { useInjectedFirewallOpsConsole } from '~/composables/useFirewallOpsConso
 
 const {
   dashboardViewMode,
+  dashboardThreatFilter,
+  dashboardActionableOnly,
   dashboardQuery,
   setDashboardViewMode,
   dashboardConnected,
@@ -58,6 +60,23 @@ const {
         class="mr-2"
       >
         Filter: {{ dashboardQuery }}
+      </v-chip>
+      <v-chip
+        v-if="dashboardThreatFilter !== 'all'"
+        size="small"
+        variant="tonal"
+        class="mr-2"
+      >
+        Threat: {{ dashboardThreatFilter.toUpperCase() }}
+      </v-chip>
+      <v-chip
+        v-if="dashboardActionableOnly"
+        size="small"
+        color="primary"
+        variant="tonal"
+        class="mr-2"
+      >
+        Actionable only
       </v-chip>
       <v-chip :color="dashboardConnected ? 'green' : 'grey'" size="small" variant="tonal">
         {{ dashboardConnected ? 'Online' : 'Offline' }}
@@ -126,8 +145,8 @@ const {
       variant="tonal"
       class="ma-4"
     >
-      {{ dashboardQuery.trim().length > 0
-        ? 'No dashboard events match the active filter.'
+      {{ dashboardQuery.trim().length > 0 || dashboardThreatFilter !== 'all' || dashboardActionableOnly
+        ? 'No dashboard events match the active filters.'
         : 'Waiting for dashboard events. Generate traffic to see live stream updates.' }}
     </v-alert>
   </v-card>

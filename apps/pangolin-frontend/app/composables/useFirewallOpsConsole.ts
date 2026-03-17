@@ -19,6 +19,7 @@ export interface EscalationItem {
 }
 
 export type DashboardViewMode = 'all' | 'alert' | 'escalate'
+export type DashboardThreatFilter = 'all' | 'critical' | 'high' | 'medium' | 'low' | 'none'
 export type HumanActionType = 'allow' | 'block' | 'ack'
 
 export interface ActionHistoryItem {
@@ -28,6 +29,7 @@ export interface ActionHistoryItem {
 }
 
 const HANDLED_REQUEST_STORAGE_KEY = 'pangolin.firewall.handled-requests.v1'
+const DASHBOARD_FILTER_STORAGE_KEY = 'pangolin.firewall.dashboard-filters.v1'
 
 export function useFirewallOpsConsole() {
   const loading = ref(false)
@@ -59,8 +61,19 @@ export function useFirewallOpsConsole() {
   const deletingServerId = ref<string | null>(null)
   const streamPaused = ref(false)
   const dashboardViewMode = ref<DashboardViewMode>('all')
+  const dashboardThreatFilter = ref<DashboardThreatFilter>('all')
+  const dashboardActionableOnly = ref(false)
   const dashboardQuery = ref('')
   const actionHistory = ref<ActionHistoryItem[]>([])
+
+  const dashboardThreatFilterOptions: Array<{ title: string; value: DashboardThreatFilter }> = [
+    { title: 'All Threat Levels', value: 'all' },
+    { title: 'Critical', value: 'critical' },
+    { title: 'High', value: 'high' },
+    { title: 'Medium', value: 'medium' },
+    { title: 'Low', value: 'low' },
+    { title: 'None', value: 'none' },
+  ]
 
   const newSkill = ref<FirewallSkillInput>({ id: '', name: '', description: '' })
   const newServer = ref<FirewallMcpServerInput>({ id: '', name: '', transport: 'sse', url: '' })
@@ -75,18 +88,27 @@ export function useFirewallOpsConsole() {
   const normalizedDashboardQuery = computed(() => dashboardQuery.value.trim().toLowerCase())
   const filteredDashboardEvents = computed(() => {
     const query = normalizedDashboardQuery.value
-    const visibleEvents =
+    const threatFilter = dashboardThreatFilter.value
+    const modeFilteredEvents =
       dashboardViewMode.value === 'alert'
         ? dashboardEvents.value.filter((event) => event.is_alert)
         : dashboardViewMode.value === 'escalate'
           ? dashboardEvents.value.filter((event) => dashboardVerdict(event) === 'ESCALATE')
           : dashboardEvents.value
 
+    const threatFilteredEvents = threatFilter === 'all'
+      ? modeFilteredEvents
+      : modeFilteredEvents.filter((event) => eventMatchesThreatFilter(event, threatFilter))
+
+    const actionableFilteredEvents = dashboardActionableOnly.value
+      ? threatFilteredEvents.filter((event) => canResolveEvent(event))
+      : threatFilteredEvents
+
     if (!query) {
-      return visibleEvents
+      return actionableFilteredEvents
     }
 
-    return visibleEvents.filter((event) => eventMatchesQuery(event, query))
+    return actionableFilteredEvents.filter((event) => eventMatchesQuery(event, query))
   })
   const recentDashboardEvents = computed(() => filteredDashboardEvents.value.slice(0, 12))
 
@@ -122,10 +144,15 @@ export function useFirewallOpsConsole() {
   const totalPendingEscalations = computed(() => pendingEscalations.value.length)
   const visiblePendingEscalations = computed(() => {
     const query = normalizedDashboardQuery.value
+    const threatFilter = dashboardThreatFilter.value
+    const threatFilteredEscalations = threatFilter === 'all'
+      ? pendingEscalations.value
+      : pendingEscalations.value.filter((item) => eventMatchesThreatFilter(item.event, threatFilter))
+
     if (!query) {
-      return pendingEscalations.value
+      return threatFilteredEscalations
     }
-    return pendingEscalations.value.filter((item) => escalationMatchesQuery(item, query))
+    return threatFilteredEscalations.filter((item) => escalationMatchesQuery(item, query))
   })
   const recentActionHistory = computed(() => actionHistory.value.slice(0, 12))
 
@@ -224,6 +251,13 @@ export function useFirewallOpsConsole() {
     return includesQuery(item.requestId, query) || eventMatchesQuery(item.event, query)
   }
 
+  function eventMatchesThreatFilter(event: FirewallDashboardEvent, filter: DashboardThreatFilter): boolean {
+    if (filter === 'all') {
+      return true
+    }
+    return dashboardThreat(event).toLowerCase() === filter
+  }
+
   function clearOperationFeedback(): void {
     operationError.value = null
     operationMessage.value = null
@@ -301,12 +335,74 @@ export function useFirewallOpsConsole() {
     }
   }
 
+  function loadDashboardFiltersFromStorage(): void {
+    if (!import.meta.client) {
+      return
+    }
+
+    try {
+      const raw = localStorage.getItem(DASHBOARD_FILTER_STORAGE_KEY)
+      if (!raw) {
+        return
+      }
+
+      const parsed = JSON.parse(raw) as {
+        query?: string
+        viewMode?: DashboardViewMode
+        threatFilter?: DashboardThreatFilter
+        actionableOnly?: boolean
+      }
+
+      if (typeof parsed.query === 'string') {
+        dashboardQuery.value = parsed.query.slice(0, 120)
+      }
+      if (parsed.viewMode === 'all' || parsed.viewMode === 'alert' || parsed.viewMode === 'escalate') {
+        dashboardViewMode.value = parsed.viewMode
+      }
+      if (dashboardThreatFilterOptions.some((option) => option.value === parsed.threatFilter)) {
+        dashboardThreatFilter.value = parsed.threatFilter as DashboardThreatFilter
+      }
+      if (typeof parsed.actionableOnly === 'boolean') {
+        dashboardActionableOnly.value = parsed.actionableOnly
+      }
+    } catch {
+      // Ignore local storage parsing failures.
+    }
+  }
+
+  function persistDashboardFiltersToStorage(): void {
+    if (!import.meta.client) {
+      return
+    }
+
+    try {
+      localStorage.setItem(
+        DASHBOARD_FILTER_STORAGE_KEY,
+        JSON.stringify({
+          query: dashboardQuery.value,
+          viewMode: dashboardViewMode.value,
+          threatFilter: dashboardThreatFilter.value,
+          actionableOnly: dashboardActionableOnly.value,
+        }),
+      )
+    } catch {
+      // Ignore storage quota errors.
+    }
+  }
+
   function toggleStreamPaused(): void {
     streamPaused.value = !streamPaused.value
   }
 
   function setDashboardViewMode(mode: DashboardViewMode): void {
     dashboardViewMode.value = mode
+  }
+
+  function resetDashboardFilters(): void {
+    dashboardQuery.value = ''
+    dashboardViewMode.value = 'all'
+    dashboardThreatFilter.value = 'all'
+    dashboardActionableOnly.value = false
   }
 
   function clearDashboardReconnectTimer(): void {
@@ -564,12 +660,17 @@ export function useFirewallOpsConsole() {
 
   onMounted(() => {
     loadHandledRequestIdsFromStorage()
+    loadDashboardFiltersFromStorage()
     void refresh()
     openDashboardStream()
   })
 
   watch(handledRequestIds, () => {
     persistHandledRequestIdsToStorage()
+  })
+
+  watch([dashboardQuery, dashboardViewMode, dashboardThreatFilter, dashboardActionableOnly], () => {
+    persistDashboardFiltersToStorage()
   })
 
   onBeforeUnmount(() => {
@@ -597,7 +698,10 @@ export function useFirewallOpsConsole() {
     dashboardReconnectDelaySeconds,
     streamPaused,
     dashboardViewMode,
+    dashboardThreatFilter,
+    dashboardActionableOnly,
     dashboardQuery,
+    dashboardThreatFilterOptions,
     actionHistory,
     newSkill,
     newServer,
@@ -631,6 +735,7 @@ export function useFirewallOpsConsole() {
     actionColor,
     toggleStreamPaused,
     setDashboardViewMode,
+    resetDashboardFilters,
     reconnectDashboardStream,
     clearEscalationQueue,
     escalationSubtitle,
