@@ -2,10 +2,9 @@
 import { useInjectedFirewallOpsConsole } from '~/composables/useFirewallOpsConsole'
 
 const {
-  dashboardThreatFilter,
-  dashboardQuery,
   pendingEscalations,
   visiblePendingEscalations,
+  visiblePendingEscalationCount,
   totalPendingEscalations,
   dashboardActionPendingId,
   dashboardBatchActionPending,
@@ -26,14 +25,8 @@ const {
       <v-chip color="error" size="small" variant="tonal" class="mr-2">
         {{ totalPendingEscalations }} pending
       </v-chip>
-      <v-chip
-        v-if="dashboardQuery.trim().length > 0 || dashboardThreatFilter !== 'all'"
-        color="primary"
-        size="small"
-        variant="tonal"
-        class="mr-2"
-      >
-        {{ visiblePendingEscalations.length }} visible
+      <v-chip color="primary" size="small" variant="tonal" class="mr-2">
+        Showing {{ visiblePendingEscalationCount }} / {{ totalPendingEscalations }}
       </v-chip>
       <v-btn
         variant="text"
@@ -42,7 +35,7 @@ const {
         prepend-icon="mdi-check-bold"
         class="mr-2"
         :loading="dashboardBatchActionPending"
-        :disabled="visiblePendingEscalations.length === 0"
+        :disabled="visiblePendingEscalationCount === 0"
         @click="resolveVisibleEscalations('allow')"
       >
         Allow Visible
@@ -54,7 +47,7 @@ const {
         prepend-icon="mdi-close-thick"
         class="mr-2"
         :loading="dashboardBatchActionPending"
-        :disabled="visiblePendingEscalations.length === 0"
+        :disabled="visiblePendingEscalationCount === 0"
         @click="resolveVisibleEscalations('block')"
       >
         Block Visible
@@ -64,7 +57,7 @@ const {
         size="small"
         prepend-icon="mdi-check-all"
         class="mr-2"
-        :disabled="visiblePendingEscalations.length === 0"
+        :disabled="visiblePendingEscalationCount === 0"
         @click="acknowledgeVisibleEscalations"
       >
         Ack Visible

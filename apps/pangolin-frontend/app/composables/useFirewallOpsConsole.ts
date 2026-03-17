@@ -87,6 +87,30 @@ export function useFirewallOpsConsole() {
   const totalServers = computed(() => mcpServers.value.length)
   const dashboardEventCount = computed(() => dashboardEvents.value.length)
   const normalizedDashboardQuery = computed(() => dashboardQuery.value.trim().toLowerCase())
+  const hasActiveDashboardFilters = computed(() => {
+    return (
+      normalizedDashboardQuery.value.length > 0
+      || dashboardViewMode.value !== 'all'
+      || dashboardThreatFilter.value !== 'all'
+      || dashboardActionableOnly.value
+    )
+  })
+  const activeDashboardFilterCount = computed(() => {
+    let count = 0
+    if (normalizedDashboardQuery.value.length > 0) {
+      count += 1
+    }
+    if (dashboardViewMode.value !== 'all') {
+      count += 1
+    }
+    if (dashboardThreatFilter.value !== 'all') {
+      count += 1
+    }
+    if (dashboardActionableOnly.value) {
+      count += 1
+    }
+    return count
+  })
   const filteredDashboardEvents = computed(() => {
     const query = normalizedDashboardQuery.value
     const threatFilter = dashboardThreatFilter.value
@@ -112,6 +136,7 @@ export function useFirewallOpsConsole() {
     return actionableFilteredEvents.filter((event) => eventMatchesQuery(event, query))
   })
   const recentDashboardEvents = computed(() => filteredDashboardEvents.value.slice(0, 12))
+  const visibleDashboardEventCount = computed(() => filteredDashboardEvents.value.length)
 
   const escalationItems = computed<EscalationItem[]>(() => {
     const latestByRequest = new Map<string, EscalationItem>()
@@ -155,6 +180,7 @@ export function useFirewallOpsConsole() {
     }
     return threatFilteredEscalations.filter((item) => escalationMatchesQuery(item, query))
   })
+  const visiblePendingEscalationCount = computed(() => visiblePendingEscalations.value.length)
   const recentActionHistory = computed(() => actionHistory.value.slice(0, 12))
 
   const canAddSkill = computed(() => newSkill.value.id.trim().length > 0)
@@ -768,10 +794,14 @@ export function useFirewallOpsConsole() {
     totalSkills,
     totalServers,
     dashboardEventCount,
+    visibleDashboardEventCount,
     recentDashboardEvents,
     pendingEscalations,
     visiblePendingEscalations,
+    visiblePendingEscalationCount,
     totalPendingEscalations,
+    hasActiveDashboardFilters,
+    activeDashboardFilterCount,
     recentActionHistory,
     canAddSkill,
     canAddServer,
