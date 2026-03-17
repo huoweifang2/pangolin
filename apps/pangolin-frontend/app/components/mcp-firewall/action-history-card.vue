@@ -2,10 +2,14 @@
 import { useInjectedFirewallOpsConsole } from '~/composables/useFirewallOpsConsole'
 
 const {
+  actionHistoryCount,
+  canUndoAction,
   recentActionHistory,
   formatTimestamp,
   actionColor,
   actionLabel,
+  undoLastAction,
+  clearActionHistory,
 } = useInjectedFirewallOpsConsole()
 </script>
 
@@ -14,7 +18,26 @@ const {
     <v-card-title class="d-flex align-center">
       <span>Action History</span>
       <v-spacer />
-      <v-chip size="small" variant="tonal">{{ recentActionHistory.length }}</v-chip>
+      <v-btn
+        variant="text"
+        size="small"
+        prepend-icon="mdi-undo-variant"
+        :disabled="!canUndoAction"
+        @click="undoLastAction"
+      >
+        Undo Last
+      </v-btn>
+      <v-btn
+        variant="text"
+        size="small"
+        color="error"
+        prepend-icon="mdi-trash-can-outline"
+        :disabled="actionHistoryCount === 0"
+        @click="clearActionHistory"
+      >
+        Clear
+      </v-btn>
+      <v-chip size="small" variant="tonal">{{ actionHistoryCount }}</v-chip>
     </v-card-title>
     <v-divider />
 
@@ -34,7 +57,7 @@ const {
     </v-list>
 
     <v-alert
-      v-if="recentActionHistory.length === 0"
+      v-if="actionHistoryCount === 0"
       type="info"
       variant="tonal"
       class="ma-4"

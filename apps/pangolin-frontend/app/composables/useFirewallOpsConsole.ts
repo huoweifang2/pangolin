@@ -48,6 +48,8 @@ export interface ActionHistoryItem {
 const HANDLED_REQUEST_STORAGE_KEY = 'pangolin.firewall.handled-requests.v1'
 const DASHBOARD_FILTER_STORAGE_KEY = 'pangolin.firewall.dashboard-filters.v1'
 const DASHBOARD_PRESET_STORAGE_KEY = 'pangolin.firewall.dashboard-presets.v1'
+const ACTION_HISTORY_STORAGE_KEY = 'pangolin.firewall.action-history.v1'
+const ACTION_HISTORY_LIMIT = 200
 
 export function useFirewallOpsConsole() {
   const loading = ref(false)
@@ -212,6 +214,8 @@ export function useFirewallOpsConsole() {
     return threatFilteredEscalations.filter((item) => escalationMatchesQuery(item, query))
   })
   const visiblePendingEscalationCount = computed(() => visiblePendingEscalations.value.length)
+  const actionHistoryCount = computed(() => actionHistory.value.length)
+  const canUndoAction = computed(() => actionHistory.value.length > 0)
   const recentActionHistory = computed(() => actionHistory.value.slice(0, 12))
 
   const canAddSkill = computed(() => newSkill.value.id.trim().length > 0)
@@ -376,7 +380,101 @@ export function useFirewallOpsConsole() {
   }
 
   function pushActionHistory(action: HumanActionType, requestId: string): void {
-    actionHistory.value = [{ action, requestId, timestamp: Date.now() / 1000 }, ...actionHistory.value].slice(0, 100)
+    actionHistory.value = [{ action, requestId, timestamp: Date.now() / 1000 }, ...actionHistory.value].slice(0, ACTION_HISTORY_LIMIT)
+  }
+
+  function loadActionHistoryFromStorage(): void {
+    if (!import.meta.client) {
+      return
+    }
+
+    try {
+      const raw = localStorage.getItem(ACTION_HISTORY_STORAGE_KEY)
+      if (!raw) {
+        return
+      }
+
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) {
+        return
+      }
+
+      const normalized: ActionHistoryItem[] = []
+      for (const item of parsed) {
+        if (!item || typeof item !== 'object') {
+          continue
+        }
+
+        const requestId = cleanText((item as { requestId?: string }).requestId)
+        if (!requestId) {
+          continue
+        }
+
+        const action = (item as { action?: unknown }).action
+        if (action !== 'allow' && action !== 'block' && action !== 'ack') {
+          continue
+        }
+
+        const timestampRaw = (item as { timestamp?: unknown }).timestamp
+        const timestamp =
+          typeof timestampRaw === 'number' && Number.isFinite(timestampRaw)
+            ? timestampRaw
+            : Date.now() / 1000
+
+        normalized.push({
+          requestId,
+          action,
+          timestamp,
+        })
+      }
+
+      actionHistory.value = normalized.slice(0, ACTION_HISTORY_LIMIT)
+    } catch {
+      // Ignore local storage parsing failures.
+    }
+  }
+
+  function persistActionHistoryToStorage(): void {
+    if (!import.meta.client) {
+      return
+    }
+
+    try {
+      localStorage.setItem(ACTION_HISTORY_STORAGE_KEY, JSON.stringify(actionHistory.value.slice(0, ACTION_HISTORY_LIMIT)))
+    } catch {
+      // Ignore storage quota errors.
+    }
+  }
+
+  function undoLastAction(): void {
+    clearOperationFeedback()
+
+    const [latest, ...rest] = actionHistory.value
+    if (!latest) {
+      operationMessage.value = 'No actions to undo'
+      return
+    }
+
+    actionHistory.value = rest
+
+    const stillHandledInHistory = rest.some((item) => item.requestId === latest.requestId)
+    if (!stillHandledInHistory) {
+      handledRequestIds.value = handledRequestIds.value.filter((id) => id !== latest.requestId)
+    }
+
+    operationMessage.value = `Undid ${actionLabel(latest.action)} for ${latest.requestId}`
+  }
+
+  function clearActionHistory(): void {
+    clearOperationFeedback()
+
+    if (actionHistory.value.length === 0) {
+      operationMessage.value = 'Action history is already empty'
+      return
+    }
+
+    actionHistory.value = []
+    operationMessage.value = 'Cleared action history'
   }
 
   function loadHandledRequestIdsFromStorage(): void {
@@ -1048,6 +1146,7 @@ export function useFirewallOpsConsole() {
 
   onMounted(() => {
     loadHandledRequestIdsFromStorage()
+    loadActionHistoryFromStorage()
     loadDashboardFiltersFromStorage()
     loadDashboardPresetsFromStorage()
     void refresh()
@@ -1056,6 +1155,10 @@ export function useFirewallOpsConsole() {
 
   watch(handledRequestIds, () => {
     persistHandledRequestIdsToStorage()
+  })
+
+  watch(actionHistory, () => {
+    persistActionHistoryToStorage()
   })
 
   watch([dashboardQuery, dashboardViewMode, dashboardThreatFilter, dashboardActionableOnly], () => {
@@ -1120,6 +1223,8 @@ export function useFirewallOpsConsole() {
     pendingEscalations,
     visiblePendingEscalations,
     visiblePendingEscalationCount,
+    actionHistoryCount,
+    canUndoAction,
     totalPendingEscalations,
     hasActiveDashboardFilters,
     activeDashboardFilterCount,
@@ -1141,6 +1246,8 @@ export function useFirewallOpsConsole() {
     canResolveEvent,
     actionLabel,
     actionColor,
+    undoLastAction,
+    clearActionHistory,
     toggleStreamPaused,
     setDashboardViewMode,
     resetDashboardFilters,
