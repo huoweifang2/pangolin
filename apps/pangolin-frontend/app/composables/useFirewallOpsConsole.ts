@@ -731,6 +731,19 @@ export function useFirewallOpsConsole() {
     unifiedTrafficAlertsOnly.value = false
   }
 
+  function focusUnifiedTrafficByRequestId(requestId: string, alertsOnly = false): void {
+    const normalized = requestId.trim()
+    if (!normalized) {
+      return
+    }
+
+    unifiedTrafficQuery.value = normalized
+    unifiedTrafficSourceFilter.value = 'all'
+    unifiedTrafficKindFilter.value = 'all'
+    unifiedTrafficAlertsOnly.value = alertsOnly
+    operationMessage.value = `Focused unified feed on ${normalized}`
+  }
+
   function applyUnifiedTrafficEntryToDashboard(entry: UnifiedTrafficEntry): void {
     clearOperationFeedback()
 
@@ -2042,6 +2055,7 @@ export function useFirewallOpsConsole() {
     clearActionHistory,
     clearActionHistoryFilters,
     clearUnifiedTrafficFilters,
+    focusUnifiedTrafficByRequestId,
     toggleStreamPaused,
     setDashboardViewMode,
     setEscalationSortMode,

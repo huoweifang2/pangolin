@@ -32,6 +32,7 @@ const {
   resolveVisibleEscalationsByThreat,
   acknowledgeVisibleEscalationsByThreat,
   clearEscalationQueue,
+  focusUnifiedTrafficByRequestId,
 } = useInjectedFirewallOpsConsole()
 
 function onEscalationSortModeChange(value: unknown): void {
@@ -281,6 +282,14 @@ function escalationSlaChipColor(item: EscalationItem): string {
               @click="acknowledgeEscalation(item)"
             >
               Ack
+            </v-btn>
+            <v-btn
+              size="x-small"
+              color="secondary"
+              variant="tonal"
+              @click="focusUnifiedTrafficByRequestId(item.requestId, true)"
+            >
+              Feed
             </v-btn>
           </div>
         </template>

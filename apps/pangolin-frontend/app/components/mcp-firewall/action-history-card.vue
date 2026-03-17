@@ -13,6 +13,7 @@ const {
   formatTimestamp,
   actionColor,
   actionLabel,
+  focusUnifiedTrafficByRequestId,
   undoLastAction,
   clearActionHistory,
   clearActionHistoryFilters,
@@ -87,9 +88,19 @@ const {
         :subtitle="formatTimestamp(record.timestamp)"
       >
         <template #append>
-          <v-chip :color="actionColor(record.action)" size="x-small" variant="tonal">
-            {{ actionLabel(record.action) }}
-          </v-chip>
+          <div class="d-flex ga-2">
+            <v-chip :color="actionColor(record.action)" size="x-small" variant="tonal">
+              {{ actionLabel(record.action) }}
+            </v-chip>
+            <v-btn
+              size="x-small"
+              color="secondary"
+              variant="tonal"
+              @click="focusUnifiedTrafficByRequestId(record.requestId)"
+            >
+              Feed
+            </v-btn>
+          </div>
         </template>
       </v-list-item>
     </v-list>
