@@ -698,6 +698,33 @@ export function useFirewallOpsConsole() {
     }
   }
 
+  function reserveUniqueDashboardPresetName(
+    requestedName: string,
+    presetId: string,
+    ownerByName: Map<string, string>,
+  ): string {
+    const baseName = requestedName.trim() || 'Preset'
+    const baseKey = baseName.toLowerCase()
+    const baseOwner = ownerByName.get(baseKey)
+
+    if (!baseOwner || baseOwner === presetId) {
+      ownerByName.set(baseKey, presetId)
+      return baseName
+    }
+
+    let suffix = 2
+    while (true) {
+      const candidate = `${baseName} (${suffix})`
+      const candidateKey = candidate.toLowerCase()
+      const candidateOwner = ownerByName.get(candidateKey)
+      if (!candidateOwner || candidateOwner === presetId) {
+        ownerByName.set(candidateKey, presetId)
+        return candidate
+      }
+      suffix += 1
+    }
+  }
+
   function toggleStreamPaused(): void {
     streamPaused.value = !streamPaused.value
   }
@@ -888,20 +915,38 @@ export function useFirewallOpsConsole() {
       }
 
       const mergedById = new Map<string, DashboardFilterPreset>()
+      const presetNameOwners = new Map<string, string>()
       for (const preset of dashboardFilterPresets.value) {
         mergedById.set(preset.id, preset)
+        presetNameOwners.set(preset.name.toLowerCase(), preset.id)
       }
 
       let importedCount = 0
       let updatedCount = 0
+      let renamedCount = 0
       for (const preset of sanitizedPresets) {
-        if (mergedById.has(preset.id)) {
+        const existing = mergedById.get(preset.id)
+        if (existing) {
           updatedCount += 1
         } else {
           importedCount += 1
         }
+
+        if (existing) {
+          const existingNameKey = existing.name.toLowerCase()
+          if (presetNameOwners.get(existingNameKey) === existing.id) {
+            presetNameOwners.delete(existingNameKey)
+          }
+        }
+
+        const resolvedName = reserveUniqueDashboardPresetName(preset.name, preset.id, presetNameOwners)
+        if (resolvedName !== preset.name) {
+          renamedCount += 1
+        }
+
         mergedById.set(preset.id, {
           ...preset,
+          name: resolvedName,
           updatedAt: Date.now(),
         })
       }
@@ -914,7 +959,8 @@ export function useFirewallOpsConsole() {
         selectedDashboardPresetId.value = sanitizedPresets[0].id
       }
 
-      operationMessage.value = `Imported ${importedCount} preset(s), updated ${updatedCount}`
+      const renamedSummary = renamedCount > 0 ? `, renamed ${renamedCount}` : ''
+      operationMessage.value = `Imported ${importedCount} preset(s), updated ${updatedCount}${renamedSummary}`
     } catch {
       operationError.value = 'Failed to import preset file'
     } finally {
