@@ -46,6 +46,7 @@ Phase 0 只做治理和门禁，不做功能迁移。目标是确保后续每个
 - 冻结 ai-protector-main、promptfoo-main、pangolin 为迁移源。
 - 输出三分清单：可直接删、条件删、暂不删。
 - 给出删除顺序与回滚策略。
+- 形成决议文档：`PHASE0_SOURCE_FREEZE_DECISION.md`。
 
 ## 分支与 PR 规范
 
