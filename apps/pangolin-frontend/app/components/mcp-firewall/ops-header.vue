@@ -20,6 +20,9 @@ const {
   hasActiveDashboardFilters,
   activeDashboardFilterCount,
   canSaveDashboardPreset,
+  selectedDashboardPreset,
+  selectedDashboardPresetDirty,
+  canUpdateSelectedDashboardPreset,
   dashboardPresetImportPending,
   reconnectDashboardStream,
   toggleStreamPaused,
@@ -27,6 +30,7 @@ const {
   saveDashboardPreset,
   applySelectedDashboardPreset,
   deleteSelectedDashboardPreset,
+  updateSelectedDashboardPreset,
   exportDashboardPresets,
   importDashboardPresets,
   loading,
@@ -276,6 +280,23 @@ onBeforeUnmount(() => {
       @click="deleteSelectedDashboardPreset"
     >
       Delete Preset
+    </v-btn>
+
+    <v-chip v-if="selectedDashboardPreset" variant="tonal" size="small">
+      Current: {{ selectedDashboardPreset.name }}
+    </v-chip>
+
+    <v-chip v-if="selectedDashboardPresetDirty" color="warning" variant="tonal" size="small">
+      Preset Modified
+    </v-chip>
+
+    <v-btn
+      variant="text"
+      prepend-icon="mdi-content-save-edit-outline"
+      :disabled="!canUpdateSelectedDashboardPreset"
+      @click="updateSelectedDashboardPreset"
+    >
+      Update Selected
     </v-btn>
 
     <v-btn

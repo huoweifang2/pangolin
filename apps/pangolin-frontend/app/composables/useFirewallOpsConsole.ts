@@ -221,6 +221,27 @@ export function useFirewallOpsConsole() {
   const canAddSkill = computed(() => newSkill.value.id.trim().length > 0)
   const canAddServer = computed(() => newServer.value.id.trim().length > 0)
   const canSaveDashboardPreset = computed(() => dashboardPresetName.value.trim().length > 0)
+  const selectedDashboardPreset = computed(() => {
+    const presetId = selectedDashboardPresetId.value
+    if (!presetId) {
+      return null
+    }
+    return dashboardFilterPresets.value.find((item) => item.id === presetId) ?? null
+  })
+  const selectedDashboardPresetDirty = computed(() => {
+    const preset = selectedDashboardPreset.value
+    if (!preset) {
+      return false
+    }
+    const snapshot = getDashboardFilterSnapshot()
+    return (
+      snapshot.query !== preset.query
+      || snapshot.viewMode !== preset.viewMode
+      || snapshot.threatFilter !== preset.threatFilter
+      || snapshot.actionableOnly !== preset.actionableOnly
+    )
+  })
+  const canUpdateSelectedDashboardPreset = computed(() => selectedDashboardPresetDirty.value)
 
   function verdictColor(verdict?: string): string {
     switch ((verdict ?? '').toUpperCase()) {
@@ -743,6 +764,34 @@ export function useFirewallOpsConsole() {
     operationMessage.value = `Deleted preset ${preset.name}`
   }
 
+  function updateSelectedDashboardPreset(): void {
+    clearOperationFeedback()
+
+    const preset = selectedDashboardPreset.value
+    if (!preset) {
+      operationError.value = 'Select a preset to update'
+      return
+    }
+    if (!selectedDashboardPresetDirty.value) {
+      operationMessage.value = `Preset ${preset.name} is already up to date`
+      return
+    }
+
+    const snapshot = getDashboardFilterSnapshot()
+    dashboardFilterPresets.value = dashboardFilterPresets.value.map((item) => {
+      if (item.id !== preset.id) {
+        return item
+      }
+      return {
+        ...item,
+        ...snapshot,
+        updatedAt: Date.now(),
+      }
+    })
+
+    operationMessage.value = `Updated preset ${preset.name}`
+  }
+
   function exportDashboardPresets(): void {
     clearOperationFeedback()
 
@@ -1206,6 +1255,8 @@ export function useFirewallOpsConsole() {
     dashboardPresetName,
     selectedDashboardPresetId,
     dashboardPresetImportPending,
+    selectedDashboardPreset,
+    selectedDashboardPresetDirty,
     dashboardThreatFilterOptions,
     dashboardPresetOptions,
     actionHistory,
@@ -1232,6 +1283,7 @@ export function useFirewallOpsConsole() {
     canAddSkill,
     canAddServer,
     canSaveDashboardPreset,
+    canUpdateSelectedDashboardPreset,
     verdictColor,
     threatColor,
     formatTimestamp,
@@ -1254,6 +1306,7 @@ export function useFirewallOpsConsole() {
     saveDashboardPreset,
     applySelectedDashboardPreset,
     deleteSelectedDashboardPreset,
+    updateSelectedDashboardPreset,
     exportDashboardPresets,
     importDashboardPresets,
     reconnectDashboardStream,
