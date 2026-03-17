@@ -164,6 +164,48 @@ export const AgentsFilesSetResultSchema = Type.Object(
   { additionalProperties: false },
 );
 
+export const AgentToolsPolicySchema = Type.Object(
+  {
+    allow: Type.Optional(Type.Array(NonEmptyString)),
+    deny: Type.Optional(Type.Array(NonEmptyString)),
+    alsoAllow: Type.Optional(Type.Array(NonEmptyString)),
+    profile: Type.Optional(NonEmptyString),
+  },
+  { additionalProperties: false },
+);
+
+export const AgentsToolsGetParamsSchema = Type.Object(
+  {
+    agentId: NonEmptyString,
+  },
+  { additionalProperties: false },
+);
+
+export const AgentsToolsGetResultSchema = Type.Object(
+  {
+    agentId: NonEmptyString,
+    tools: AgentToolsPolicySchema,
+  },
+  { additionalProperties: false },
+);
+
+export const AgentsToolsSetParamsSchema = Type.Object(
+  {
+    agentId: NonEmptyString,
+    tools: AgentToolsPolicySchema,
+  },
+  { additionalProperties: false },
+);
+
+export const AgentsToolsSetResultSchema = Type.Object(
+  {
+    ok: Type.Literal(true),
+    agentId: NonEmptyString,
+    tools: AgentToolsPolicySchema,
+  },
+  { additionalProperties: false },
+);
+
 export const ModelsListParamsSchema = Type.Object({}, { additionalProperties: false });
 
 export const ModelsListResultSchema = Type.Object(

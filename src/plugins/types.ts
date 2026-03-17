@@ -206,7 +206,9 @@ export type AgentShieldPluginCliContext = {
   logger: PluginLogger;
 };
 
-export type AgentShieldPluginCliRegistrar = (ctx: AgentShieldPluginCliContext) => void | Promise<void>;
+export type AgentShieldPluginCliRegistrar = (
+  ctx: AgentShieldPluginCliContext,
+) => void | Promise<void>;
 
 export type AgentShieldPluginServiceContext = {
   config: AgentShieldConfig;

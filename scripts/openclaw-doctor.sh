@@ -93,7 +93,7 @@ check_script_prereq() {
   fi
 }
 
-echo "== OpenClaw Capability Doctor =="
+echo "== Pangolin Capability Doctor =="
 echo "Repo: $repo_root"
 
 echo
@@ -102,7 +102,9 @@ check_required "scripts/run-node.mjs" "core launcher"
 check_required "src/gateway" "gateway module"
 check_required "src/agents" "agents module"
 check_required "src/channels" "channels module"
-check_required "extensions/agent-firewall" "firewall extension"
+check_required "apps/pangolin-frontend" "pangolin frontend"
+check_required "apps/pangolin-frontend/app/pages/mcp-firewall.vue" "firewall ops page"
+check_required "apps/pangolin-frontend/app/composables/useFirewallOpsConsole.ts" "firewall ops state"
 check_required "skills" "skills catalog"
 
 echo
@@ -123,6 +125,9 @@ check_script_prereq "android:install" "apps/android" "restore mobile app or avoi
 check_script_prereq "android:run" "apps/android" "restore mobile app or avoid android scripts"
 check_script_prereq "android:test" "apps/android" "restore mobile app or avoid android scripts"
 check_script_prereq "ios:gen" "apps/ios" "restore ios app or avoid ios:gen"
+check_script_prereq "pangolin:frontend:dev" "apps/pangolin-frontend" "restore frontend workspace or skip pangolin frontend dev"
+check_script_prereq "pangolin:frontend:build" "apps/pangolin-frontend" "restore frontend workspace or skip pangolin frontend build"
+check_script_prereq "pangolin:frontend:preview" "apps/pangolin-frontend" "restore frontend workspace or skip pangolin frontend preview"
 check_script_prereq "format:swift" "apps/ios" "requires ios/macos swift sources"
 check_script_prereq "lint:swift" "apps/ios" "requires ios/macos swift sources"
 check_script_prereq "test:ui" "ui" "restore ui workspace or skip ui tests"
@@ -147,7 +152,7 @@ if [[ "$fail_count" -gt 0 ]]; then
 fi
 
 if [[ "$warn_count" -gt 0 ]]; then
-  echo "Result: CORE-ONLY MODE is healthy; some legacy OpenClaw surfaces are missing"
+  echo "Result: CORE-ONLY MODE is healthy; some optional legacy surfaces are missing"
   if [[ "$strict" -eq 1 ]]; then
     exit 3
   fi

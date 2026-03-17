@@ -22,7 +22,10 @@ const MemoryGetSchema = Type.Object({
   lines: Type.Optional(Type.Number()),
 });
 
-function resolveMemoryToolContext(options: { config?: AgentShieldConfig; agentSessionKey?: string }) {
+function resolveMemoryToolContext(options: {
+  config?: AgentShieldConfig;
+  agentSessionKey?: string;
+}) {
   const cfg = options.config;
   if (!cfg) {
     return null;

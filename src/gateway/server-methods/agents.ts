@@ -40,6 +40,8 @@ import {
   validateAgentsFilesListParams,
   validateAgentsFilesSetParams,
   validateAgentsListParams,
+  validateAgentsToolsGetParams,
+  validateAgentsToolsSetParams,
   validateAgentsUpdateParams,
 } from "../protocol/index.js";
 import { listAgentsForGateway } from "../session-utils.js";
@@ -184,6 +186,94 @@ function sanitizeIdentityLine(value: string): string {
 
 function resolveOptionalStringParam(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+type AgentToolsPolicyPayload = {
+  allow?: string[];
+  deny?: string[];
+  alsoAllow?: string[];
+  profile?: string;
+};
+
+function normalizeToolList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const normalized = value
+    .map((entry) => (typeof entry === "string" ? entry.trim().toLowerCase() : ""))
+    .filter(Boolean);
+  return Array.from(new Set(normalized));
+}
+
+function normalizeToolProfile(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized || undefined;
+}
+
+function extractAgentToolsPolicy(rawTools: unknown): AgentToolsPolicyPayload {
+  if (!rawTools || typeof rawTools !== "object") {
+    return {};
+  }
+  const tools = rawTools as Record<string, unknown>;
+  return {
+    allow: normalizeToolList(tools.allow),
+    deny: normalizeToolList(tools.deny),
+    alsoAllow: normalizeToolList(tools.alsoAllow),
+    profile: normalizeToolProfile(tools.profile),
+  };
+}
+
+function mergeAgentToolsPolicy(
+  rawTools: unknown,
+  nextPolicyRaw: unknown,
+): Record<string, unknown> | undefined {
+  const base =
+    rawTools && typeof rawTools === "object" ? { ...(rawTools as Record<string, unknown>) } : {};
+  const nextPolicy =
+    nextPolicyRaw && typeof nextPolicyRaw === "object"
+      ? (nextPolicyRaw as Record<string, unknown>)
+      : {};
+
+  if (Object.prototype.hasOwnProperty.call(nextPolicy, "allow")) {
+    const normalized = normalizeToolList(nextPolicy.allow);
+    if (normalized) {
+      base.allow = normalized;
+    } else {
+      delete base.allow;
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(nextPolicy, "deny")) {
+    const normalized = normalizeToolList(nextPolicy.deny);
+    if (normalized) {
+      base.deny = normalized;
+    } else {
+      delete base.deny;
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(nextPolicy, "alsoAllow")) {
+    const normalized = normalizeToolList(nextPolicy.alsoAllow);
+    if (normalized) {
+      base.alsoAllow = normalized;
+    } else {
+      delete base.alsoAllow;
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(nextPolicy, "profile")) {
+    const normalized = normalizeToolProfile(nextPolicy.profile);
+    if (normalized) {
+      base.profile = normalized;
+    } else {
+      delete base.profile;
+    }
+  }
+
+  return Object.keys(base).length > 0 ? base : undefined;
 }
 
 async function moveToTrashBestEffort(pathname: string): Promise<void> {
@@ -522,6 +612,95 @@ export const agentsHandlers: GatewayRequestHandlers = {
           updatedAtMs: meta?.updatedAtMs,
           content,
         },
+      },
+      undefined,
+    );
+  },
+  "agents.tools.get": ({ params, respond }) => {
+    if (!validateAgentsToolsGetParams(params)) {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          `invalid agents.tools.get params: ${formatValidationErrors(
+            validateAgentsToolsGetParams.errors,
+          )}`,
+        ),
+      );
+      return;
+    }
+
+    const cfg = loadConfig();
+    const agentId = resolveAgentIdOrError(String(params.agentId ?? ""), cfg);
+    if (!agentId) {
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "unknown agent id"));
+      return;
+    }
+
+    const list = listAgentEntries(cfg);
+    const index = findAgentEntryIndex(list, agentId);
+    const entry = index >= 0 ? (list[index] as Record<string, unknown>) : undefined;
+    const tools = extractAgentToolsPolicy(entry?.tools);
+    respond(true, { agentId, tools }, undefined);
+  },
+  "agents.tools.set": async ({ params, respond }) => {
+    if (!validateAgentsToolsSetParams(params)) {
+      respond(
+        false,
+        undefined,
+        errorShape(
+          ErrorCodes.INVALID_REQUEST,
+          `invalid agents.tools.set params: ${formatValidationErrors(
+            validateAgentsToolsSetParams.errors,
+          )}`,
+        ),
+      );
+      return;
+    }
+
+    const cfg = loadConfig();
+    const agentId = resolveAgentIdOrError(String(params.agentId ?? ""), cfg);
+    if (!agentId) {
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "unknown agent id"));
+      return;
+    }
+
+    const ensuredConfig = applyAgentConfig(cfg, { agentId });
+    const list = listAgentEntries(ensuredConfig);
+    const index = findAgentEntryIndex(list, agentId);
+    if (index < 0) {
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "unknown agent id"));
+      return;
+    }
+
+    const nextList = [...list];
+    const currentEntry = nextList[index] as Record<string, unknown>;
+    const nextTools = mergeAgentToolsPolicy(currentEntry.tools, params.tools);
+    const nextEntry: Record<string, unknown> = {
+      ...currentEntry,
+      ...(nextTools ? { tools: nextTools } : {}),
+    };
+    if (!nextTools) {
+      delete nextEntry.tools;
+    }
+    nextList[index] = nextEntry as (typeof list)[number];
+
+    const nextConfig = {
+      ...ensuredConfig,
+      agents: {
+        ...ensuredConfig.agents,
+        list: nextList,
+      },
+    };
+
+    await writeConfigFile(nextConfig);
+    respond(
+      true,
+      {
+        ok: true,
+        agentId,
+        tools: extractAgentToolsPolicy(nextTools),
       },
       undefined,
     );

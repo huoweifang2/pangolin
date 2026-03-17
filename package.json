@@ -89,6 +89,7 @@
     "moltbot:rpc": "node scripts/run-node.mjs agent --mode rpc --json",
     "openclaw:doctor": "bash scripts/openclaw-doctor.sh",
     "openclaw:doctor:strict": "bash scripts/openclaw-doctor.sh --strict",
+    "pangolin:dev:all": "bash scripts/pangolin-dev-up.sh",
     "pangolin:frontend:build": "pnpm --filter ai-protector-frontend build",
     "pangolin:frontend:dev": "pnpm --filter ai-protector-frontend dev",
     "pangolin:frontend:preview": "pnpm --filter ai-protector-frontend preview",
