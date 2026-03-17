@@ -6,15 +6,26 @@ const {
   visiblePendingEscalations,
   visiblePendingEscalationCount,
   totalPendingEscalations,
+  escalationSortMode,
+  escalationSortModeOptions,
+  visibleEscalationThreatSummary,
+  oldestVisibleEscalationAgeLabel,
   dashboardActionPendingId,
   dashboardBatchActionPending,
   escalationSubtitle,
+  setEscalationSortMode,
   resolveEscalation,
   acknowledgeEscalation,
   resolveVisibleEscalations,
   acknowledgeVisibleEscalations,
   clearEscalationQueue,
 } = useInjectedFirewallOpsConsole()
+
+function onEscalationSortModeChange(value: unknown): void {
+  if (value === 'risk' || value === 'newest' || value === 'oldest') {
+    setEscalationSortMode(value)
+  }
+}
 </script>
 
 <template>
@@ -28,6 +39,36 @@ const {
       <v-chip color="primary" size="small" variant="tonal" class="mr-2">
         Showing {{ visiblePendingEscalationCount }} / {{ totalPendingEscalations }}
       </v-chip>
+      <v-chip size="small" variant="tonal" class="mr-2">
+        Oldest: {{ oldestVisibleEscalationAgeLabel }}
+      </v-chip>
+      <v-chip
+        v-if="visibleEscalationThreatSummary.critical > 0"
+        color="error"
+        size="small"
+        variant="tonal"
+        class="mr-2"
+      >
+        Critical {{ visibleEscalationThreatSummary.critical }}
+      </v-chip>
+      <v-chip
+        v-if="visibleEscalationThreatSummary.high > 0"
+        color="warning"
+        size="small"
+        variant="tonal"
+        class="mr-2"
+      >
+        High {{ visibleEscalationThreatSummary.high }}
+      </v-chip>
+      <v-select
+        :model-value="escalationSortMode"
+        :items="escalationSortModeOptions"
+        density="compact"
+        variant="outlined"
+        hide-details
+        class="queue-sort-select mr-2"
+        @update:model-value="onEscalationSortModeChange"
+      />
       <v-btn
         variant="text"
         size="small"
@@ -129,3 +170,10 @@ const {
     </v-alert>
   </v-card>
 </template>
+
+<style scoped>
+.queue-sort-select {
+  min-width: 170px;
+  max-width: 220px;
+}
+</style>
