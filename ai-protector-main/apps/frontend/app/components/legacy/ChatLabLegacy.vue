@@ -56,7 +56,7 @@
             <option v-for="m in customModels" :key="m.id" :value="m.id">{{ m.id.split('/').pop() }}</option>
           </template>
           <option disabled>──────────</option>
-          <option value="__custom__">⚙️ 自行配置</option>
+          <option value="__custom__">⚙️ Configure Provider</option>
         </select>
 
         <!-- Settings gear -->
@@ -70,7 +70,7 @@
           <input v-model="autoIntercept" type="checkbox" />
           <span class="toggle-label">Intercept</span>
         </label>
-        <label class="toolbar-toggle" title="Bypass firewall blocks">
+        <label class="toolbar-toggle" title="Bypass Pangolin security blocks">
           <input v-model="forceForward" type="checkbox" />
           <span class="toggle-label">Force</span>
         </label>
@@ -119,8 +119,8 @@
               <path d="M12 22s8-4 8-10V8l-8-3-8 3v4c0 6 8 10 8 10z" transform="translate(12, 10) scale(1.2)"/>
             </svg>
           </div>
-          <h3>Agent Firewall Chat Lab</h3>
-          <p>Test attack payloads against the firewall's dual-layer analysis engine.</p>
+          <h3>Pangolin Chat Lab</h3>
+          <p>Test adversarial prompts against Pangolin's dual-layer analysis pipeline.</p>
           <div class="quick-actions">
             <button v-for="sample in sampleAttacks" :key="sample.name" class="quick-btn" @click="useSample(sample)">
               <span class="quick-tag">{{ sample.category }}</span>
@@ -137,7 +137,7 @@
           </div>
           <div class="msg-content-wrap">
             <div class="msg-meta">
-              <span class="msg-sender">{{ msg.role === 'user' ? 'Attacker' : msg.role === 'system' ? 'Firewall' : msg.role === 'tool' ? 'Tool Call' : 'LLM' }}</span>
+              <span class="msg-sender">{{ msg.role === 'user' ? 'Attacker' : msg.role === 'system' ? 'Pangolin' : msg.role === 'tool' ? 'Tool Call' : 'LLM' }}</span>
               <span class="msg-time">{{ formatTime(msg.timestamp) }}</span>
               <span v-if="msg.wasModified" class="msg-tag modified">Modified</span>
               <span v-if="msg.blocked" class="msg-tag blocked">Blocked</span>
@@ -278,7 +278,7 @@
           ref="inputEl"
           v-model="inputMessage"
           class="msg-input"
-          placeholder="Message Agent Firewall..."
+          placeholder="Message Pangolin..."
           rows="1"
           @keydown.enter.exact.prevent="handleSend"
         ></textarea>
@@ -300,7 +300,7 @@
       <div class="mcp-content">
         <div class="mcp-header">
           <h3>MCP Tool Call Tester</h3>
-          <p>Send raw JSON-RPC tool calls through the firewall to test detection.</p>
+          <p>Send raw JSON-RPC tool calls through Pangolin to test detection.</p>
         </div>
 
         <div class="mcp-form">
@@ -333,7 +333,7 @@
           </div>
 
           <button class="mcp-send-btn" :disabled="mcpSending" @click="sendMcpTest">
-            {{ mcpSending ? 'Testing...' : 'Send Through Firewall' }}
+            {{ mcpSending ? 'Testing...' : 'Send Through Pangolin' }}
           </button>
         </div>
 
@@ -370,7 +370,7 @@
       <div class="skill-content">
         <div class="skill-header">
           <h3>Skills Probe</h3>
-          <p>Test skill invocations through the firewall.</p>
+          <p>Test skill invocations through Pangolin.</p>
         </div>
 
         <div v-if="skills.length" class="skill-list">
@@ -392,7 +392,7 @@
         </div>
         <div v-else class="skill-empty">
           <button class="load-skills-btn" @click="loadSkillsList">Load Skills</button>
-          <p>Load skills from the gateway to test them.</p>
+          <p>Load skills from the Pangolin gateway to test them.</p>
         </div>
       </div>
     </div>
@@ -403,13 +403,13 @@
     <div v-if="showCustomConfigModal" class="modal-overlay" @click.self="showCustomConfigModal = false">
       <div class="modal-card">
         <div class="modal-header">
-          <h3>⚙️ 自行配置 AI Provider</h3>
+          <h3>⚙️ Configure AI Provider</h3>
           <button class="modal-close" @click="showCustomConfigModal = false">&times;</button>
         </div>
         <div class="modal-body">
-          <p>Chat Lab uses the AI provider configured in <strong>Settings</strong> page. To use your own model provider:</p>
+          <p>Chat Lab uses the provider configured on the <strong>Settings</strong> page. To use your own model provider:</p>
           <ol class="config-steps">
-            <li>Go to the <strong>Settings</strong> page (sidebar → Config)</li>
+            <li>Go to the <strong>Settings</strong> page (sidebar → Settings)</li>
             <li>In <strong>AI Model Provider</strong>, set your endpoint and API key</li>
             <li>All listed models are routed through your configured provider</li>
           </ol>
@@ -632,7 +632,7 @@ const getToolDisplayName = (name: string, args: any) => {
   return name
 }
 
-/** Handle "自行配置" option — show modal and revert selection */
+/** Handle the "Configure Provider" option — show modal and revert selection */
 function onModelChange() {
   if (selectedModel.value === '__custom__') {
     showCustomConfigModal.value = true

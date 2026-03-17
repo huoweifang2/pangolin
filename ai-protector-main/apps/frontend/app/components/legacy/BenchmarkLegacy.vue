@@ -48,8 +48,8 @@
               <label>Defense Interceptor (Stage 2)</label>
               <select v-model="config.defense" class="input-field">
                 <option value="none">None (Direct Attack)</option>
-                <option value="agent-firewall-l1">Agent-Firewall L1 (Static)</option>
-                <option value="agent-firewall-l2">Agent-Firewall L2 (Semantic)</option>
+                <option value="agent-firewall-l1">Pangolin L1 (Static)</option>
+                <option value="agent-firewall-l2">Pangolin L2 (Semantic)</option>
                 <option value="jailguard">JailGuard (Perturbation Consistency)</option>
                 <option value="cider">CIDER (Intent Risk Classifier)</option>
               </select>
