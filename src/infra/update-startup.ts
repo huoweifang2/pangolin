@@ -4,7 +4,7 @@ import type { loadConfig } from "../config/config.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import { resolveStateDir } from "../config/paths.js";
 import { VERSION } from "../version.js";
-import { resolveAgentShieldPackageRoot } from "./agent-shield-root.js";
+import { resolveAgentShieldPackageRoot } from "./core-package-root.js";
 import { normalizeUpdateChannel, DEFAULT_PACKAGE_CHANNEL } from "./update-channels.js";
 import { compareSemverStrings, resolveNpmChannelTag, checkUpdateStatus } from "./update-check.js";
 

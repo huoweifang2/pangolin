@@ -559,7 +559,7 @@ export async function updateCommand(opts: UpdateCommandOptions): Promise<void> {
 
   const showProgress = !opts.json && process.stdout.isTTY;
   if (!opts.json) {
-    defaultRuntime.log(theme.heading("Updating AgentShield..."));
+    defaultRuntime.log(theme.heading("Updating Pangolin..."));
     defaultRuntime.log("");
   }
 
@@ -608,13 +608,11 @@ export async function updateCommand(opts: UpdateCommandOptions): Promise<void> {
     if (result.reason === "not-git-install") {
       defaultRuntime.log(
         theme.warn(
-          `Skipped: this AgentShield install isn't a git checkout, and the package manager couldn't be detected. Update via your package manager, then run \`${replaceCliName(formatCliCommand("agent-shield doctor"), CLI_NAME)}\` and \`${replaceCliName(formatCliCommand("agent-shield gateway restart"), CLI_NAME)}\`.`,
+          `Skipped: this Pangolin install isn't a git checkout, and the package manager couldn't be detected. Update via your package manager, then run \`${replaceCliName(formatCliCommand("agent-shield doctor"), CLI_NAME)}\` and \`${replaceCliName(formatCliCommand("agent-shield gateway restart"), CLI_NAME)}\`.`,
         ),
       );
       defaultRuntime.log(
-        theme.muted(
-          `Examples: \`${replaceCliName("npm i -g agent-shield@latest", CLI_NAME)}\` or \`${replaceCliName("pnpm add -g agent-shield@latest", CLI_NAME)}\``,
-        ),
+        theme.muted("Examples: `npm i -g pangolin@latest` or `pnpm add -g pangolin@latest`"),
       );
     }
     defaultRuntime.exit(0);

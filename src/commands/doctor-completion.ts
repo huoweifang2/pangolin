@@ -11,7 +11,7 @@ import {
   resolveShellFromEnv,
   usesSlowDynamicCompletion,
 } from "../cli/completion-cli.js";
-import { resolveAgentShieldPackageRoot } from "../infra/agent-shield-root.js";
+import { resolveAgentShieldPackageRoot } from "../infra/core-package-root.js";
 import { note } from "../terminal/note.js";
 
 type CompletionShell = "zsh" | "bash" | "fish" | "powershell";
@@ -27,7 +27,7 @@ async function generateCompletionCache(): Promise<boolean> {
     return false;
   }
 
-  const binPath = path.join(root, "agent-shield.mjs");
+  const binPath = path.join(root, "pangolin.mjs");
   const result = spawnSync(process.execPath, [binPath, "completion", "--write-state"], {
     cwd: root,
     env: process.env,
@@ -42,13 +42,13 @@ export type ShellCompletionStatus = {
   profileInstalled: boolean;
   cacheExists: boolean;
   cachePath: string;
-  /** True if profile uses slow dynamic pattern like `source <(agent-shield completion ...)` */
+  /** True if profile uses slow dynamic pattern like `source <(pangolin completion ...)` */
   usesSlowPattern: boolean;
 };
 
 /** Check the status of shell completion for the current shell. */
 export async function checkShellCompletionStatus(
-  binName = "agent-shield",
+  binName = resolveCliName(),
 ): Promise<ShellCompletionStatus> {
   const shell = resolveShellFromEnv() as CompletionShell;
   const profileInstalled = await isCompletionInstalled(shell, binName);

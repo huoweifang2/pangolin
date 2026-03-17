@@ -274,7 +274,7 @@ async function main() {
 
 void main().catch((err) => {
   console.error(
-    "[agent-shield] Gateway daemon failed:",
+    "[pangolin] Gateway daemon failed:",
     err instanceof Error ? (err.stack ?? err.message) : err,
   );
   process.exit(1);

@@ -262,7 +262,7 @@ export async function maybeScanExtraGatewayServices(
         note(failed.map((line) => `- ${line}`).join("\n"), "Legacy gateway cleanup skipped");
       }
       if (removed.length > 0) {
-        runtime.log("Legacy gateway services removed. Installing AgentShield gateway next.");
+        runtime.log("Legacy gateway services removed. Installing pangolin gateway next.");
       }
     }
   }

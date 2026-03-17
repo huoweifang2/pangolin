@@ -67,7 +67,7 @@ async function main() {
   installUnhandledRejectionHandler();
 
   process.on("uncaughtException", (error) => {
-    console.error("[agent-shield] Uncaught exception:", formatUncaughtError(error));
+    console.error("[pangolin] Uncaught exception:", formatUncaughtError(error));
     process.exit(1);
   });
 
@@ -76,7 +76,7 @@ async function main() {
 
 void main().catch((err) => {
   console.error(
-    "[agent-shield] Relay failed:",
+    "[pangolin] Relay failed:",
     err instanceof Error ? (err.stack ?? err.message) : err,
   );
   process.exit(1);

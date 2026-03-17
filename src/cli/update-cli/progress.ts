@@ -24,6 +24,8 @@ const STEP_LABELS: Record<string, string> = {
   "ui:build": "Building UI assets",
   "ui:build (post-doctor repair)": "Restoring missing UI assets",
   "ui assets verify": "Validating UI assets",
+  "pangolin doctor entry": "Checking doctor entrypoint",
+  "pangolin doctor": "Running doctor checks",
   "agent-shield doctor entry": "Checking doctor entrypoint",
   "agent-shield doctor": "Running doctor checks",
   "git rev-parse HEAD (after)": "Verifying update",

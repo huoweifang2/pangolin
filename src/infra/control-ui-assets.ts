@@ -6,7 +6,7 @@ import { defaultRuntime, type RuntimeEnv } from "../runtime.js";
 import {
   resolveAgentShieldPackageRoot,
   resolveAgentShieldPackageRootSync,
-} from "./agent-shield-root.js";
+} from "./core-package-root.js";
 
 const CONTROL_UI_DIST_PATH_SEGMENTS = ["dist", "control-ui", "index.html"] as const;
 

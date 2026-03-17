@@ -28,7 +28,7 @@ function killGatewayListeners(port: number): PortProcess[] {
 function runTests() {
   const isolatedLock =
     process.env.AGENT_SHIELD_GATEWAY_LOCK ??
-    path.join(os.tmpdir(), `agent-shield-gateway.lock.test.${Date.now()}`);
+    path.join(os.tmpdir(), `pangolin-gateway.lock.test.${Date.now()}`);
   const result = spawnSync("pnpm", ["vitest", "run"], {
     stdio: "inherit",
     env: {

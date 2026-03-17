@@ -1,7 +1,7 @@
 // Default service labels (canonical + legacy compatibility)
 export const GATEWAY_LAUNCH_AGENT_LABEL = "ai.agent-shield.gateway";
-export const GATEWAY_SYSTEMD_SERVICE_NAME = "agent-shield-gateway";
-export const GATEWAY_WINDOWS_TASK_NAME = "AgentShield Gateway";
+export const GATEWAY_SYSTEMD_SERVICE_NAME = "pangolin-gateway";
+export const GATEWAY_WINDOWS_TASK_NAME = "Pangolin Gateway";
 export const GATEWAY_SERVICE_MARKER = "agent-shield";
 export const GATEWAY_SERVICE_KIND = "gateway";
 export const NODE_LAUNCH_AGENT_LABEL = "ai.agent-shield.node";
@@ -11,8 +11,14 @@ export const NODE_SERVICE_MARKER = "agent-shield";
 export const NODE_SERVICE_KIND = "node";
 export const NODE_WINDOWS_TASK_SCRIPT_NAME = "node.cmd";
 export const LEGACY_GATEWAY_LAUNCH_AGENT_LABELS: string[] = [];
-export const LEGACY_GATEWAY_SYSTEMD_SERVICE_NAMES: string[] = [];
-export const LEGACY_GATEWAY_WINDOWS_TASK_NAMES: string[] = [];
+export const LEGACY_GATEWAY_SYSTEMD_SERVICE_NAMES: string[] = [
+  "agent-shield-gateway",
+  "openclaw-gateway",
+];
+export const LEGACY_GATEWAY_WINDOWS_TASK_NAMES: string[] = [
+  "AgentShield Gateway",
+  "OpenClaw Gateway",
+];
 
 export function normalizeGatewayProfile(profile?: string): string | null {
   const trimmed = profile?.trim();
@@ -45,7 +51,7 @@ export function resolveGatewaySystemdServiceName(profile?: string): string {
   if (!suffix) {
     return GATEWAY_SYSTEMD_SERVICE_NAME;
   }
-  return `agent-shield-gateway${suffix}`;
+  return `pangolin-gateway${suffix}`;
 }
 
 export function resolveGatewayWindowsTaskName(profile?: string): string {
@@ -53,7 +59,7 @@ export function resolveGatewayWindowsTaskName(profile?: string): string {
   if (!normalized) {
     return GATEWAY_WINDOWS_TASK_NAME;
   }
-  return `AgentShield Gateway (${normalized})`;
+  return `Pangolin Gateway (${normalized})`;
 }
 
 export function formatGatewayServiceDescription(params?: {
@@ -70,9 +76,9 @@ export function formatGatewayServiceDescription(params?: {
     parts.push(`v${version}`);
   }
   if (parts.length === 0) {
-    return "AgentShield Gateway";
+    return "Pangolin Gateway";
   }
-  return `AgentShield Gateway (${parts.join(", ")})`;
+  return `Pangolin Gateway (${parts.join(", ")})`;
 }
 
 export function resolveGatewayServiceDescription(params: {

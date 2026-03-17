@@ -82,8 +82,9 @@ const DEFAULT_TIMEOUT_MS = 20 * 60_000;
 const MAX_LOG_CHARS = 8000;
 const PREFLIGHT_MAX_COMMITS = 10;
 const START_DIRS = ["cwd", "argv1", "process"];
-const DEFAULT_PACKAGE_NAME = "agent-shield";
-const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME]);
+const LEGACY_PACKAGE_NAME = "agent-shield";
+const DEFAULT_PACKAGE_NAME = "pangolin";
+const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME, LEGACY_PACKAGE_NAME]);
 
 function normalizeDir(value?: string | null) {
   if (!value) {
@@ -315,8 +316,8 @@ function normalizeTag(tag?: string) {
   if (!trimmed) {
     return "latest";
   }
-  if (trimmed.startsWith("agent-shield@")) {
-    return trimmed.slice("agent-shield@".length);
+  if (trimmed.startsWith(`${LEGACY_PACKAGE_NAME}@`)) {
+    return trimmed.slice(`${LEGACY_PACKAGE_NAME}@`.length);
   }
   if (trimmed.startsWith(`${DEFAULT_PACKAGE_NAME}@`)) {
     return trimmed.slice(`${DEFAULT_PACKAGE_NAME}@`.length);
@@ -373,7 +374,7 @@ export async function runGatewayUpdate(opts: UpdateRunnerOptions = {}): Promise<
       status: "error",
       mode: "unknown",
       root: gitRoot,
-      reason: "not-agent-shield-root",
+      reason: "not-pangolin-root",
       steps: [],
       durationMs: Date.now() - startedAt,
     };
@@ -716,14 +717,21 @@ export async function runGatewayUpdate(opts: UpdateRunnerOptions = {}): Promise<
     );
     steps.push(uiBuildStep);
 
-    const doctorEntry = path.join(gitRoot, "agent-shield.mjs");
+    const preferredDoctorEntry = path.join(gitRoot, "pangolin.mjs");
+    const fallbackDoctorEntry = path.join(gitRoot, "agent-shield.mjs");
+    const doctorEntry = (await fs
+      .stat(preferredDoctorEntry)
+      .then(() => true)
+      .catch(() => false))
+      ? preferredDoctorEntry
+      : fallbackDoctorEntry;
     const doctorEntryExists = await fs
       .stat(doctorEntry)
       .then(() => true)
       .catch(() => false);
     if (!doctorEntryExists) {
       steps.push({
-        name: "agent-shield doctor entry",
+        name: "pangolin doctor entry",
         command: `verify ${doctorEntry}`,
         cwd: gitRoot,
         durationMs: 0,
@@ -743,7 +751,7 @@ export async function runGatewayUpdate(opts: UpdateRunnerOptions = {}): Promise<
 
     const doctorArgv = [process.execPath, doctorEntry, "doctor", "--non-interactive"];
     const doctorStep = await runStep(
-      step("agent-shield doctor", doctorArgv, gitRoot, { AGENT_SHIELD_UPDATE_IN_PROGRESS: "1" }),
+      step("pangolin doctor", doctorArgv, gitRoot, { AGENT_SHIELD_UPDATE_IN_PROGRESS: "1" }),
     );
     steps.push(doctorStep);
 

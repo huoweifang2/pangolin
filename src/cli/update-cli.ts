@@ -18,7 +18,7 @@ export type { UpdateCommandOptions, UpdateStatusOptions, UpdateWizardOptions };
 export function registerUpdateCli(program: Command) {
   const update = program
     .command("update")
-    .description("Update AgentShield to the latest version")
+    .description("Update Pangolin to the latest version")
     .option("--json", "Output result as JSON", false)
     .option("--no-restart", "Skip restarting the gateway service after a successful update")
     .option("--channel <stable|beta|dev>", "Persist update channel (git + npm)")
@@ -27,15 +27,15 @@ export function registerUpdateCli(program: Command) {
     .option("--yes", "Skip confirmation prompts (non-interactive)", false)
     .addHelpText("after", () => {
       const examples = [
-        ["agent-shield update", "Update a source checkout (git)"],
-        ["agent-shield update --channel beta", "Switch to beta channel (git + npm)"],
-        ["agent-shield update --channel dev", "Switch to dev channel (git + npm)"],
-        ["agent-shield update --tag beta", "One-off update to a dist-tag or version"],
-        ["agent-shield update --no-restart", "Update without restarting the service"],
-        ["agent-shield update --json", "Output result as JSON"],
-        ["agent-shield update --yes", "Non-interactive (accept downgrade prompts)"],
-        ["agent-shield update wizard", "Interactive update wizard"],
-        ["agent-shield --update", "Shorthand for agent-shield update"],
+        ["pangolin update", "Update a source checkout (git)"],
+        ["pangolin update --channel beta", "Switch to beta channel (git + npm)"],
+        ["pangolin update --channel dev", "Switch to dev channel (git + npm)"],
+        ["pangolin update --tag beta", "One-off update to a dist-tag or version"],
+        ["pangolin update --no-restart", "Update without restarting the service"],
+        ["pangolin update --json", "Output result as JSON"],
+        ["pangolin update --yes", "Non-interactive (accept downgrade prompts)"],
+        ["pangolin update wizard", "Interactive update wizard"],
+        ["pangolin --update", "Shorthand for pangolin update"],
       ] as const;
       const fmtExamples = examples
         .map(([cmd, desc]) => `  ${theme.command(cmd)} ${theme.muted(`# ${desc}`)}`)
@@ -47,7 +47,7 @@ ${theme.heading("What this does:")}
 
 ${theme.heading("Switch channels:")}
   - Use --channel stable|beta|dev to persist the update channel in config
-  - Run agent-shield update status to see the active channel and source
+  - Run pangolin update status to see the active channel and source
   - Use --tag <dist-tag|version> for a one-off npm update without persisting
 
 ${theme.heading("Non-interactive:")}
@@ -63,7 +63,7 @@ ${theme.heading("Notes:")}
   - Downgrades require confirmation (can break configuration)
   - Skips update if the working directory has uncommitted changes
 
-${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.agent-shield.ai/cli/update")}`;
+${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.pangolin.ai/cli/update")}`;
     })
     .action(async (opts) => {
       try {
@@ -87,7 +87,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.agent-shield.ai/cl
     .option("--timeout <seconds>", "Timeout for each update step in seconds (default: 1200)")
     .addHelpText(
       "after",
-      `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.agent-shield.ai/cli/update")}\n`,
+      `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.pangolin.ai/cli/update")}\n`,
     )
     .action(async (opts) => {
       try {
@@ -109,14 +109,14 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.agent-shield.ai/cl
       "after",
       () =>
         `\n${theme.heading("Examples:")}\n${formatHelpExamples([
-          ["agent-shield update status", "Show channel + version status."],
-          ["agent-shield update status --json", "JSON output."],
-          ["agent-shield update status --timeout 10", "Custom timeout."],
+          ["pangolin update status", "Show channel + version status."],
+          ["pangolin update status --json", "JSON output."],
+          ["pangolin update status --timeout 10", "Custom timeout."],
         ])}\n\n${theme.heading("Notes:")}\n${theme.muted(
           "- Shows current update channel (stable/beta/dev) and source",
         )}\n${theme.muted("- Includes git tag/branch/SHA for source checkouts")}\n\n${theme.muted(
           "Docs:",
-        )} ${formatDocsLink("/cli/update", "docs.agent-shield.ai/cli/update")}`,
+        )} ${formatDocsLink("/cli/update", "docs.pangolin.ai/cli/update")}`,
     )
     .action(async (opts) => {
       try {

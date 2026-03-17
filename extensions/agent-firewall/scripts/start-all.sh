@@ -124,6 +124,9 @@ is_repo_gateway_process() {
         local cmd
         cmd=$(ps -p "$pid" -o command= 2>/dev/null || true)
 
+        if echo "$cmd" | grep -Fq "$ROOT_DIR/pangolin.mjs"; then
+            return 0
+        fi
         if echo "$cmd" | grep -Fq "$ROOT_DIR/agent-shield.mjs"; then
             return 0
         fi
@@ -218,8 +221,8 @@ else
     echo "   ⚠️  No gateway token found in local config files."
 fi
 
-if [ ! -f "$ROOT_DIR/agent-shield.mjs" ] && ! command -v openclaw &> /dev/null; then
-    echo "   ⚠️  Neither repository agent-shield.mjs nor openclaw CLI is available."
+if [ ! -f "$ROOT_DIR/pangolin.mjs" ] && [ ! -f "$ROOT_DIR/agent-shield.mjs" ] && ! command -v openclaw &> /dev/null; then
+    echo "   ⚠️  Neither repository pangolin.mjs nor openclaw CLI is available."
     echo "   Skipping gateway startup."
 else
     restart_gateway=false
@@ -264,8 +267,11 @@ else
 
     if ! lsof -ti :18789 > /dev/null 2>&1 || [ "$restart_gateway" = true ]; then
         gateway_cmd=()
-        if [ -f "$ROOT_DIR/agent-shield.mjs" ]; then
-            echo "   🧭 Launch mode: repository source ($ROOT_DIR/agent-shield.mjs)"
+        if [ -f "$ROOT_DIR/pangolin.mjs" ]; then
+            echo "   🧭 Launch mode: repository source ($ROOT_DIR/pangolin.mjs)"
+            gateway_cmd=(node "$ROOT_DIR/pangolin.mjs" gateway --port 18789 --allow-unconfigured --force)
+        elif [ -f "$ROOT_DIR/agent-shield.mjs" ]; then
+            echo "   🧭 Launch mode: repository legacy source ($ROOT_DIR/agent-shield.mjs)"
             gateway_cmd=(node "$ROOT_DIR/agent-shield.mjs" gateway --port 18789 --allow-unconfigured --force)
         else
             echo "   ⚠️  Repository entrypoint missing; fallback to openclaw CLI."

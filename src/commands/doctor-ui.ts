@@ -6,7 +6,7 @@ import {
   resolveControlUiDistIndexHealth,
   resolveControlUiDistIndexPathForRoot,
 } from "../infra/control-ui-assets.js";
-import { resolveAgentShieldPackageRoot } from "../infra/agent-shield-root.js";
+import { resolveAgentShieldPackageRoot } from "../infra/core-package-root.js";
 import { runCommandWithTimeout } from "../process/exec.js";
 import { note } from "../terminal/note.js";
 

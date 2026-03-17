@@ -3,6 +3,8 @@ import path from "node:path";
 import {
   GATEWAY_SERVICE_KIND,
   GATEWAY_SERVICE_MARKER,
+  LEGACY_GATEWAY_SYSTEMD_SERVICE_NAMES,
+  LEGACY_GATEWAY_WINDOWS_TASK_NAMES,
   resolveGatewayLaunchAgentLabel,
   resolveGatewaySystemdServiceName,
   resolveGatewayWindowsTaskName,
@@ -100,7 +102,11 @@ function isAgentShieldGatewaySystemdService(name: string, contents: string): boo
   if (hasGatewayServiceMarker(contents)) {
     return true;
   }
-  if (!name.startsWith("agent-shield-gateway")) {
+  const normalizedName = name.trim().toLowerCase();
+  const currentPrefix = resolveGatewaySystemdServiceName().toLowerCase();
+  const legacyPrefixes = LEGACY_GATEWAY_SYSTEMD_SERVICE_NAMES.map((item) => item.toLowerCase());
+  const knownPrefixes = [currentPrefix, ...legacyPrefixes];
+  if (!knownPrefixes.some((prefix) => normalizedName.startsWith(prefix))) {
     return false;
   }
   return contents.toLowerCase().includes("gateway");
@@ -112,7 +118,14 @@ function isAgentShieldGatewayTaskName(name: string): boolean {
     return false;
   }
   const defaultName = resolveGatewayWindowsTaskName().toLowerCase();
-  return normalized === defaultName || normalized.startsWith("agent-shield gateway");
+  const legacyNames = LEGACY_GATEWAY_WINDOWS_TASK_NAMES.map((item) => item.toLowerCase());
+  return (
+    normalized === defaultName ||
+    normalized.startsWith(`${defaultName} (`) ||
+    legacyNames.includes(normalized) ||
+    normalized.startsWith("agent-shield gateway") ||
+    normalized.startsWith("openclaw gateway")
+  );
 }
 
 function tryExtractPlistLabel(contents: string): string | null {

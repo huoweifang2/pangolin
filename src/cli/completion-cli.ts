@@ -37,7 +37,7 @@ export function resolveShellFromEnv(env: NodeJS.ProcessEnv = process.env): Compl
 function sanitizeCompletionBasename(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
-    return "agent-shield";
+    return "pangolin";
   }
   return trimmed.replace(/[^a-zA-Z0-9._-]/g, "-");
 }
@@ -57,7 +57,7 @@ export function resolveCompletionCachePath(shell: CompletionShell, binName: stri
 /** Check if the completion cache file exists for the given shell. */
 export async function completionCacheExists(
   shell: CompletionShell,
-  binName = "agent-shield",
+  binName = "pangolin",
 ): Promise<boolean> {
   const cachePath = resolveCompletionCachePath(shell, binName);
   return pathExists(cachePath);
@@ -102,7 +102,8 @@ function formatCompletionSourceLine(
 }
 
 function isCompletionProfileHeader(line: string): boolean {
-  return line.trim() === "# AgentShield Completion";
+  const header = line.trim();
+  return header === "# Pangolin Completion" || header === "# AgentShield Completion";
 }
 
 function isCompletionProfileLine(line: string, binName: string, cachePath: string | null): boolean {
@@ -149,7 +150,7 @@ function updateCompletionProfile(
   }
 
   const trimmed = filtered.join("\n").trimEnd();
-  const block = `# AgentShield Completion\n${sourceLine}`;
+  const block = `# Pangolin Completion\n${sourceLine}`;
   const next = trimmed ? `${trimmed}\n\n${block}\n` : `${block}\n`;
   return { next, changed: next !== content, hadExisting };
 }
@@ -179,7 +180,7 @@ function getShellProfilePath(shell: CompletionShell): string {
 
 export async function isCompletionInstalled(
   shell: CompletionShell,
-  binName = "agent-shield",
+  binName = "pangolin",
 ): Promise<boolean> {
   const profilePath = getShellProfilePath(shell);
 
@@ -197,11 +198,11 @@ export async function isCompletionInstalled(
 
 /**
  * Check if the profile uses the slow dynamic completion pattern.
- * Returns true if profile has `source <(agent-shield completion ...)` instead of cached file.
+ * Returns true if profile has `source <(pangolin completion ...)` instead of cached file.
  */
 export async function usesSlowDynamicCompletion(
   shell: CompletionShell,
-  binName = "agent-shield",
+  binName = "pangolin",
 ): Promise<boolean> {
   const profilePath = getShellProfilePath(shell);
 
@@ -289,7 +290,7 @@ export function registerCompletionCli(program: Command) {
     });
 }
 
-export async function installCompletion(shell: string, yes: boolean, binName = "agent-shield") {
+export async function installCompletion(shell: string, yes: boolean, binName = "pangolin") {
   const home = process.env.HOME || os.homedir();
   let profilePath = "";
   let sourceLine = "";

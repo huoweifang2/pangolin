@@ -1,6 +1,6 @@
 import { formatTerminalLink } from "../utils.js";
 
-export const DOCS_ROOT = "https://docs.agent-shield.ai";
+export const DOCS_ROOT = "https://docs.pangolin.ai";
 
 export function formatDocsLink(
   path: string,
