@@ -61,6 +61,23 @@ type ActionHistoryFilterType = 'all' | HumanActionType
 type StaleEscalationLevel = 'all' | 'warning' | 'critical'
 type EscalationSlaLevel = 'ok' | 'warning' | 'critical' | 'unknown'
 
+type UnifiedTrafficSource = 'dashboard' | 'audit'
+type UnifiedTrafficKind = 'mcp' | 'llm' | 'unknown'
+
+interface UnifiedTrafficEntry {
+  id: string
+  source: UnifiedTrafficSource
+  kind: UnifiedTrafficKind
+  timestamp: number
+  rawTimestamp?: number | string
+  sessionId: string
+  method: string
+  requestId: string | null
+  verdict: string
+  threatLevel: string
+  isAlert: boolean
+}
+
 const HANDLED_REQUEST_STORAGE_KEY = 'pangolin.firewall.handled-requests.v1'
 const DASHBOARD_FILTER_STORAGE_KEY = 'pangolin.firewall.dashboard-filters.v1'
 const DASHBOARD_PRESET_STORAGE_KEY = 'pangolin.firewall.dashboard-presets.v1'
@@ -113,6 +130,10 @@ export function useFirewallOpsConsole() {
   const actionHistory = ref<ActionHistoryItem[]>([])
   const actionHistoryQuery = ref('')
   const actionHistoryFilterType = ref<ActionHistoryFilterType>('all')
+  const unifiedTrafficQuery = ref('')
+  const unifiedTrafficSourceFilter = ref<'all' | UnifiedTrafficSource>('all')
+  const unifiedTrafficKindFilter = ref<'all' | UnifiedTrafficKind>('all')
+  const unifiedTrafficAlertsOnly = ref(false)
 
   const actionHistoryFilterOptions: Array<{ title: string; value: ActionHistoryFilterType }> = [
     { title: 'All Actions', value: 'all' },
@@ -134,6 +155,19 @@ export function useFirewallOpsConsole() {
     { title: 'Risk First', value: 'risk' },
     { title: 'Newest First', value: 'newest' },
     { title: 'Oldest First', value: 'oldest' },
+  ]
+
+  const unifiedTrafficSourceOptions: Array<{ title: string; value: 'all' | UnifiedTrafficSource }> = [
+    { title: 'All Sources', value: 'all' },
+    { title: 'Dashboard Stream', value: 'dashboard' },
+    { title: 'Audit Log', value: 'audit' },
+  ]
+
+  const unifiedTrafficKindOptions: Array<{ title: string; value: 'all' | UnifiedTrafficKind }> = [
+    { title: 'All Protocols', value: 'all' },
+    { title: 'MCP', value: 'mcp' },
+    { title: 'LLM', value: 'llm' },
+    { title: 'Unknown', value: 'unknown' },
   ]
 
   const dashboardPresetOptions = computed(() => {
@@ -377,6 +411,89 @@ export function useFirewallOpsConsole() {
   const visibleActionHistoryCount = computed(() => filteredActionHistory.value.length)
   const canUndoAction = computed(() => actionHistory.value.length > 0)
   const recentActionHistory = computed(() => filteredActionHistory.value.slice(0, 12))
+  const normalizedUnifiedTrafficQuery = computed(() => unifiedTrafficQuery.value.trim().toLowerCase())
+  const unifiedTrafficEntries = computed<UnifiedTrafficEntry[]>(() => {
+    const dashboardRows = dashboardEvents.value.map((event, index) => {
+      const method = dashboardMethod(event)
+      const verdict = dashboardVerdict(event)
+      const threatLevel = dashboardThreat(event)
+      const timestamp = dashboardEventTimestamp(event)
+      const requestId = dashboardRequestId(event)
+
+      return {
+        id: `dashboard-${requestId ?? event.session_id ?? index}-${timestamp}-${index}`,
+        source: 'dashboard',
+        kind: inferTrafficKind(method),
+        timestamp,
+        rawTimestamp: event.timestamp,
+        sessionId: String(event.session_id ?? 'n/a'),
+        method,
+        requestId,
+        verdict,
+        threatLevel,
+        isAlert: event.is_alert === true || verdict === 'ESCALATE' || verdict === 'BLOCK',
+      }
+    })
+
+    const auditRows = auditEntries.value.map((entry, index) => {
+      const method = String(entry.method || 'event')
+      const verdict = String(entry.verdict || 'UNKNOWN').toUpperCase()
+      const threatLevel = String(entry.threat_level || 'NONE').toUpperCase()
+      const timestamp = normalizeTimestampSeconds(entry.timestamp)
+
+      return {
+        id: `audit-${entry.id || index}-${timestamp}-${index}`,
+        source: 'audit',
+        kind: inferTrafficKind(method),
+        timestamp,
+        rawTimestamp: entry.timestamp,
+        sessionId: String(entry.session_id || 'n/a'),
+        method,
+        requestId: null,
+        verdict,
+        threatLevel,
+        isAlert: verdict === 'ESCALATE' || verdict === 'BLOCK' || threatLevel === 'CRITICAL' || threatLevel === 'HIGH',
+      }
+    })
+
+    return [...dashboardRows, ...auditRows].toSorted((left, right) => right.timestamp - left.timestamp)
+  })
+  const hasUnifiedTrafficFilters = computed(() => {
+    return (
+      normalizedUnifiedTrafficQuery.value.length > 0
+      || unifiedTrafficSourceFilter.value !== 'all'
+      || unifiedTrafficKindFilter.value !== 'all'
+      || unifiedTrafficAlertsOnly.value
+    )
+  })
+  const filteredUnifiedTrafficEntries = computed(() => {
+    const query = normalizedUnifiedTrafficQuery.value
+
+    return unifiedTrafficEntries.value.filter((entry) => {
+      if (unifiedTrafficSourceFilter.value !== 'all' && entry.source !== unifiedTrafficSourceFilter.value) {
+        return false
+      }
+      if (unifiedTrafficKindFilter.value !== 'all' && entry.kind !== unifiedTrafficKindFilter.value) {
+        return false
+      }
+      if (unifiedTrafficAlertsOnly.value && !entry.isAlert) {
+        return false
+      }
+      if (!query) {
+        return true
+      }
+
+      return (
+        entry.method.toLowerCase().includes(query)
+        || entry.verdict.toLowerCase().includes(query)
+        || entry.threatLevel.toLowerCase().includes(query)
+        || entry.sessionId.toLowerCase().includes(query)
+        || String(entry.requestId ?? '').toLowerCase().includes(query)
+      )
+    })
+  })
+  const visibleUnifiedTrafficCount = computed(() => filteredUnifiedTrafficEntries.value.length)
+  const recentUnifiedTrafficEntries = computed(() => filteredUnifiedTrafficEntries.value.slice(0, 40))
 
   const canAddSkill = computed(() => newSkill.value.id.trim().length > 0)
   const canAddServer = computed(() => newServer.value.id.trim().length > 0)
@@ -433,10 +550,31 @@ export function useFirewallOpsConsole() {
     }
   }
 
+  function normalizeTimestampSeconds(timestamp?: number | string): number {
+    if (typeof timestamp === 'number' && Number.isFinite(timestamp)) {
+      if (timestamp > 10 ** 12) {
+        return timestamp / 1000
+      }
+      return timestamp
+    }
+
+    if (typeof timestamp === 'string') {
+      const parsed = Date.parse(timestamp)
+      if (!Number.isNaN(parsed)) {
+        return parsed / 1000
+      }
+    }
+
+    return 0
+  }
+
   function formatTimestamp(timestamp?: number | string): string {
     if (timestamp == null) {return 'n/a'}
 
-    const value = typeof timestamp === 'number' ? timestamp * 1000 : Date.parse(timestamp)
+    const epochSeconds = normalizeTimestampSeconds(timestamp)
+    if (epochSeconds <= 0) {return String(timestamp)}
+
+    const value = epochSeconds * 1000
     if (Number.isNaN(value)) {return String(timestamp)}
 
     return new Date(value).toLocaleString()
@@ -522,6 +660,69 @@ export function useFirewallOpsConsole() {
 
   function serverLabel(server: FirewallMcpServer): string {
     return server.name ?? server.id
+  }
+
+  function inferTrafficKind(method: string): UnifiedTrafficKind {
+    const normalized = method.toLowerCase()
+    if (
+      normalized.includes('mcp')
+      || normalized.includes('tool')
+      || normalized.includes('skill')
+      || normalized.includes('agent/')
+    ) {
+      return 'mcp'
+    }
+    if (
+      normalized.includes('chat')
+      || normalized.includes('completion')
+      || normalized.includes('response')
+      || normalized.includes('llm')
+      || normalized.includes('openai')
+    ) {
+      return 'llm'
+    }
+    return 'unknown'
+  }
+
+  function unifiedTrafficSourceLabel(source: UnifiedTrafficSource): string {
+    if (source === 'dashboard') {
+      return 'Dashboard'
+    }
+    return 'Audit'
+  }
+
+  function unifiedTrafficSourceColor(source: UnifiedTrafficSource): string {
+    if (source === 'dashboard') {
+      return 'blue'
+    }
+    return 'teal'
+  }
+
+  function unifiedTrafficKindLabel(kind: UnifiedTrafficKind): string {
+    if (kind === 'mcp') {
+      return 'MCP'
+    }
+    if (kind === 'llm') {
+      return 'LLM'
+    }
+    return 'UNKNOWN'
+  }
+
+  function unifiedTrafficKindColor(kind: UnifiedTrafficKind): string {
+    if (kind === 'mcp') {
+      return 'indigo'
+    }
+    if (kind === 'llm') {
+      return 'deep-orange'
+    }
+    return 'grey'
+  }
+
+  function clearUnifiedTrafficFilters(): void {
+    unifiedTrafficQuery.value = ''
+    unifiedTrafficSourceFilter.value = 'all'
+    unifiedTrafficKindFilter.value = 'all'
+    unifiedTrafficAlertsOnly.value = false
   }
 
   function dashboardVerdict(event: FirewallDashboardEvent): string {
@@ -627,17 +828,7 @@ export function useFirewallOpsConsole() {
   }
 
   function dashboardEventTimestamp(event: FirewallDashboardEvent): number {
-    const raw = event.timestamp
-    if (typeof raw === 'number' && Number.isFinite(raw)) {
-      return raw
-    }
-    if (typeof raw === 'string') {
-      const parsed = Date.parse(raw)
-      if (!Number.isNaN(parsed)) {
-        return parsed / 1000
-      }
-    }
-    return 0
+    return normalizeTimestampSeconds(event.timestamp)
   }
 
   function threatRank(level: string): number {
@@ -1735,6 +1926,10 @@ export function useFirewallOpsConsole() {
     escalationSortMode,
     escalationSlaMinutes,
     dashboardQuery,
+    unifiedTrafficQuery,
+    unifiedTrafficSourceFilter,
+    unifiedTrafficKindFilter,
+    unifiedTrafficAlertsOnly,
     dashboardFilterPresets,
     dashboardPresetName,
     selectedDashboardPresetId,
@@ -1743,6 +1938,8 @@ export function useFirewallOpsConsole() {
     selectedDashboardPresetDirty,
     dashboardThreatFilterOptions,
     escalationSortModeOptions,
+    unifiedTrafficSourceOptions,
+    unifiedTrafficKindOptions,
     dashboardPresetOptions,
     actionHistory,
     actionHistoryQuery,
@@ -1759,6 +1956,10 @@ export function useFirewallOpsConsole() {
     dashboardEventCount,
     visibleDashboardEventCount,
     recentDashboardEvents,
+    recentUnifiedTrafficEntries,
+    filteredUnifiedTrafficEntries,
+    visibleUnifiedTrafficCount,
+    hasUnifiedTrafficFilters,
     pendingEscalations,
     visiblePendingEscalations,
     visiblePendingEscalationCount,
@@ -1791,6 +1992,10 @@ export function useFirewallOpsConsole() {
     traceCreatedAt,
     skillLabel,
     serverLabel,
+    unifiedTrafficSourceLabel,
+    unifiedTrafficSourceColor,
+    unifiedTrafficKindLabel,
+    unifiedTrafficKindColor,
     dashboardVerdict,
     dashboardThreat,
     dashboardMethod,
@@ -1801,6 +2006,7 @@ export function useFirewallOpsConsole() {
     undoLastAction,
     clearActionHistory,
     clearActionHistoryFilters,
+    clearUnifiedTrafficFilters,
     toggleStreamPaused,
     setDashboardViewMode,
     setEscalationSortMode,
