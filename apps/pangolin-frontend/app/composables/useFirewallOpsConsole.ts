@@ -29,6 +29,8 @@ export interface DashboardFilterSnapshot {
   viewMode: DashboardViewMode
   threatFilter: DashboardThreatFilter
   actionableOnly: boolean
+  escalationSortMode: EscalationSortMode
+  escalationSlaMinutes: number
 }
 
 export interface DashboardFilterPreset extends DashboardFilterSnapshot {
@@ -397,6 +399,8 @@ export function useFirewallOpsConsole() {
       || snapshot.viewMode !== preset.viewMode
       || snapshot.threatFilter !== preset.threatFilter
       || snapshot.actionableOnly !== preset.actionableOnly
+      || snapshot.escalationSortMode !== preset.escalationSortMode
+      || snapshot.escalationSlaMinutes !== preset.escalationSlaMinutes
     )
   })
   const canUpdateSelectedDashboardPreset = computed(() => selectedDashboardPresetDirty.value)
@@ -608,6 +612,8 @@ export function useFirewallOpsConsole() {
       viewMode: dashboardViewMode.value,
       threatFilter: dashboardThreatFilter.value,
       actionableOnly: dashboardActionableOnly.value,
+      escalationSortMode: escalationSortMode.value,
+      escalationSlaMinutes: escalationSlaMinutes.value,
     }
   }
 
@@ -616,6 +622,8 @@ export function useFirewallOpsConsole() {
     dashboardViewMode.value = snapshot.viewMode
     dashboardThreatFilter.value = snapshot.threatFilter
     dashboardActionableOnly.value = snapshot.actionableOnly
+    escalationSortMode.value = snapshot.escalationSortMode
+    escalationSlaMinutes.value = normalizeEscalationSlaMinutes(snapshot.escalationSlaMinutes)
   }
 
   function dashboardEventTimestamp(event: FirewallDashboardEvent): number {
@@ -918,6 +926,11 @@ export function useFirewallOpsConsole() {
       preset.threatFilter && dashboardThreatFilterOptions.some((option) => option.value === preset.threatFilter)
         ? preset.threatFilter
         : 'all'
+    const escalationSortMode =
+      preset.escalationSortMode === 'newest' || preset.escalationSortMode === 'oldest' || preset.escalationSortMode === 'risk'
+        ? preset.escalationSortMode
+        : 'risk'
+    const escalationSlaMinutes = normalizeEscalationSlaMinutes(preset.escalationSlaMinutes)
 
     return {
       id,
@@ -926,6 +939,8 @@ export function useFirewallOpsConsole() {
       viewMode,
       threatFilter,
       actionableOnly: Boolean(preset.actionableOnly),
+      escalationSortMode,
+      escalationSlaMinutes,
       updatedAt: typeof preset.updatedAt === 'number' && Number.isFinite(preset.updatedAt)
         ? preset.updatedAt
         : Date.now(),
