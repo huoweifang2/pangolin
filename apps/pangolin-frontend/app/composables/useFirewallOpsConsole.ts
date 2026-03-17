@@ -49,6 +49,7 @@ export function useFirewallOpsConsole() {
   const dashboardEvents = ref<FirewallDashboardEvent[]>([])
   let dashboardSocket: WebSocket | null = null
   const dashboardActionPendingId = ref<string | null>(null)
+  const dashboardBatchActionPending = ref(false)
   const handledRequestIds = ref<string[]>([])
   const dashboardReconnectAttempts = ref(0)
   const dashboardReconnectDelaySeconds = ref<number | null>(null)
@@ -524,6 +525,60 @@ export function useFirewallOpsConsole() {
     operationMessage.value = `Acknowledged ${item.requestId}`
   }
 
+  function visibleEscalationRequestIds(): string[] {
+    return Array.from(new Set(visiblePendingEscalations.value.map((item) => item.requestId)))
+  }
+
+  async function resolveVisibleEscalations(action: 'allow' | 'block'): Promise<void> {
+    clearOperationFeedback()
+
+    const requestIds = visibleEscalationRequestIds()
+    if (requestIds.length === 0) {
+      operationMessage.value = 'No visible escalations to resolve'
+      return
+    }
+
+    if (!dashboardSocket || dashboardSocket.readyState !== WebSocket.OPEN) {
+      operationError.value = 'Dashboard WebSocket is not connected'
+      return
+    }
+
+    dashboardBatchActionPending.value = true
+    let sentCount = 0
+
+    try {
+      for (const requestId of requestIds) {
+        dashboardSocket.send(JSON.stringify({ action, request_id: requestId }))
+        markEscalationHandled(requestId)
+        pushActionHistory(action, requestId)
+        sentCount += 1
+      }
+
+      operationMessage.value = `Sent ${action.toUpperCase()} for ${sentCount} visible escalation(s)`
+    } catch {
+      operationError.value = `Failed after sending ${sentCount}/${requestIds.length} actions`
+    } finally {
+      dashboardBatchActionPending.value = false
+    }
+  }
+
+  function acknowledgeVisibleEscalations(): void {
+    clearOperationFeedback()
+
+    const requestIds = visibleEscalationRequestIds()
+    if (requestIds.length === 0) {
+      operationMessage.value = 'No visible escalations to acknowledge'
+      return
+    }
+
+    for (const requestId of requestIds) {
+      markEscalationHandled(requestId)
+      pushActionHistory('ack', requestId)
+    }
+
+    operationMessage.value = `Acknowledged ${requestIds.length} visible escalation(s)`
+  }
+
   async function sendDashboardAction(action: 'allow' | 'block', requestId: string): Promise<void> {
     clearOperationFeedback()
 
@@ -694,6 +749,7 @@ export function useFirewallOpsConsole() {
     dashboardError,
     dashboardEvents,
     dashboardActionPendingId,
+    dashboardBatchActionPending,
     dashboardReconnectAttempts,
     dashboardReconnectDelaySeconds,
     streamPaused,
@@ -741,6 +797,8 @@ export function useFirewallOpsConsole() {
     escalationSubtitle,
     resolveEscalation,
     acknowledgeEscalation,
+    resolveVisibleEscalations,
+    acknowledgeVisibleEscalations,
     onHumanAction,
     refresh,
     addSkill,
