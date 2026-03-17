@@ -24,6 +24,8 @@ const {
   selectedDashboardPresetDirty,
   canUpdateSelectedDashboardPreset,
   dashboardPresetImportPending,
+  visiblePendingEscalationCount,
+  dashboardBatchActionPending,
   reconnectDashboardStream,
   toggleStreamPaused,
   resetDashboardFilters,
@@ -33,6 +35,8 @@ const {
   updateSelectedDashboardPreset,
   exportDashboardPresets,
   importDashboardPresets,
+  resolveVisibleEscalations,
+  acknowledgeVisibleEscalations,
   loading,
   refresh,
 } = useInjectedFirewallOpsConsole()
@@ -50,6 +54,31 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 function handleGlobalFilterShortcut(event: KeyboardEvent): void {
+  if (!event.metaKey && !event.ctrlKey && !event.altKey && event.shiftKey && !isEditableTarget(event.target)) {
+    const key = event.key.toLowerCase()
+    if (key === 'a') {
+      event.preventDefault()
+      if (!dashboardBatchActionPending.value && visiblePendingEscalationCount.value > 0) {
+        void resolveVisibleEscalations('allow')
+      }
+      return
+    }
+    if (key === 'b') {
+      event.preventDefault()
+      if (!dashboardBatchActionPending.value && visiblePendingEscalationCount.value > 0) {
+        void resolveVisibleEscalations('block')
+      }
+      return
+    }
+    if (key === 'k') {
+      event.preventDefault()
+      if (!dashboardBatchActionPending.value && visiblePendingEscalationCount.value > 0) {
+        acknowledgeVisibleEscalations()
+      }
+      return
+    }
+  }
+
   const quickPresetKeys = new Set(['1', '2', '3', '4', '5'])
 
   if (
@@ -204,6 +233,10 @@ onBeforeUnmount(() => {
       1-5 load
     </v-chip>
 
+    <v-chip class="mcp-shortcut-chip mcp-shortcut-chip-wide" variant="outlined" size="small">
+      Shift+A/B/K triage
+    </v-chip>
+
     <v-select
       v-model="dashboardThreatFilter"
       class="mcp-threat-field"
@@ -336,6 +369,10 @@ onBeforeUnmount(() => {
 
 .mcp-shortcut-chip {
   min-width: 72px;
+}
+
+.mcp-shortcut-chip-wide {
+  min-width: 140px;
 }
 
 .mcp-preset-name-field {
