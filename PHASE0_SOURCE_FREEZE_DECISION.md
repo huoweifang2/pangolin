@@ -23,7 +23,7 @@
 5. 跟踪状态核验：
    - `promptfoo-main` 跟踪文件数为 0。
    - `pangolin` 跟踪文件数为 0。
-   - `ai-protector-main` 跟踪文件数为 12，均为前端相关文件（如 `ai-protector-main/apps/frontend/nuxt.config.ts` 等）。
+   - `ai-protector-main` 跟踪文件数为 0（原 12 个前端残留文件已在清理步骤中移除）。
 6. 体量核验：
    - `ai-protector-main`: 477M
    - `promptfoo-main`: 225M
@@ -37,12 +37,12 @@
    - 理由：未被跟踪、未被主链路引用、体量较大（225M）。
 2. pangolin
    - 理由：未被跟踪、未被主链路引用、且其中 firewall-gateway 与现有 `extensions/agent-firewall` 在排除依赖产物后无差异。
+3. ai-protector-main
+   - 理由：已无跟踪文件阻塞，且处于迁移源冻结状态。
 
 ### 条件删
 
-1. ai-protector-main
-   - 条件：先处理 12 个已跟踪的前端文件（迁移到新结构或明确废弃后删除）。
-   - 理由：存在已跟踪文件，直接删除会影响当前分支历史与后续迁移链路。
+1. 无
 
 ### 暂不删
 
@@ -52,9 +52,7 @@
 
 1. 先删 `promptfoo-main`（直接清理，低风险高收益）。
 2. 再删 `pangolin`（直接清理，重复残留）。
-3. 最后处理 `ai-protector-main`：
-   - 梳理 12 个已跟踪文件的归属。
-   - 完成迁移或归档后，再执行目录级清理。
+3. 最后删 `ai-protector-main`（当前已满足直接删除条件）。
 
 ## 回滚策略
 
