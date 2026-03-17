@@ -87,6 +87,7 @@ export interface FirewallDashboardEvent {
   verdict?: string
   is_alert?: boolean
   analysis?: {
+    request_id?: string
     verdict?: string
     threat_level?: string
     score?: number

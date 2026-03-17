@@ -30,6 +30,7 @@ const dashboardConnected = ref(false)
 const dashboardError = ref<string | null>(null)
 const dashboardEvents = ref<FirewallDashboardEvent[]>([])
 let dashboardSocket: WebSocket | null = null
+const dashboardActionPendingId = ref<string | null>(null)
 
 const savingSkill = ref(false)
 const deletingSkillId = ref<string | null>(null)
@@ -116,6 +117,15 @@ function dashboardMethod(event: FirewallDashboardEvent): string {
   return event.method ?? event.event_type ?? 'event'
 }
 
+function dashboardRequestId(event: FirewallDashboardEvent): string | null {
+  const requestId = cleanText(event.analysis?.request_id)
+  return requestId ?? null
+}
+
+function canResolveEvent(event: FirewallDashboardEvent): boolean {
+  return dashboardVerdict(event) === 'ESCALATE' && dashboardRequestId(event) != null
+}
+
 function clearOperationFeedback(): void {
   operationError.value = null
   operationMessage.value = null
@@ -177,6 +187,34 @@ function openDashboardStream(): void {
 
 function reconnectDashboardStream(): void {
   openDashboardStream()
+}
+
+async function sendDashboardAction(action: 'allow' | 'block', requestId: string): Promise<void> {
+  clearOperationFeedback()
+
+  if (!dashboardSocket || dashboardSocket.readyState !== WebSocket.OPEN) {
+    operationError.value = 'Dashboard WebSocket is not connected'
+    return
+  }
+
+  dashboardActionPendingId.value = requestId
+  try {
+    dashboardSocket.send(JSON.stringify({ action, request_id: requestId }))
+    operationMessage.value = `Sent ${action.toUpperCase()} for ${requestId}`
+  } catch {
+    operationError.value = 'Failed to send dashboard action'
+  } finally {
+    dashboardActionPendingId.value = null
+  }
+}
+
+function onHumanAction(event: FirewallDashboardEvent, action: 'allow' | 'block'): void {
+  const requestId = dashboardRequestId(event)
+  if (!requestId) {
+    operationError.value = 'request_id missing for this event'
+    return
+  }
+  void sendDashboardAction(action, requestId)
 }
 
 async function refresh(): Promise<void> {
@@ -439,15 +477,18 @@ onBeforeUnmount(() => {
           <tr>
             <th>Time</th>
             <th>Event</th>
+            <th>Request</th>
             <th>Verdict</th>
             <th>Threat</th>
             <th>Session</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="(event, index) in recentDashboardEvents" :key="`${event.timestamp ?? index}-${index}`">
             <td class="text-caption">{{ formatTimestamp(event.timestamp) }}</td>
             <td class="mono text-caption">{{ dashboardMethod(event) }}</td>
+            <td class="mono text-caption">{{ dashboardRequestId(event) ?? 'n/a' }}</td>
             <td>
               <v-chip :color="verdictColor(dashboardVerdict(event))" size="small" variant="tonal">
                 {{ dashboardVerdict(event) }}
@@ -459,6 +500,29 @@ onBeforeUnmount(() => {
               </v-chip>
             </td>
             <td class="mono text-caption">{{ event.session_id ?? 'n/a' }}</td>
+            <td>
+              <div v-if="canResolveEvent(event)" class="d-flex ga-2">
+                <v-btn
+                  size="x-small"
+                  color="success"
+                  variant="tonal"
+                  :loading="dashboardActionPendingId === dashboardRequestId(event)"
+                  @click="onHumanAction(event, 'allow')"
+                >
+                  Allow
+                </v-btn>
+                <v-btn
+                  size="x-small"
+                  color="error"
+                  variant="tonal"
+                  :loading="dashboardActionPendingId === dashboardRequestId(event)"
+                  @click="onHumanAction(event, 'block')"
+                >
+                  Block
+                </v-btn>
+              </div>
+              <span v-else class="text-caption text-medium-emphasis">-</span>
+            </td>
           </tr>
         </tbody>
       </v-table>
