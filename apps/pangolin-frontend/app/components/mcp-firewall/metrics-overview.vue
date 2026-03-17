@@ -13,6 +13,7 @@ const {
   oldestVisibleEscalationAgeLabel,
   escalationSlaMinutes,
   staleVisibleEscalationCount,
+  staleCriticalVisibleEscalationCount,
   hasVisibleEscalationSlaBreach,
 } = useInjectedFirewallOpsConsole()
 </script>
@@ -96,6 +97,14 @@ const {
         <v-card-text>
           <div class="text-caption text-medium-emphasis">SLA Breaches (>{{ escalationSlaMinutes }}m)</div>
           <div class="text-h4 font-weight-bold">{{ staleVisibleEscalationCount }}</div>
+        </v-card-text>
+      </v-card>
+    </v-col>
+    <v-col cols="12" sm="6" md="4" lg="2">
+      <v-card variant="tonal" :color="staleCriticalVisibleEscalationCount > 0 ? 'red-darken-2' : 'green'">
+        <v-card-text>
+          <div class="text-caption text-medium-emphasis">SLA Critical (>{{ escalationSlaMinutes * 2 }}m)</div>
+          <div class="text-h4 font-weight-bold">{{ staleCriticalVisibleEscalationCount }}</div>
         </v-card-text>
       </v-card>
     </v-col>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { EscalationItem } from '~/composables/useFirewallOpsConsole'
 import { useInjectedFirewallOpsConsole } from '~/composables/useFirewallOpsConsole'
 
 const {
@@ -12,16 +13,22 @@ const {
   visibleEscalationThreatSummary,
   oldestVisibleEscalationAgeLabel,
   staleVisibleEscalationCount,
+  staleWarningVisibleEscalationCount,
+  staleCriticalVisibleEscalationCount,
   hasVisibleEscalationSlaBreach,
   dashboardActionPendingId,
   dashboardBatchActionPending,
   escalationSubtitle,
+  escalationAgeLabel,
+  escalationSlaLevel,
   setEscalationSortMode,
   setEscalationSlaMinutes,
   resolveEscalation,
   acknowledgeEscalation,
   resolveVisibleEscalations,
   acknowledgeVisibleEscalations,
+  resolveStaleVisibleEscalations,
+  acknowledgeStaleVisibleEscalations,
   resolveVisibleEscalationsByThreat,
   acknowledgeVisibleEscalationsByThreat,
   clearEscalationQueue,
@@ -35,6 +42,43 @@ function onEscalationSortModeChange(value: unknown): void {
 
 function onEscalationSlaMinutesChange(value: unknown): void {
   setEscalationSlaMinutes(value)
+}
+
+function escalationItemSubtitle(item: EscalationItem): string {
+  return `${escalationSubtitle(item)} · Age ${escalationAgeLabel(item)}`
+}
+
+function escalationRowClass(item: EscalationItem): string {
+  const level = escalationSlaLevel(item)
+  if (level === 'critical') {
+    return 'queue-row-stale-critical'
+  }
+  if (level === 'warning') {
+    return 'queue-row-stale-warning'
+  }
+  return ''
+}
+
+function escalationSlaChipLabel(item: EscalationItem): string | null {
+  const level = escalationSlaLevel(item)
+  if (level === 'critical') {
+    return 'SLA CRITICAL'
+  }
+  if (level === 'warning') {
+    return 'SLA WARNING'
+  }
+  return null
+}
+
+function escalationSlaChipColor(item: EscalationItem): string {
+  const level = escalationSlaLevel(item)
+  if (level === 'critical') {
+    return 'error'
+  }
+  if (level === 'warning') {
+    return 'warning'
+  }
+  return 'grey'
 }
 </script>
 
@@ -54,6 +98,22 @@ function onEscalationSlaMinutesChange(value: unknown): void {
       </v-chip>
       <v-chip :color="hasVisibleEscalationSlaBreach ? 'error' : 'green'" size="small" variant="tonal">
         SLA {{ escalationSlaMinutes }}m: {{ staleVisibleEscalationCount }}
+      </v-chip>
+      <v-chip
+        v-if="staleCriticalVisibleEscalationCount > 0"
+        color="error"
+        size="small"
+        variant="tonal"
+      >
+        SLA Critical {{ staleCriticalVisibleEscalationCount }}
+      </v-chip>
+      <v-chip
+        v-if="staleWarningVisibleEscalationCount > 0"
+        color="warning"
+        size="small"
+        variant="tonal"
+      >
+        SLA Warning {{ staleWarningVisibleEscalationCount }}
       </v-chip>
       <v-chip
         v-if="visibleEscalationThreatSummary.critical > 0"
@@ -126,6 +186,26 @@ function onEscalationSlaMinutesChange(value: unknown): void {
       <v-btn
         variant="text"
         size="small"
+        prepend-icon="mdi-timer-alert-outline"
+        color="error"
+        :loading="dashboardBatchActionPending"
+        :disabled="staleVisibleEscalationCount === 0"
+        @click="resolveStaleVisibleEscalations('block', 'all')"
+      >
+        Block Stale
+      </v-btn>
+      <v-btn
+        variant="text"
+        size="small"
+        prepend-icon="mdi-timer-check-outline"
+        :disabled="staleVisibleEscalationCount === 0"
+        @click="acknowledgeStaleVisibleEscalations('all')"
+      >
+        Ack Stale
+      </v-btn>
+      <v-btn
+        variant="text"
+        size="small"
         color="error"
         prepend-icon="mdi-shield-alert"
         :loading="dashboardBatchActionPending"
@@ -160,10 +240,19 @@ function onEscalationSlaMinutesChange(value: unknown): void {
         v-for="item in visiblePendingEscalations"
         :key="item.requestId"
         :title="item.requestId"
-        :subtitle="escalationSubtitle(item)"
+        :subtitle="escalationItemSubtitle(item)"
+        :class="escalationRowClass(item)"
       >
         <template #append>
           <div class="d-flex ga-2">
+            <v-chip
+              v-if="escalationSlaChipLabel(item)"
+              :color="escalationSlaChipColor(item)"
+              size="x-small"
+              variant="tonal"
+            >
+              {{ escalationSlaChipLabel(item) }}
+            </v-chip>
             <v-btn
               size="x-small"
               color="success"
@@ -220,5 +309,13 @@ function onEscalationSlaMinutesChange(value: unknown): void {
 .queue-sla-field {
   min-width: 120px;
   max-width: 140px;
+}
+
+.queue-row-stale-warning {
+  background: color-mix(in srgb, rgb(var(--v-theme-warning)) 10%, transparent);
+}
+
+.queue-row-stale-critical {
+  background: color-mix(in srgb, rgb(var(--v-theme-error)) 12%, transparent);
 }
 </style>

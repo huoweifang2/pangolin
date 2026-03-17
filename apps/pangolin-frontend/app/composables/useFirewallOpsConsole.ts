@@ -56,6 +56,8 @@ export interface ActionHistoryItem {
 }
 
 type ActionHistoryFilterType = 'all' | HumanActionType
+type StaleEscalationLevel = 'all' | 'warning' | 'critical'
+type EscalationSlaLevel = 'ok' | 'warning' | 'critical' | 'unknown'
 
 const HANDLED_REQUEST_STORAGE_KEY = 'pangolin.firewall.handled-requests.v1'
 const DASHBOARD_FILTER_STORAGE_KEY = 'pangolin.firewall.dashboard-filters.v1'
@@ -321,17 +323,33 @@ export function useFirewallOpsConsole() {
     const nowSeconds = Date.now() / 1000
 
     for (const item of visiblePendingEscalations.value) {
-      const timestamp = dashboardEventTimestamp(item.event)
-      if (timestamp <= 0) {
+      const age = escalationAgeSeconds(item, nowSeconds)
+      if (age == null) {
         continue
       }
-      const age = Math.max(0, nowSeconds - timestamp)
       if (age >= threshold) {
         staleCount += 1
       }
     }
 
     return staleCount
+  })
+  const staleCriticalVisibleEscalationCount = computed(() => {
+    const criticalThreshold = escalationSlaSeconds.value * 2
+    let count = 0
+    const nowSeconds = Date.now() / 1000
+
+    for (const item of visiblePendingEscalations.value) {
+      const age = escalationAgeSeconds(item, nowSeconds)
+      if (age != null && age >= criticalThreshold) {
+        count += 1
+      }
+    }
+
+    return count
+  })
+  const staleWarningVisibleEscalationCount = computed(() => {
+    return Math.max(0, staleVisibleEscalationCount.value - staleCriticalVisibleEscalationCount.value)
   })
   const hasVisibleEscalationSlaBreach = computed(() => staleVisibleEscalationCount.value > 0)
   const actionHistoryCount = computed(() => actionHistory.value.length)
@@ -441,6 +459,49 @@ export function useFirewallOpsConsole() {
     const days = Math.floor(hours / 24)
     const remainHours = hours % 24
     return remainHours > 0 ? `${days}d ${remainHours}h` : `${days}d`
+  }
+
+  function escalationAgeSeconds(item: EscalationItem, nowSeconds = Date.now() / 1000): number | null {
+    const timestamp = dashboardEventTimestamp(item.event)
+    if (timestamp <= 0) {
+      return null
+    }
+    return Math.max(0, nowSeconds - timestamp)
+  }
+
+  function escalationAgeLabel(item: EscalationItem): string {
+    const age = escalationAgeSeconds(item)
+    if (age == null) {
+      return 'n/a'
+    }
+    return formatDurationSeconds(age)
+  }
+
+  function escalationSlaLevel(item: EscalationItem, nowSeconds = Date.now() / 1000): EscalationSlaLevel {
+    const age = escalationAgeSeconds(item, nowSeconds)
+    if (age == null) {
+      return 'unknown'
+    }
+
+    const warningThreshold = escalationSlaSeconds.value
+    const criticalThreshold = warningThreshold * 2
+    if (age >= criticalThreshold) {
+      return 'critical'
+    }
+    if (age >= warningThreshold) {
+      return 'warning'
+    }
+    return 'ok'
+  }
+
+  function staleEscalationLevelLabel(level: StaleEscalationLevel): string {
+    if (level === 'critical') {
+      return 'critical stale'
+    }
+    if (level === 'warning') {
+      return 'warning stale'
+    }
+    return 'stale'
   }
 
   function traceIdentifier(trace: FirewallTrace): string {
@@ -1288,6 +1349,26 @@ export function useFirewallOpsConsole() {
     )
   }
 
+  function staleVisibleEscalationRequestIds(level: StaleEscalationLevel = 'all'): string[] {
+    const nowSeconds = Date.now() / 1000
+    return Array.from(
+      new Set(
+        visiblePendingEscalations.value
+          .filter((item) => {
+            const slaLevel = escalationSlaLevel(item, nowSeconds)
+            if (level === 'critical') {
+              return slaLevel === 'critical'
+            }
+            if (level === 'warning') {
+              return slaLevel === 'warning'
+            }
+            return slaLevel === 'warning' || slaLevel === 'critical'
+          })
+          .map((item) => item.requestId),
+      ),
+    )
+  }
+
   async function resolveVisibleEscalations(action: 'allow' | 'block'): Promise<void> {
     clearOperationFeedback()
 
@@ -1336,6 +1417,59 @@ export function useFirewallOpsConsole() {
     }
 
     operationMessage.value = `Acknowledged ${requestIds.length} visible escalation(s)`
+  }
+
+  async function resolveStaleVisibleEscalations(
+    action: 'allow' | 'block',
+    level: StaleEscalationLevel = 'all',
+  ): Promise<void> {
+    clearOperationFeedback()
+
+    const requestIds = staleVisibleEscalationRequestIds(level)
+    if (requestIds.length === 0) {
+      operationMessage.value = `No ${staleEscalationLevelLabel(level)} escalations to resolve`
+      return
+    }
+
+    if (!dashboardSocket || dashboardSocket.readyState !== WebSocket.OPEN) {
+      operationError.value = 'Dashboard WebSocket is not connected'
+      return
+    }
+
+    dashboardBatchActionPending.value = true
+    let sentCount = 0
+
+    try {
+      for (const requestId of requestIds) {
+        dashboardSocket.send(JSON.stringify({ action, request_id: requestId }))
+        markEscalationHandled(requestId)
+        pushActionHistory(action, requestId)
+        sentCount += 1
+      }
+
+      operationMessage.value = `Sent ${action.toUpperCase()} for ${sentCount} ${staleEscalationLevelLabel(level)} escalation(s)`
+    } catch {
+      operationError.value = `Failed after sending ${sentCount}/${requestIds.length} actions`
+    } finally {
+      dashboardBatchActionPending.value = false
+    }
+  }
+
+  function acknowledgeStaleVisibleEscalations(level: StaleEscalationLevel = 'all'): void {
+    clearOperationFeedback()
+
+    const requestIds = staleVisibleEscalationRequestIds(level)
+    if (requestIds.length === 0) {
+      operationMessage.value = `No ${staleEscalationLevelLabel(level)} escalations to acknowledge`
+      return
+    }
+
+    for (const requestId of requestIds) {
+      markEscalationHandled(requestId)
+      pushActionHistory('ack', requestId)
+    }
+
+    operationMessage.value = `Acknowledged ${requestIds.length} ${staleEscalationLevelLabel(level)} escalation(s)`
   }
 
   async function resolveVisibleEscalationsByThreat(
@@ -1617,6 +1751,8 @@ export function useFirewallOpsConsole() {
     oldestVisibleEscalationAgeSeconds,
     oldestVisibleEscalationAgeLabel,
     staleVisibleEscalationCount,
+    staleWarningVisibleEscalationCount,
+    staleCriticalVisibleEscalationCount,
     hasVisibleEscalationSlaBreach,
     actionHistoryCount,
     visibleActionHistoryCount,
@@ -1634,6 +1770,8 @@ export function useFirewallOpsConsole() {
     threatColor,
     formatTimestamp,
     formatDurationSeconds,
+    escalationAgeLabel,
+    escalationSlaLevel,
     traceIdentifier,
     traceCreatedAt,
     skillLabel,
@@ -1666,6 +1804,8 @@ export function useFirewallOpsConsole() {
     acknowledgeEscalation,
     resolveVisibleEscalations,
     acknowledgeVisibleEscalations,
+    resolveStaleVisibleEscalations,
+    acknowledgeStaleVisibleEscalations,
     resolveVisibleEscalationsByThreat,
     acknowledgeVisibleEscalationsByThreat,
     onHumanAction,
