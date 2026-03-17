@@ -8,9 +8,12 @@ const {
   visiblePendingEscalations,
   totalPendingEscalations,
   dashboardActionPendingId,
+  dashboardBatchActionPending,
   escalationSubtitle,
   resolveEscalation,
   acknowledgeEscalation,
+  resolveVisibleEscalations,
+  acknowledgeVisibleEscalations,
   clearEscalationQueue,
 } = useInjectedFirewallOpsConsole()
 </script>
@@ -35,7 +38,42 @@ const {
       <v-btn
         variant="text"
         size="small"
+        color="success"
+        prepend-icon="mdi-check-bold"
+        class="mr-2"
+        :loading="dashboardBatchActionPending"
+        :disabled="visiblePendingEscalations.length === 0"
+        @click="resolveVisibleEscalations('allow')"
+      >
+        Allow Visible
+      </v-btn>
+      <v-btn
+        variant="text"
+        size="small"
+        color="error"
+        prepend-icon="mdi-close-thick"
+        class="mr-2"
+        :loading="dashboardBatchActionPending"
+        :disabled="visiblePendingEscalations.length === 0"
+        @click="resolveVisibleEscalations('block')"
+      >
+        Block Visible
+      </v-btn>
+      <v-btn
+        variant="text"
+        size="small"
+        prepend-icon="mdi-check-all"
+        class="mr-2"
+        :disabled="visiblePendingEscalations.length === 0"
+        @click="acknowledgeVisibleEscalations"
+      >
+        Ack Visible
+      </v-btn>
+      <v-btn
+        variant="text"
+        size="small"
         prepend-icon="mdi-broom"
+        :disabled="pendingEscalations.length === 0"
         @click="clearEscalationQueue"
       >
         Clear Queue
@@ -56,6 +94,7 @@ const {
               size="x-small"
               color="success"
               variant="tonal"
+              :disabled="dashboardBatchActionPending"
               :loading="dashboardActionPendingId === item.requestId"
               @click="resolveEscalation(item, 'allow')"
             >
@@ -65,6 +104,7 @@ const {
               size="x-small"
               color="error"
               variant="tonal"
+              :disabled="dashboardBatchActionPending"
               :loading="dashboardActionPendingId === item.requestId"
               @click="resolveEscalation(item, 'block')"
             >
@@ -74,6 +114,7 @@ const {
               size="x-small"
               color="grey"
               variant="tonal"
+              :disabled="dashboardBatchActionPending"
               @click="acknowledgeEscalation(item)"
             >
               Ack
