@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useInjectedFirewallOpsConsole } from '~/composables/useFirewallOpsConsole'
 
 const {
@@ -13,12 +14,51 @@ const {
   dashboardActionableOnly,
   dashboardQuery,
   dashboardThreatFilterOptions,
+  hasActiveDashboardFilters,
+  activeDashboardFilterCount,
   reconnectDashboardStream,
   toggleStreamPaused,
   resetDashboardFilters,
   loading,
   refresh,
 } = useInjectedFirewallOpsConsole()
+
+const queryInputRef = ref<{ focus?: () => void } | null>(null)
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  const tag = target.tagName
+  return target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+}
+
+function handleGlobalFilterShortcut(event: KeyboardEvent): void {
+  if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) {
+    return
+  }
+  if (isEditableTarget(event.target)) {
+    return
+  }
+
+  event.preventDefault()
+  queryInputRef.value?.focus?.()
+}
+
+onMounted(() => {
+  if (!import.meta.client) {
+    return
+  }
+  window.addEventListener('keydown', handleGlobalFilterShortcut)
+})
+
+onBeforeUnmount(() => {
+  if (!import.meta.client) {
+    return
+  }
+  window.removeEventListener('keydown', handleGlobalFilterShortcut)
+})
 </script>
 
 <template>
@@ -48,6 +88,10 @@ const {
 
     <v-chip :color="totalPendingEscalations > 0 ? 'error' : 'green'" variant="tonal" size="small">
       Pending Escalations: {{ totalPendingEscalations }}
+    </v-chip>
+
+    <v-chip v-if="hasActiveDashboardFilters" color="primary" variant="tonal" size="small">
+      Active Filters: {{ activeDashboardFilterCount }}
     </v-chip>
 
     <v-chip
@@ -85,6 +129,7 @@ const {
     </v-btn>
 
     <v-text-field
+      ref="queryInputRef"
       v-model="dashboardQuery"
       class="mcp-query-field"
       label="Filter request / session / method"
@@ -93,7 +138,12 @@ const {
       hide-details
       clearable
       prepend-inner-icon="mdi-magnify"
+      @keydown.esc.stop.prevent="dashboardQuery = ''"
     />
+
+    <v-chip class="mcp-shortcut-chip" variant="outlined" size="small">
+      / focus
+    </v-chip>
 
     <v-select
       v-model="dashboardThreatFilter"
@@ -117,6 +167,7 @@ const {
     <v-btn
       variant="text"
       prepend-icon="mdi-filter-remove-outline"
+      :disabled="!hasActiveDashboardFilters"
       @click="resetDashboardFilters"
     >
       Reset Filters
@@ -137,5 +188,9 @@ const {
 
 .mcp-actionable-switch {
   min-width: 160px;
+}
+
+.mcp-shortcut-chip {
+  min-width: 72px;
 }
 </style>
