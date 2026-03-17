@@ -15,6 +15,7 @@ provideFirewallOpsConsole(firewallOpsConsole)
     <mcp-firewall-escalation-queue-card />
     <mcp-firewall-action-history-card />
     <mcp-firewall-dashboard-stream-card />
+    <mcp-firewall-unified-traffic-card />
     <mcp-firewall-observability-grid />
     <mcp-firewall-custom-config-grid />
   </v-container>
