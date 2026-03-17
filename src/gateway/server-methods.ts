@@ -61,6 +61,7 @@ const READ_METHODS = new Set([
   "tts.providers",
   "models.list",
   "agents.list",
+  "agents.tools.get",
   "agent.identity.get",
   "skills.status",
   "voicewake.get",
@@ -149,6 +150,7 @@ function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["c
     method === "agents.create" ||
     method === "agents.update" ||
     method === "agents.delete" ||
+    method === "agents.tools.set" ||
     method === "skills.install" ||
     method === "skills.update" ||
     method === "cron.add" ||

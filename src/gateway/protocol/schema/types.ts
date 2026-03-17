@@ -8,6 +8,7 @@ import type {
   WakeParamsSchema,
 } from "./agent.js";
 import type {
+  AgentToolsPolicySchema,
   AgentSummarySchema,
   AgentsFileEntrySchema,
   AgentsCreateParamsSchema,
@@ -22,6 +23,10 @@ import type {
   AgentsFilesSetResultSchema,
   AgentsListParamsSchema,
   AgentsListResultSchema,
+  AgentsToolsGetParamsSchema,
+  AgentsToolsGetResultSchema,
+  AgentsToolsSetParamsSchema,
+  AgentsToolsSetResultSchema,
   AgentsUpdateParamsSchema,
   AgentsUpdateResultSchema,
   ModelChoiceSchema,
@@ -191,6 +196,7 @@ export type WebLoginStartParams = Static<typeof WebLoginStartParamsSchema>;
 export type WebLoginWaitParams = Static<typeof WebLoginWaitParamsSchema>;
 export type AgentSummary = Static<typeof AgentSummarySchema>;
 export type AgentsFileEntry = Static<typeof AgentsFileEntrySchema>;
+export type AgentToolsPolicy = Static<typeof AgentToolsPolicySchema>;
 export type AgentsCreateParams = Static<typeof AgentsCreateParamsSchema>;
 export type AgentsCreateResult = Static<typeof AgentsCreateResultSchema>;
 export type AgentsUpdateParams = Static<typeof AgentsUpdateParamsSchema>;
@@ -205,6 +211,10 @@ export type AgentsFilesSetParams = Static<typeof AgentsFilesSetParamsSchema>;
 export type AgentsFilesSetResult = Static<typeof AgentsFilesSetResultSchema>;
 export type AgentsListParams = Static<typeof AgentsListParamsSchema>;
 export type AgentsListResult = Static<typeof AgentsListResultSchema>;
+export type AgentsToolsGetParams = Static<typeof AgentsToolsGetParamsSchema>;
+export type AgentsToolsGetResult = Static<typeof AgentsToolsGetResultSchema>;
+export type AgentsToolsSetParams = Static<typeof AgentsToolsSetParamsSchema>;
+export type AgentsToolsSetResult = Static<typeof AgentsToolsSetResultSchema>;
 export type ModelChoice = Static<typeof ModelChoiceSchema>;
 export type ModelsListParams = Static<typeof ModelsListParamsSchema>;
 export type ModelsListResult = Static<typeof ModelsListResultSchema>;

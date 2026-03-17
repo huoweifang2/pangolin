@@ -40,6 +40,10 @@ import {
   AgentsListParamsSchema,
   type AgentsListResult,
   AgentsListResultSchema,
+  type AgentsToolsGetParams,
+  AgentsToolsGetParamsSchema,
+  type AgentsToolsSetParams,
+  AgentsToolsSetParamsSchema,
   type AgentWaitParams,
   AgentWaitParamsSchema,
   type ChannelsLogoutParams,
@@ -253,6 +257,12 @@ export const validateAgentsFilesGetParams = ajv.compile<AgentsFilesGetParams>(
 );
 export const validateAgentsFilesSetParams = ajv.compile<AgentsFilesSetParams>(
   AgentsFilesSetParamsSchema,
+);
+export const validateAgentsToolsGetParams = ajv.compile<AgentsToolsGetParams>(
+  AgentsToolsGetParamsSchema,
+);
+export const validateAgentsToolsSetParams = ajv.compile<AgentsToolsSetParams>(
+  AgentsToolsSetParamsSchema,
 );
 export const validateNodePairRequestParams = ajv.compile<NodePairRequestParams>(
   NodePairRequestParamsSchema,

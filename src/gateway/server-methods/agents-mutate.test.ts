@@ -446,3 +446,122 @@ describe("agents.files.list", () => {
     expect(files.some((file) => file.name === "BOOTSTRAP.md")).toBe(true);
   });
 });
+
+describe("agents.tools.get", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.loadConfigReturn = {};
+    mocks.listAgentEntries.mockReturnValue([
+      {
+        id: "main",
+        tools: {
+          allow: ["read", "web_fetch"],
+          deny: ["exec"],
+          alsoAllow: ["image"],
+          profile: "coding",
+        },
+      },
+    ]);
+    mocks.findAgentEntryIndex.mockReturnValue(0);
+  });
+
+  it("returns the current per-agent tools policy", async () => {
+    const { respond, promise } = makeCall("agents.tools.get", { agentId: "main" });
+    await promise;
+
+    expect(respond).toHaveBeenCalledWith(
+      true,
+      {
+        agentId: "main",
+        tools: {
+          allow: ["read", "web_fetch"],
+          deny: ["exec"],
+          alsoAllow: ["image"],
+          profile: "coding",
+        },
+      },
+      undefined,
+    );
+  });
+});
+
+describe("agents.tools.set", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const storedConfig = {
+      agents: {
+        list: [
+          {
+            id: "main",
+            tools: {
+              profile: "coding",
+              byProvider: {
+                openai: {
+                  allow: ["group:fs"],
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    mocks.loadConfigReturn = {};
+    mocks.applyAgentConfig.mockImplementation(() => storedConfig as never);
+    mocks.listAgentEntries.mockImplementation((cfg: unknown) => {
+      const config = cfg as { agents?: { list?: Array<Record<string, unknown>> } };
+      return config.agents?.list ?? [];
+    });
+    mocks.findAgentEntryIndex.mockReturnValue(0);
+  });
+
+  it("persists normalized policy and preserves unrelated tool config", async () => {
+    const { respond, promise } = makeCall("agents.tools.set", {
+      agentId: "main",
+      tools: {
+        allow: [" READ ", "read", "web_fetch"],
+        deny: [" EXEC ", "exec"],
+        alsoAllow: [" image ", "image"],
+      },
+    });
+    await promise;
+
+    expect(mocks.writeConfigFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agents: {
+          list: [
+            expect.objectContaining({
+              id: "main",
+              tools: expect.objectContaining({
+                profile: "coding",
+                byProvider: {
+                  openai: {
+                    allow: ["group:fs"],
+                  },
+                },
+                allow: ["read", "web_fetch"],
+                deny: ["exec"],
+                alsoAllow: ["image"],
+              }),
+            }),
+          ],
+        },
+      }),
+    );
+
+    expect(respond).toHaveBeenCalledWith(
+      true,
+      {
+        ok: true,
+        agentId: "main",
+        tools: {
+          allow: ["read", "web_fetch"],
+          deny: ["exec"],
+          alsoAllow: ["image"],
+          profile: "coding",
+        },
+      },
+      undefined,
+    );
+  });
+});

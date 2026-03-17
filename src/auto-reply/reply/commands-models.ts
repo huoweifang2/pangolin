@@ -186,7 +186,6 @@ export async function resolveModelsCommandReply(params: {
   const { provider, page, pageSize, all } = parseModelsArgs(argText);
 
   const { byProvider, providers } = await buildModelsProviderData(params.cfg);
-  const isTelegram = params.surface === "telegram";
 
   // Provider list (no provider specified)
   if (!provider) {
@@ -230,7 +229,7 @@ export async function resolveModelsCommandReply(params: {
     return { text: lines.join("\n") };
   }
 
-    // Telegram model list UI removed
+  // Telegram model list UI removed
 
   // Text fallback for non-Telegram surfaces
   const effectivePageSize = all ? total : pageSize;

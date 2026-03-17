@@ -15,7 +15,10 @@ export type CommandAuthorization = {
   to?: string;
 };
 
-function resolveProviderFromContext(ctx: MsgContext, cfg: AgentShieldConfig): ChannelId | undefined {
+function resolveProviderFromContext(
+  ctx: MsgContext,
+  cfg: AgentShieldConfig,
+): ChannelId | undefined {
   const direct =
     normalizeAnyChannelId(ctx.Provider) ??
     normalizeAnyChannelId(ctx.Surface) ??

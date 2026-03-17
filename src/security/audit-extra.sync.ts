@@ -327,7 +327,9 @@ function listGroupPolicyOpen(cfg: AgentShieldConfig): string[] {
 // Exported collectors
 // --------------------------------------------------------------------------
 
-export function collectAttackSurfaceSummaryFindings(cfg: AgentShieldConfig): SecurityAuditFinding[] {
+export function collectAttackSurfaceSummaryFindings(
+  cfg: AgentShieldConfig,
+): SecurityAuditFinding[] {
   const group = summarizeGroupPolicy(cfg);
   const elevated = cfg.tools?.elevated?.enabled !== false;
   const webhooksEnabled = cfg.hooks?.enabled === true;
@@ -585,7 +587,9 @@ export function collectSandboxDockerNoopFindings(cfg: AgentShieldConfig): Securi
   return findings;
 }
 
-export function collectSandboxDangerousConfigFindings(cfg: AgentShieldConfig): SecurityAuditFinding[] {
+export function collectSandboxDangerousConfigFindings(
+  cfg: AgentShieldConfig,
+): SecurityAuditFinding[] {
   const findings: SecurityAuditFinding[] = [];
   const agents = Array.isArray(cfg.agents?.list) ? cfg.agents.list : [];
 
@@ -683,7 +687,9 @@ export function collectSandboxDangerousConfigFindings(cfg: AgentShieldConfig): S
   return findings;
 }
 
-export function collectNodeDenyCommandPatternFindings(cfg: AgentShieldConfig): SecurityAuditFinding[] {
+export function collectNodeDenyCommandPatternFindings(
+  cfg: AgentShieldConfig,
+): SecurityAuditFinding[] {
   const findings: SecurityAuditFinding[] = [];
   const denyListRaw = cfg.gateway?.nodes?.denyCommands;
   if (!Array.isArray(denyListRaw) || denyListRaw.length === 0) {
@@ -732,7 +738,9 @@ export function collectNodeDenyCommandPatternFindings(cfg: AgentShieldConfig): S
   return findings;
 }
 
-export function collectMinimalProfileOverrideFindings(cfg: AgentShieldConfig): SecurityAuditFinding[] {
+export function collectMinimalProfileOverrideFindings(
+  cfg: AgentShieldConfig,
+): SecurityAuditFinding[] {
   const findings: SecurityAuditFinding[] = [];
   if (cfg.tools?.profile !== "minimal") {
     return findings;

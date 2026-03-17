@@ -422,6 +422,7 @@ export function useNavigation() {
     "skills",
     "agents",
     "benchmark",
+    "pentest",
     "integrations",
     "gateway-config",
   ]);
@@ -1370,3 +1371,4 @@ export function useCustomConfig() {
 // ── Toast Notifications ─────────────────────────────────────────────
 
 export { useToast } from "./composables/useToast";
+export { usePenTest } from "./composables/usePenTest";

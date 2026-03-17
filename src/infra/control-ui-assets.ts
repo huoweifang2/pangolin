@@ -3,7 +3,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCommandWithTimeout } from "../process/exec.js";
 import { defaultRuntime, type RuntimeEnv } from "../runtime.js";
-import { resolveAgentShieldPackageRoot, resolveAgentShieldPackageRootSync } from "./agent-shield-root.js";
+import {
+  resolveAgentShieldPackageRoot,
+  resolveAgentShieldPackageRootSync,
+} from "./agent-shield-root.js";
 
 const CONTROL_UI_DIST_PATH_SEGMENTS = ["dist", "control-ui", "index.html"] as const;
 

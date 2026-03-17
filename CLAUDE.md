@@ -5,6 +5,7 @@ Zero-Trust Security Gateway for AI Agent Communications — a MITM proxy that in
 ## Tech Stack
 
 **Backend (Python 3.12+)**
+
 - FastAPI + Uvicorn (async HTTP/WebSocket server)
 - Pydantic v2 (data validation)
 - ahocorasick-rs (Rust-backed pattern matching)
@@ -12,6 +13,7 @@ Zero-Trust Security Gateway for AI Agent Communications — a MITM proxy that in
 - httpx (async HTTP client for LLM calls)
 
 **Frontend (Vue 3 + TypeScript)**
+
 - Vue 3 Composition API
 - Vite 6 (build tool)
 - TypeScript 5.7
@@ -97,6 +99,7 @@ cd frontend && npm run build
 All settings via environment variables (12-factor). See `.env` file or README.md:302-360 for full reference.
 
 Key variables:
+
 - `AF_LISTEN_PORT` (default: 9090) — Firewall proxy port
 - `AF_UPSTREAM_HOST/PORT` — Target MCP server
 - `AF_L1_ENABLED` / `AF_L2_ENABLED` — Toggle analysis layers
@@ -106,25 +109,30 @@ Key variables:
 ## Additional Documentation
 
 For specialized topics, see:
+
 - [Architectural Patterns](.claude/docs/architectural_patterns.md) — Design decisions, conventions, patterns used across the codebase
 
 ## Key Files Reference
 
 **Core Pipeline:**
+
 - src/engine/interceptor.py:77 — `_compute_verdict()` decision matrix
 - src/engine/interceptor.py:54 — High-risk methods list
 - src/engine/static_analyzer.py — L1 Aho-Corasick automaton
 - src/engine/semantic_analyzer.py — L2 LLM classifier
 
 **API Entry:**
+
 - src/main.py:66 — AppState singleton
 - src/main.py — FastAPI routes and lifespan
 
 **Frontend State:**
+
 - frontend/src/composables.ts:36 — `useWebSocket()` composable
 - frontend/src/App.vue:2 — Root component with theme support
 
 **Configuration:**
+
 - src/config.py:24 — FirewallConfig dataclass
 - src/models.py:29 — JsonRpcRequest model
 

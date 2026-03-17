@@ -84,7 +84,8 @@ export function resolveGatewayServiceDescription(params: {
     params.description ??
     formatGatewayServiceDescription({
       profile: params.env.AGENT_SHIELD_PROFILE,
-      version: params.environment?.AGENT_SHIELD_SERVICE_VERSION ?? params.env.AGENT_SHIELD_SERVICE_VERSION,
+      version:
+        params.environment?.AGENT_SHIELD_SERVICE_VERSION ?? params.env.AGENT_SHIELD_SERVICE_VERSION,
     })
   );
 }

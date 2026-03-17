@@ -425,7 +425,10 @@ function stampConfigVersion(cfg: AgentShieldConfig): AgentShieldConfig {
   };
 }
 
-function warnIfConfigFromFuture(cfg: AgentShieldConfig, logger: Pick<typeof console, "warn">): void {
+function warnIfConfigFromFuture(
+  cfg: AgentShieldConfig,
+  logger: Pick<typeof console, "warn">,
+): void {
   const touched = cfg.meta?.lastTouchedVersion;
   if (!touched) {
     return;

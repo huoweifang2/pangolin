@@ -4,7 +4,12 @@
       <v-app-bar-nav-icon
         @click="drawer = !drawer"
       />
-      <v-app-bar-title></v-app-bar-title>
+      <v-app-bar-title>
+        <div class="app-bar-brand">
+          <img src="/pangolin.svg" alt="Pangolin" class="app-bar-brand-icon" />
+          <span class="app-bar-brand-title">Pangolin</span>
+        </div>
+      </v-app-bar-title>
 
       <template #append>
         <health-indicator />
@@ -18,8 +23,11 @@
 
     <v-navigation-drawer v-model="drawer" width="280">
       <nuxt-link to="/playground" class="sidebar-logo-item d-block text-decoration-none">
-        <img :src="isDark ? '/logo-white.png' : '/logo.png'" alt="AI Protector" class="sidebar-logo" />
-        <div class="text-caption text-secondary mt-1">LLM Firewall</div>
+        <div class="sidebar-logo-shell">
+          <img src="/pangolin.svg" alt="Pangolin" class="sidebar-logo" />
+        </div>
+        <div class="sidebar-title mt-2">Pangolin</div>
+        <div class="text-caption text-secondary mt-1">Threat-Aware Agent Console</div>
       </nuxt-link>
       <v-divider color="primary" thickness="2" />
       <app-nav-drawer />
@@ -56,14 +64,57 @@ onMounted(() => {
   text-align: center;
 }
 
+.sidebar-logo-shell {
+  margin: 0 auto;
+  width: 148px;
+  border-radius: 16px;
+  padding: 10px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.24);
+  background: linear-gradient(
+    145deg,
+    rgba(var(--v-theme-primary), 0.2),
+    rgba(var(--v-theme-secondary), 0.18)
+  );
+}
+
 .sidebar-logo {
   width: 100%;
-  max-width: 140px;
+  max-width: 120px;
   height: auto;
   object-fit: contain;
 }
 
+.sidebar-title {
+  font-family: 'Space Grotesk', 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgb(var(--v-theme-primary));
+  text-transform: uppercase;
+}
+
+.app-bar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-bar-brand-icon {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.app-bar-brand-title {
+  font-family: 'Space Grotesk', 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--v-theme-primary));
+}
+
 .app-bar--shadow {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 6px 20px rgba(8, 20, 19, 0.18) !important;
 }
 </style>

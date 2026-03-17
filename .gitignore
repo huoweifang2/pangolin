@@ -130,3 +130,13 @@ pangolin/
 # Promptfoo runtime artifacts
 promptfoo.log
 promptfoo
+
+# Local environment overrides
+**/.env.local
+**/.env.*.local
+
+# Agent Firewall runtime artifacts
+extensions/agent-firewall/logs/*.log
+extensions/agent-firewall/logs/*.pid
+extensions/agent-firewall/data/*.db-shm
+extensions/agent-firewall/data/*.db-wal

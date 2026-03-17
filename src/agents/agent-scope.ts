@@ -72,7 +72,10 @@ export function resolveDefaultAgentId(cfg: AgentShieldConfig): string {
   return normalizeAgentId(chosen || DEFAULT_AGENT_ID);
 }
 
-export function resolveSessionAgentIds(params: { sessionKey?: string; config?: AgentShieldConfig }): {
+export function resolveSessionAgentIds(params: {
+  sessionKey?: string;
+  config?: AgentShieldConfig;
+}): {
   defaultAgentId: string;
   sessionAgentId: string;
 } {
@@ -132,7 +135,10 @@ export function resolveAgentSkillsFilter(
   return normalizeSkillFilter(resolveAgentConfig(cfg, agentId)?.skills);
 }
 
-export function resolveAgentModelPrimary(cfg: AgentShieldConfig, agentId: string): string | undefined {
+export function resolveAgentModelPrimary(
+  cfg: AgentShieldConfig,
+  agentId: string,
+): string | undefined {
   const raw = resolveAgentConfig(cfg, agentId)?.model;
   if (!raw) {
     return undefined;
