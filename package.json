@@ -92,6 +92,8 @@
     "pangolin:frontend:build": "pnpm --filter ai-protector-frontend build",
     "pangolin:frontend:dev": "pnpm --filter ai-protector-frontend dev",
     "pangolin:frontend:preview": "pnpm --filter ai-protector-frontend preview",
+    "phase6:audit:legacy": "node scripts/phase6-legacy-path-audit.mjs",
+    "phase6:audit:legacy:strict": "node scripts/phase6-legacy-path-audit.mjs --strict",
     "plugins:sync": "node --import tsx scripts/sync-plugin-versions.ts",
     "prepack": "pnpm build",
     "prepare": "command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git config core.hooksPath git-hooks || exit 0",
