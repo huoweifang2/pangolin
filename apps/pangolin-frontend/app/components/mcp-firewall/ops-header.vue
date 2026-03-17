@@ -13,12 +13,19 @@ const {
   dashboardThreatFilter,
   dashboardActionableOnly,
   dashboardQuery,
+  dashboardPresetName,
+  selectedDashboardPresetId,
   dashboardThreatFilterOptions,
+  dashboardPresetOptions,
   hasActiveDashboardFilters,
   activeDashboardFilterCount,
+  canSaveDashboardPreset,
   reconnectDashboardStream,
   toggleStreamPaused,
   resetDashboardFilters,
+  saveDashboardPreset,
+  applySelectedDashboardPreset,
+  deleteSelectedDashboardPreset,
   loading,
   refresh,
 } = useInjectedFirewallOpsConsole()
@@ -172,6 +179,56 @@ onBeforeUnmount(() => {
     >
       Reset Filters
     </v-btn>
+
+    <v-text-field
+      v-model="dashboardPresetName"
+      class="mcp-preset-name-field"
+      label="Preset name"
+      variant="outlined"
+      density="compact"
+      hide-details
+      prepend-inner-icon="mdi-content-save-outline"
+      @keyup.enter="saveDashboardPreset"
+    />
+
+    <v-btn
+      variant="text"
+      prepend-icon="mdi-content-save-outline"
+      :disabled="!canSaveDashboardPreset"
+      @click="saveDashboardPreset"
+    >
+      Save Preset
+    </v-btn>
+
+    <v-select
+      v-model="selectedDashboardPresetId"
+      class="mcp-preset-select-field"
+      :items="dashboardPresetOptions"
+      label="Saved presets"
+      variant="outlined"
+      density="compact"
+      hide-details
+      clearable
+    />
+
+    <v-btn
+      variant="text"
+      prepend-icon="mdi-folder-download-outline"
+      :disabled="!selectedDashboardPresetId"
+      @click="applySelectedDashboardPreset"
+    >
+      Load Preset
+    </v-btn>
+
+    <v-btn
+      variant="text"
+      color="error"
+      prepend-icon="mdi-delete-outline"
+      :disabled="!selectedDashboardPresetId"
+      @click="deleteSelectedDashboardPreset"
+    >
+      Delete Preset
+    </v-btn>
   </div>
 </template>
 
@@ -192,5 +249,15 @@ onBeforeUnmount(() => {
 
 .mcp-shortcut-chip {
   min-width: 72px;
+}
+
+.mcp-preset-name-field {
+  min-width: 200px;
+  max-width: 260px;
+}
+
+.mcp-preset-select-field {
+  min-width: 220px;
+  max-width: 320px;
 }
 </style>

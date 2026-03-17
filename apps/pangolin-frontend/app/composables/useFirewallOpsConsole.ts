@@ -22,6 +22,19 @@ export type DashboardViewMode = 'all' | 'alert' | 'escalate'
 export type DashboardThreatFilter = 'all' | 'critical' | 'high' | 'medium' | 'low' | 'none'
 export type HumanActionType = 'allow' | 'block' | 'ack'
 
+export interface DashboardFilterSnapshot {
+  query: string
+  viewMode: DashboardViewMode
+  threatFilter: DashboardThreatFilter
+  actionableOnly: boolean
+}
+
+export interface DashboardFilterPreset extends DashboardFilterSnapshot {
+  id: string
+  name: string
+  updatedAt: number
+}
+
 export interface ActionHistoryItem {
   requestId: string
   action: HumanActionType
@@ -30,6 +43,7 @@ export interface ActionHistoryItem {
 
 const HANDLED_REQUEST_STORAGE_KEY = 'pangolin.firewall.handled-requests.v1'
 const DASHBOARD_FILTER_STORAGE_KEY = 'pangolin.firewall.dashboard-filters.v1'
+const DASHBOARD_PRESET_STORAGE_KEY = 'pangolin.firewall.dashboard-presets.v1'
 
 export function useFirewallOpsConsole() {
   const loading = ref(false)
@@ -65,6 +79,9 @@ export function useFirewallOpsConsole() {
   const dashboardThreatFilter = ref<DashboardThreatFilter>('all')
   const dashboardActionableOnly = ref(false)
   const dashboardQuery = ref('')
+  const dashboardFilterPresets = ref<DashboardFilterPreset[]>([])
+  const dashboardPresetName = ref('')
+  const selectedDashboardPresetId = ref<string | null>(null)
   const actionHistory = ref<ActionHistoryItem[]>([])
 
   const dashboardThreatFilterOptions: Array<{ title: string; value: DashboardThreatFilter }> = [
@@ -75,6 +92,15 @@ export function useFirewallOpsConsole() {
     { title: 'Low', value: 'low' },
     { title: 'None', value: 'none' },
   ]
+
+  const dashboardPresetOptions = computed(() => {
+    return dashboardFilterPresets.value
+      .toSorted((left, right) => right.updatedAt - left.updatedAt)
+      .map((preset) => ({
+        title: preset.name,
+        value: preset.id,
+      }))
+  })
 
   const newSkill = ref<FirewallSkillInput>({ id: '', name: '', description: '' })
   const newServer = ref<FirewallMcpServerInput>({ id: '', name: '', transport: 'sse', url: '' })
@@ -185,6 +211,7 @@ export function useFirewallOpsConsole() {
 
   const canAddSkill = computed(() => newSkill.value.id.trim().length > 0)
   const canAddServer = computed(() => newServer.value.id.trim().length > 0)
+  const canSaveDashboardPreset = computed(() => dashboardPresetName.value.trim().length > 0)
 
   function verdictColor(verdict?: string): string {
     switch ((verdict ?? '').toUpperCase()) {
@@ -288,6 +315,22 @@ export function useFirewallOpsConsole() {
   function clearOperationFeedback(): void {
     operationError.value = null
     operationMessage.value = null
+  }
+
+  function getDashboardFilterSnapshot(): DashboardFilterSnapshot {
+    return {
+      query: dashboardQuery.value,
+      viewMode: dashboardViewMode.value,
+      threatFilter: dashboardThreatFilter.value,
+      actionableOnly: dashboardActionableOnly.value,
+    }
+  }
+
+  function applyDashboardFilterSnapshot(snapshot: DashboardFilterSnapshot): void {
+    dashboardQuery.value = snapshot.query
+    dashboardViewMode.value = snapshot.viewMode
+    dashboardThreatFilter.value = snapshot.threatFilter
+    dashboardActionableOnly.value = snapshot.actionableOnly
   }
 
   function dashboardEventTimestamp(event: FirewallDashboardEvent): number {
@@ -397,6 +440,37 @@ export function useFirewallOpsConsole() {
     }
   }
 
+  function loadDashboardPresetsFromStorage(): void {
+    if (!import.meta.client) {
+      return
+    }
+
+    try {
+      const raw = localStorage.getItem(DASHBOARD_PRESET_STORAGE_KEY)
+      if (!raw) {
+        return
+      }
+
+      const parsed = JSON.parse(raw) as {
+        presets?: Array<Partial<DashboardFilterPreset>>
+        selectedPresetId?: string | null
+      }
+
+      if (Array.isArray(parsed.presets)) {
+        dashboardFilterPresets.value = parsed.presets
+          .map((preset) => sanitizeDashboardPreset(preset))
+          .filter((preset): preset is DashboardFilterPreset => preset != null)
+          .slice(0, 30)
+      }
+
+      if (typeof parsed.selectedPresetId === 'string' || parsed.selectedPresetId === null) {
+        selectedDashboardPresetId.value = parsed.selectedPresetId
+      }
+    } catch {
+      // Ignore local storage parsing failures.
+    }
+  }
+
   function persistDashboardFiltersToStorage(): void {
     if (!import.meta.client) {
       return
@@ -417,6 +491,53 @@ export function useFirewallOpsConsole() {
     }
   }
 
+  function persistDashboardPresetsToStorage(): void {
+    if (!import.meta.client) {
+      return
+    }
+
+    try {
+      localStorage.setItem(
+        DASHBOARD_PRESET_STORAGE_KEY,
+        JSON.stringify({
+          presets: dashboardFilterPresets.value.slice(0, 30),
+          selectedPresetId: selectedDashboardPresetId.value,
+        }),
+      )
+    } catch {
+      // Ignore storage quota errors.
+    }
+  }
+
+  function sanitizeDashboardPreset(preset: Partial<DashboardFilterPreset>): DashboardFilterPreset | null {
+    const id = cleanText(preset.id)
+    const name = cleanText(preset.name)
+    if (!id || !name) {
+      return null
+    }
+
+    const viewMode =
+      preset.viewMode === 'alert' || preset.viewMode === 'escalate' || preset.viewMode === 'all'
+        ? preset.viewMode
+        : 'all'
+    const threatFilter =
+      preset.threatFilter && dashboardThreatFilterOptions.some((option) => option.value === preset.threatFilter)
+        ? preset.threatFilter
+        : 'all'
+
+    return {
+      id,
+      name,
+      query: String(preset.query ?? ''),
+      viewMode,
+      threatFilter,
+      actionableOnly: Boolean(preset.actionableOnly),
+      updatedAt: typeof preset.updatedAt === 'number' && Number.isFinite(preset.updatedAt)
+        ? preset.updatedAt
+        : Date.now(),
+    }
+  }
+
   function toggleStreamPaused(): void {
     streamPaused.value = !streamPaused.value
   }
@@ -430,6 +551,93 @@ export function useFirewallOpsConsole() {
     dashboardViewMode.value = 'all'
     dashboardThreatFilter.value = 'all'
     dashboardActionableOnly.value = false
+  }
+
+  function saveDashboardPreset(): void {
+    clearOperationFeedback()
+
+    const name = dashboardPresetName.value.trim()
+    if (!name) {
+      operationError.value = 'Preset name is required'
+      return
+    }
+
+    const snapshot = getDashboardFilterSnapshot()
+    const existingIndex = dashboardFilterPresets.value.findIndex(
+      (preset) => preset.name.toLowerCase() === name.toLowerCase(),
+    )
+
+    if (existingIndex >= 0) {
+      const existing = dashboardFilterPresets.value[existingIndex]
+      if (!existing) {
+        operationError.value = 'Preset state is out of sync, please retry'
+        return
+      }
+      const updatedPreset: DashboardFilterPreset = {
+        id: existing.id,
+        ...snapshot,
+        name,
+        updatedAt: Date.now(),
+      }
+      dashboardFilterPresets.value = dashboardFilterPresets.value.map((preset, index) =>
+        index === existingIndex ? updatedPreset : preset,
+      )
+      selectedDashboardPresetId.value = updatedPreset.id
+      operationMessage.value = `Updated preset ${name}`
+    } else {
+      const newPreset: DashboardFilterPreset = {
+        id: `preset-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        name,
+        ...snapshot,
+        updatedAt: Date.now(),
+      }
+      dashboardFilterPresets.value = [newPreset, ...dashboardFilterPresets.value].slice(0, 30)
+      selectedDashboardPresetId.value = newPreset.id
+      operationMessage.value = `Saved preset ${name}`
+    }
+
+    dashboardPresetName.value = ''
+  }
+
+  function applySelectedDashboardPreset(): void {
+    clearOperationFeedback()
+
+    const presetId = selectedDashboardPresetId.value
+    if (!presetId) {
+      operationError.value = 'Select a preset to load'
+      return
+    }
+
+    const preset = dashboardFilterPresets.value.find((item) => item.id === presetId)
+    if (!preset) {
+      operationError.value = 'Selected preset no longer exists'
+      selectedDashboardPresetId.value = null
+      return
+    }
+
+    applyDashboardFilterSnapshot(preset)
+    operationMessage.value = `Loaded preset ${preset.name}`
+  }
+
+  function deleteSelectedDashboardPreset(): void {
+    clearOperationFeedback()
+
+    const presetId = selectedDashboardPresetId.value
+    if (!presetId) {
+      operationError.value = 'Select a preset to delete'
+      return
+    }
+
+    const preset = dashboardFilterPresets.value.find((item) => item.id === presetId)
+    if (!preset) {
+      selectedDashboardPresetId.value = null
+      operationError.value = 'Selected preset no longer exists'
+      return
+    }
+
+    dashboardFilterPresets.value = dashboardFilterPresets.value.filter((item) => item.id !== presetId)
+    selectedDashboardPresetId.value = null
+    operationMessage.value = `Deleted preset ${preset.name}`
   }
 
   function clearDashboardReconnectTimer(): void {
@@ -742,6 +950,7 @@ export function useFirewallOpsConsole() {
   onMounted(() => {
     loadHandledRequestIdsFromStorage()
     loadDashboardFiltersFromStorage()
+    loadDashboardPresetsFromStorage()
     void refresh()
     openDashboardStream()
   })
@@ -752,6 +961,14 @@ export function useFirewallOpsConsole() {
 
   watch([dashboardQuery, dashboardViewMode, dashboardThreatFilter, dashboardActionableOnly], () => {
     persistDashboardFiltersToStorage()
+  })
+
+  watch(dashboardFilterPresets, () => {
+    persistDashboardPresetsToStorage()
+  })
+
+  watch(selectedDashboardPresetId, () => {
+    persistDashboardPresetsToStorage()
   })
 
   onBeforeUnmount(() => {
@@ -783,7 +1000,11 @@ export function useFirewallOpsConsole() {
     dashboardThreatFilter,
     dashboardActionableOnly,
     dashboardQuery,
+    dashboardFilterPresets,
+    dashboardPresetName,
+    selectedDashboardPresetId,
     dashboardThreatFilterOptions,
+    dashboardPresetOptions,
     actionHistory,
     newSkill,
     newServer,
@@ -805,6 +1026,7 @@ export function useFirewallOpsConsole() {
     recentActionHistory,
     canAddSkill,
     canAddServer,
+    canSaveDashboardPreset,
     verdictColor,
     threatColor,
     formatTimestamp,
@@ -822,6 +1044,9 @@ export function useFirewallOpsConsole() {
     toggleStreamPaused,
     setDashboardViewMode,
     resetDashboardFilters,
+    saveDashboardPreset,
+    applySelectedDashboardPreset,
+    deleteSelectedDashboardPreset,
     reconnectDashboardStream,
     clearEscalationQueue,
     escalationSubtitle,
