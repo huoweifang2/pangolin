@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { firewallSupplementService, toErrorMessage } from '../services/firewallSupplementService'
 import type {
   FirewallAuditEntry,
+  FirewallDashboardEvent,
   FirewallDataset,
   FirewallMcpServer,
+  FirewallMcpServerInput,
   FirewallSkill,
+  FirewallSkillInput,
   FirewallTrace,
 } from '../types/firewallSupplement'
 
@@ -13,6 +16,8 @@ definePageMeta({ title: 'MCP Firewall' })
 
 const loading = ref(false)
 const errorMessage = ref<string | null>(null)
+const operationError = ref<string | null>(null)
+const operationMessage = ref<string | null>(null)
 const lastUpdated = ref<Date | null>(null)
 
 const auditEntries = ref<FirewallAuditEntry[]>([])
@@ -21,11 +26,30 @@ const datasets = ref<FirewallDataset[]>([])
 const skills = ref<FirewallSkill[]>([])
 const mcpServers = ref<FirewallMcpServer[]>([])
 
+const dashboardConnected = ref(false)
+const dashboardError = ref<string | null>(null)
+const dashboardEvents = ref<FirewallDashboardEvent[]>([])
+let dashboardSocket: WebSocket | null = null
+
+const savingSkill = ref(false)
+const deletingSkillId = ref<string | null>(null)
+const savingServer = ref(false)
+const deletingServerId = ref<string | null>(null)
+
+const newSkill = ref<FirewallSkillInput>({ id: '', name: '', description: '' })
+const newServer = ref<FirewallMcpServerInput>({ id: '', name: '', transport: 'sse', url: '' })
+const transportOptions = ['sse', 'stdio', 'http', 'websocket']
+
 const totalAudit = computed(() => auditEntries.value.length)
 const totalTraces = computed(() => traces.value.length)
 const totalDatasets = computed(() => datasets.value.length)
 const totalSkills = computed(() => skills.value.length)
 const totalServers = computed(() => mcpServers.value.length)
+const dashboardEventCount = computed(() => dashboardEvents.value.length)
+const recentDashboardEvents = computed(() => dashboardEvents.value.slice(0, 12))
+
+const canAddSkill = computed(() => newSkill.value.id.trim().length > 0)
+const canAddServer = computed(() => newServer.value.id.trim().length > 0)
 
 function verdictColor(verdict?: string): string {
   switch ((verdict ?? '').toUpperCase()) {
@@ -80,6 +104,81 @@ function serverLabel(server: FirewallMcpServer): string {
   return server.name ?? server.id
 }
 
+function dashboardVerdict(event: FirewallDashboardEvent): string {
+  return String(event.analysis?.verdict ?? event.verdict ?? 'UNKNOWN').toUpperCase()
+}
+
+function dashboardThreat(event: FirewallDashboardEvent): string {
+  return String(event.analysis?.threat_level ?? 'NONE').toUpperCase()
+}
+
+function dashboardMethod(event: FirewallDashboardEvent): string {
+  return event.method ?? event.event_type ?? 'event'
+}
+
+function clearOperationFeedback(): void {
+  operationError.value = null
+  operationMessage.value = null
+}
+
+function cleanText(value?: string): string | undefined {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : undefined
+}
+
+function pushDashboardEvent(event: FirewallDashboardEvent): void {
+  dashboardEvents.value = [event, ...dashboardEvents.value].slice(0, 50)
+}
+
+function closeDashboardStream(): void {
+  if (dashboardSocket) {
+    dashboardSocket.close()
+    dashboardSocket = null
+  }
+  dashboardConnected.value = false
+}
+
+function openDashboardStream(): void {
+  if (!import.meta.client) {
+    return
+  }
+
+  closeDashboardStream()
+  dashboardError.value = null
+
+  const socket = new WebSocket(firewallSupplementService.dashboardWsURL)
+  dashboardSocket = socket
+
+  socket.onopen = () => {
+    dashboardConnected.value = true
+    dashboardError.value = null
+  }
+
+  socket.onclose = () => {
+    if (dashboardSocket === socket) {
+      dashboardSocket = null
+    }
+    dashboardConnected.value = false
+  }
+
+  socket.onerror = () => {
+    dashboardError.value = 'Dashboard WebSocket connection error'
+  }
+
+  socket.onmessage = (message) => {
+    try {
+      const parsed = JSON.parse(String(message.data)) as FirewallDashboardEvent
+      pushDashboardEvent(parsed)
+    } catch {
+      // Ignore malformed events from mixed environments.
+    }
+  }
+}
+
+function reconnectDashboardStream(): void {
+  openDashboardStream()
+}
+
 async function refresh(): Promise<void> {
   loading.value = true
   errorMessage.value = null
@@ -105,8 +204,92 @@ async function refresh(): Promise<void> {
   }
 }
 
+async function addSkill(): Promise<void> {
+  const id = newSkill.value.id.trim()
+  if (!id) {
+    operationError.value = 'Skill id is required'
+    return
+  }
+
+  clearOperationFeedback()
+  savingSkill.value = true
+  try {
+    await firewallSupplementService.upsertSkill({
+      id,
+      name: cleanText(newSkill.value.name),
+      description: cleanText(newSkill.value.description),
+    })
+    operationMessage.value = `Skill ${id} saved`
+    newSkill.value = { id: '', name: '', description: '' }
+    await refresh()
+  } catch (error) {
+    operationError.value = toErrorMessage(error)
+  } finally {
+    savingSkill.value = false
+  }
+}
+
+async function removeSkill(skillId: string): Promise<void> {
+  clearOperationFeedback()
+  deletingSkillId.value = skillId
+  try {
+    await firewallSupplementService.deleteSkill(skillId)
+    operationMessage.value = `Skill ${skillId} deleted`
+    await refresh()
+  } catch (error) {
+    operationError.value = toErrorMessage(error)
+  } finally {
+    deletingSkillId.value = null
+  }
+}
+
+async function addMcpServer(): Promise<void> {
+  const id = newServer.value.id.trim()
+  if (!id) {
+    operationError.value = 'MCP server id is required'
+    return
+  }
+
+  clearOperationFeedback()
+  savingServer.value = true
+  try {
+    await firewallSupplementService.upsertMcpServer({
+      id,
+      name: cleanText(newServer.value.name),
+      transport: cleanText(newServer.value.transport),
+      url: cleanText(newServer.value.url),
+    })
+    operationMessage.value = `MCP server ${id} saved`
+    newServer.value = { id: '', name: '', transport: 'sse', url: '' }
+    await refresh()
+  } catch (error) {
+    operationError.value = toErrorMessage(error)
+  } finally {
+    savingServer.value = false
+  }
+}
+
+async function removeMcpServer(serverId: string): Promise<void> {
+  clearOperationFeedback()
+  deletingServerId.value = serverId
+  try {
+    await firewallSupplementService.deleteMcpServer(serverId)
+    operationMessage.value = `MCP server ${serverId} deleted`
+    await refresh()
+  } catch (error) {
+    operationError.value = toErrorMessage(error)
+  } finally {
+    deletingServerId.value = null
+  }
+}
+
 onMounted(() => {
   void refresh()
+  openDashboardStream()
+})
+
+onBeforeUnmount(() => {
+  closeDashboardStream()
 })
 </script>
 
@@ -118,12 +301,27 @@ onMounted(() => {
         <p class="text-body-2 text-medium-emphasis mb-1">
           Agent Firewall endpoint: {{ firewallSupplementService.baseURL }}
         </p>
+        <p class="text-body-2 text-medium-emphasis mb-1">
+          Dashboard stream: {{ firewallSupplementService.dashboardWsURL }}
+        </p>
         <p v-if="lastUpdated" class="text-caption text-medium-emphasis mb-0">
           Last updated: {{ lastUpdated.toLocaleString() }}
         </p>
       </div>
 
       <v-spacer />
+
+      <v-chip :color="dashboardConnected ? 'green' : 'grey'" variant="tonal" size="small">
+        {{ dashboardConnected ? 'Dashboard Connected' : 'Dashboard Disconnected' }}
+      </v-chip>
+
+      <v-btn
+        variant="text"
+        prepend-icon="mdi-wifi-refresh"
+        @click="reconnectDashboardStream"
+      >
+        Reconnect Stream
+      </v-btn>
 
       <v-btn
         color="primary"
@@ -143,6 +341,36 @@ onMounted(() => {
       class="mb-4"
     >
       {{ errorMessage }}
+    </v-alert>
+
+    <v-alert
+      v-if="dashboardError"
+      type="warning"
+      variant="tonal"
+      border="start"
+      class="mb-4"
+    >
+      {{ dashboardError }}
+    </v-alert>
+
+    <v-alert
+      v-if="operationError"
+      type="error"
+      variant="tonal"
+      border="start"
+      class="mb-4"
+    >
+      {{ operationError }}
+    </v-alert>
+
+    <v-alert
+      v-if="operationMessage"
+      type="success"
+      variant="tonal"
+      border="start"
+      class="mb-4"
+    >
+      {{ operationMessage }}
     </v-alert>
 
     <v-row class="mb-1">
@@ -186,7 +414,64 @@ onMounted(() => {
           </v-card-text>
         </v-card>
       </v-col>
+      <v-col cols="12" sm="6" md="4" lg="2">
+        <v-card variant="tonal" color="deep-purple">
+          <v-card-text>
+            <div class="text-caption text-medium-emphasis">Live Events</div>
+            <div class="text-h4 font-weight-bold">{{ dashboardEventCount }}</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
     </v-row>
+
+    <v-card class="mb-4">
+      <v-card-title class="d-flex align-center">
+        <span>Dashboard Live Stream</span>
+        <v-spacer />
+        <v-chip :color="dashboardConnected ? 'green' : 'grey'" size="small" variant="tonal">
+          {{ dashboardConnected ? 'Online' : 'Offline' }}
+        </v-chip>
+      </v-card-title>
+      <v-divider />
+
+      <v-table density="comfortable">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Event</th>
+            <th>Verdict</th>
+            <th>Threat</th>
+            <th>Session</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(event, index) in recentDashboardEvents" :key="`${event.timestamp ?? index}-${index}`">
+            <td class="text-caption">{{ formatTimestamp(event.timestamp) }}</td>
+            <td class="mono text-caption">{{ dashboardMethod(event) }}</td>
+            <td>
+              <v-chip :color="verdictColor(dashboardVerdict(event))" size="small" variant="tonal">
+                {{ dashboardVerdict(event) }}
+              </v-chip>
+            </td>
+            <td>
+              <v-chip :color="threatColor(dashboardThreat(event))" size="small" variant="tonal">
+                {{ dashboardThreat(event) }}
+              </v-chip>
+            </td>
+            <td class="mono text-caption">{{ event.session_id ?? 'n/a' }}</td>
+          </tr>
+        </tbody>
+      </v-table>
+
+      <v-alert
+        v-if="recentDashboardEvents.length === 0"
+        type="info"
+        variant="tonal"
+        class="ma-4"
+      >
+        Waiting for dashboard events. Generate traffic to see live stream updates.
+      </v-alert>
+    </v-card>
 
     <v-row>
       <v-col cols="12" xl="8">
@@ -322,19 +607,69 @@ onMounted(() => {
           </v-card-title>
           <v-divider />
 
-          <div v-if="skills.length" class="pa-4 d-flex flex-wrap ga-2">
-            <v-chip
-              v-for="skill in skills"
-              :key="skill.id"
-              color="success"
-              variant="tonal"
-            >
-              {{ skillLabel(skill) }}
-            </v-chip>
+          <div class="pa-4">
+            <v-row dense>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="newSkill.id"
+                  label="Skill ID"
+                  density="comfortable"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="newSkill.name"
+                  label="Name (optional)"
+                  density="comfortable"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="newSkill.description"
+                  label="Description (optional)"
+                  density="comfortable"
+                  hide-details
+                />
+              </v-col>
+            </v-row>
+            <div class="d-flex justify-end mt-3">
+              <v-btn
+                color="success"
+                prepend-icon="mdi-plus"
+                :disabled="!canAddSkill"
+                :loading="savingSkill"
+                @click="addSkill"
+              >
+                Save Skill
+              </v-btn>
+            </div>
           </div>
 
+          <v-divider />
+
+          <v-list lines="two" density="compact">
+            <v-list-item
+              v-for="skill in skills"
+              :key="skill.id"
+              :title="skillLabel(skill)"
+              :subtitle="skill.description ?? skill.id"
+            >
+              <template #append>
+                <v-btn
+                  variant="text"
+                  color="error"
+                  icon="mdi-delete-outline"
+                  :loading="deletingSkillId === skill.id"
+                  @click="removeSkill(skill.id)"
+                />
+              </template>
+            </v-list-item>
+          </v-list>
+
           <v-alert
-            v-else-if="!loading"
+            v-if="!loading && totalSkills === 0"
             type="info"
             variant="tonal"
             class="ma-4"
@@ -353,6 +688,57 @@ onMounted(() => {
           </v-card-title>
           <v-divider />
 
+          <div class="pa-4">
+            <v-row dense>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="newServer.id"
+                  label="Server ID"
+                  density="comfortable"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="newServer.name"
+                  label="Name (optional)"
+                  density="comfortable"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="newServer.transport"
+                  :items="transportOptions"
+                  label="Transport"
+                  density="comfortable"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-text-field
+                  v-model="newServer.url"
+                  label="URL / command (optional)"
+                  density="comfortable"
+                  hide-details
+                />
+              </v-col>
+            </v-row>
+            <div class="d-flex justify-end mt-3">
+              <v-btn
+                color="warning"
+                prepend-icon="mdi-plus"
+                :disabled="!canAddServer"
+                :loading="savingServer"
+                @click="addMcpServer"
+              >
+                Save MCP Server
+              </v-btn>
+            </div>
+          </div>
+
+          <v-divider />
+
           <v-list lines="two" density="compact">
             <v-list-item
               v-for="server in mcpServers"
@@ -361,9 +747,16 @@ onMounted(() => {
               :subtitle="server.url ?? 'No URL configured'"
             >
               <template #append>
-                <v-chip size="x-small" variant="tonal" color="warning">
+                <v-chip size="x-small" variant="tonal" color="warning" class="mr-2">
                   {{ server.transport ?? 'unknown' }}
                 </v-chip>
+                <v-btn
+                  variant="text"
+                  color="error"
+                  icon="mdi-delete-outline"
+                  :loading="deletingServerId === server.id"
+                  @click="removeMcpServer(server.id)"
+                />
               </template>
             </v-list-item>
           </v-list>
