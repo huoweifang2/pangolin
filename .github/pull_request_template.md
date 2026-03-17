@@ -7,6 +7,19 @@ Describe the problem and fix in 2–5 bullets:
 - What changed:
 - What did NOT change (scope boundary):
 
+## Migration Gate (required for refactor/migration PRs)
+
+- [ ] Branch name follows phase pattern (example: phase0/pr-p0-1-topic)
+- [ ] I attached branch/status snapshots before and after changes
+- [ ] This PR scope is single-phase and does not mix unrelated changes
+- [ ] If directories were added/removed/moved, .gitignore was updated in the same PR with a reason
+- [ ] I marked whether user review intervention is required for next phase
+
+### User Review Checkpoint
+
+- Requires user intervention before next phase? (`Yes/No`)
+- If yes, what decision is needed:
+
 ## Change Type (select all)
 
 - [ ] Bug fix
