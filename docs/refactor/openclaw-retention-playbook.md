@@ -16,6 +16,24 @@
 - 核心模块存在：scripts/run-node.mjs、src/gateway、src/agents、src/channels、extensions/agent-firewall、skills
 - 可选 legacy 面缺失：apps/\*、ui、scripts/e2e、部分 test:docker 脚本
 
+## 当前决策
+
+- 已确认采用路径 A（Core-Only）。
+- 移动端、UI 工作区、Docker E2E 脚本不在当前阶段范围内。
+
+### 路径 A 的执行基线（本仓库默认）
+
+1. 诊断与运行：
+   - pnpm openclaw:doctor
+   - pnpm gateway:dev
+   - pnpm test:fast
+2. 聚合脚本按 Core-Only 收敛：
+   - `format:all` 只执行 `format`
+   - `lint:all` 只执行 `lint`
+   - `test:all` 不再包含 docker/live 链路
+   - `prepack` 不再依赖 `ui:build`
+3. 如果未来要恢复 legacy 面，再走路径 B 并逐项恢复目录。
+
 ## 先跑诊断
 
 在仓库根目录运行：
