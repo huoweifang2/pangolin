@@ -7,17 +7,23 @@ const {
   visiblePendingEscalationCount,
   totalPendingEscalations,
   escalationSortMode,
+  escalationSlaMinutes,
   escalationSortModeOptions,
   visibleEscalationThreatSummary,
   oldestVisibleEscalationAgeLabel,
+  staleVisibleEscalationCount,
+  hasVisibleEscalationSlaBreach,
   dashboardActionPendingId,
   dashboardBatchActionPending,
   escalationSubtitle,
   setEscalationSortMode,
+  setEscalationSlaMinutes,
   resolveEscalation,
   acknowledgeEscalation,
   resolveVisibleEscalations,
   acknowledgeVisibleEscalations,
+  resolveVisibleEscalationsByThreat,
+  acknowledgeVisibleEscalationsByThreat,
   clearEscalationQueue,
 } = useInjectedFirewallOpsConsole()
 
@@ -26,28 +32,34 @@ function onEscalationSortModeChange(value: unknown): void {
     setEscalationSortMode(value)
   }
 }
+
+function onEscalationSlaMinutesChange(value: unknown): void {
+  setEscalationSlaMinutes(value)
+}
 </script>
 
 <template>
   <v-card class="mb-4">
-    <v-card-title class="d-flex align-center">
+    <v-card-title class="d-flex align-center flex-wrap ga-2">
       <span>Pending Escalation Queue</span>
       <v-spacer />
-      <v-chip color="error" size="small" variant="tonal" class="mr-2">
+      <v-chip color="error" size="small" variant="tonal">
         {{ totalPendingEscalations }} pending
       </v-chip>
-      <v-chip color="primary" size="small" variant="tonal" class="mr-2">
+      <v-chip color="primary" size="small" variant="tonal">
         Showing {{ visiblePendingEscalationCount }} / {{ totalPendingEscalations }}
       </v-chip>
-      <v-chip size="small" variant="tonal" class="mr-2">
+      <v-chip size="small" variant="tonal">
         Oldest: {{ oldestVisibleEscalationAgeLabel }}
+      </v-chip>
+      <v-chip :color="hasVisibleEscalationSlaBreach ? 'error' : 'green'" size="small" variant="tonal">
+        SLA {{ escalationSlaMinutes }}m: {{ staleVisibleEscalationCount }}
       </v-chip>
       <v-chip
         v-if="visibleEscalationThreatSummary.critical > 0"
         color="error"
         size="small"
         variant="tonal"
-        class="mr-2"
       >
         Critical {{ visibleEscalationThreatSummary.critical }}
       </v-chip>
@@ -56,17 +68,28 @@ function onEscalationSortModeChange(value: unknown): void {
         color="warning"
         size="small"
         variant="tonal"
-        class="mr-2"
       >
         High {{ visibleEscalationThreatSummary.high }}
       </v-chip>
+      <v-text-field
+        :model-value="escalationSlaMinutes"
+        type="number"
+        min="1"
+        max="1440"
+        density="compact"
+        variant="outlined"
+        hide-details
+        class="queue-sla-field"
+        label="SLA (min)"
+        @update:model-value="onEscalationSlaMinutesChange"
+      />
       <v-select
         :model-value="escalationSortMode"
         :items="escalationSortModeOptions"
         density="compact"
         variant="outlined"
         hide-details
-        class="queue-sort-select mr-2"
+        class="queue-sort-select"
         @update:model-value="onEscalationSortModeChange"
       />
       <v-btn
@@ -74,7 +97,6 @@ function onEscalationSortModeChange(value: unknown): void {
         size="small"
         color="success"
         prepend-icon="mdi-check-bold"
-        class="mr-2"
         :loading="dashboardBatchActionPending"
         :disabled="visiblePendingEscalationCount === 0"
         @click="resolveVisibleEscalations('allow')"
@@ -86,7 +108,6 @@ function onEscalationSortModeChange(value: unknown): void {
         size="small"
         color="error"
         prepend-icon="mdi-close-thick"
-        class="mr-2"
         :loading="dashboardBatchActionPending"
         :disabled="visiblePendingEscalationCount === 0"
         @click="resolveVisibleEscalations('block')"
@@ -97,11 +118,30 @@ function onEscalationSortModeChange(value: unknown): void {
         variant="text"
         size="small"
         prepend-icon="mdi-check-all"
-        class="mr-2"
         :disabled="visiblePendingEscalationCount === 0"
         @click="acknowledgeVisibleEscalations"
       >
         Ack Visible
+      </v-btn>
+      <v-btn
+        variant="text"
+        size="small"
+        color="error"
+        prepend-icon="mdi-shield-alert"
+        :loading="dashboardBatchActionPending"
+        :disabled="visibleEscalationThreatSummary.critical === 0"
+        @click="resolveVisibleEscalationsByThreat('block', ['critical'])"
+      >
+        Block Critical
+      </v-btn>
+      <v-btn
+        variant="text"
+        size="small"
+        prepend-icon="mdi-check-decagram"
+        :disabled="visibleEscalationThreatSummary.critical + visibleEscalationThreatSummary.high === 0"
+        @click="acknowledgeVisibleEscalationsByThreat(['critical', 'high'])"
+      >
+        Ack High+
       </v-btn>
       <v-btn
         variant="text"
@@ -175,5 +215,10 @@ function onEscalationSortModeChange(value: unknown): void {
 .queue-sort-select {
   min-width: 170px;
   max-width: 220px;
+}
+
+.queue-sla-field {
+  min-width: 120px;
+  max-width: 140px;
 }
 </style>
