@@ -72,21 +72,17 @@ if [[ "$reset_gateway" -eq 1 ]]; then
 fi
 
 frontend_cmd=(pnpm pangolin:frontend:dev)
-python_bin="${PANGOLIN_PYTHON_BIN:-python3.11}"
-if ! command -v "$python_bin" >/dev/null 2>&1; then
-  python_bin="python3"
+if ! command -v uv >/dev/null 2>&1; then
+  export PATH="$HOME/.local/bin:$PATH"
 fi
-backend_cmd=(".venv/bin/uvicorn" "src.main:app" "--host" "127.0.0.1" "--port" "9090")
+if ! command -v uv >/dev/null 2>&1; then
+  echo "[error] uv is required but not found in PATH." >&2
+  exit 1
+fi
+backend_cmd=("uv" "run" "uvicorn" "src.main:app" "--host" "127.0.0.1" "--port" "9090")
 
-if [[ ! -x ".venv/bin/python" ]]; then
-  echo "[setup] python venv not found, creating .venv with ${python_bin}..."
-  "$python_bin" -m venv ".venv"
-fi
-
-if ! .venv/bin/python -c "import fastapi, uvicorn" >/dev/null 2>&1; then
-  echo "[setup] installing backend dependencies..."
-  .venv/bin/pip install -r requirements.txt
-fi
+echo "[setup] syncing backend dependencies with uv..."
+uv sync
 
 echo "[start] ${backend_cmd[*]}"
 "${backend_cmd[@]}" &
