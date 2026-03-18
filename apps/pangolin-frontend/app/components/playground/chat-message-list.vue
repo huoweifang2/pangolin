@@ -31,6 +31,7 @@
       v-for="(msg, idx) in messages"
       :key="idx"
       :message="msg"
+      @resend="emit('resend', $event)"
     />
 
     <v-progress-linear
@@ -55,6 +56,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'open-scenarios': []
+  'resend': [text: string]
 }>()
 
 const listRef = ref<HTMLElement | null>(null)

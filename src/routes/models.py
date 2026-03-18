@@ -40,6 +40,11 @@ OPENROUTER_MODELS: list[dict[str, str]] = [
         "provider": "openrouter",
         "name": "Mistral Small 3.1 (via OpenRouter)",
     },
+    {
+        "id": "minimax/minimax-m2.7",
+        "provider": "openrouter",
+        "name": "Minimax-m2.7 (via OpenRouter)",
+    },
 ]
 
 

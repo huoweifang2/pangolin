@@ -7,7 +7,7 @@ from collections.abc import Callable, Coroutine
 from functools import wraps
 from typing import Any
 
-from src.pipeline.state import PipelineState
+from src.engine.pipeline.state import PipelineState
 
 # Type alias for a pipeline node function
 NodeFunc = Callable[[PipelineState], Coroutine[Any, Any, PipelineState]]

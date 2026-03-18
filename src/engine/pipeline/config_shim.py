@@ -13,6 +13,7 @@ class SettingsShim:
         self.enable_nemo_guardrails = getattr(firewall_config, "l2_enabled", True)
         self.openai_api_key = getattr(firewall_config, "l2_api_key", "")
         self.embedding_model = "text-embedding-3-small" # Hardcoded for NeMo fallback
+        self.scanner_timeout = getattr(firewall_config, "l2_timeout_seconds", 10.0)
 
     @property
     def log_level(self):

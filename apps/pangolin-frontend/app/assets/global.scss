@@ -152,3 +152,8 @@ h3,
 .v-data-table tbody > tr:has(+ tr .detail-row) {
   background: rgba(var(--v-theme-primary), 0.04) !important;
 }
+
+.transparent-page {
+  background: transparent !important;
+}
+

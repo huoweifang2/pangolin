@@ -8,7 +8,7 @@ provideFirewallOpsConsole(firewallOpsConsole)
 </script>
 
 <template>
-  <v-container fluid>
+  <v-container fluid class="transparent-page">
     <mcp-firewall-ops-header />
     <mcp-firewall-status-alerts />
     <mcp-firewall-metrics-overview />

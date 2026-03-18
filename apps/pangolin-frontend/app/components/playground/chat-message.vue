@@ -13,67 +13,73 @@
       class="verdict-card"
       :class="`verdict-card--${decision!.decision.toLowerCase()}`"
     >
-      <!-- 1 · VERDICT — first and loudest -->
-      <div class="verdict-card__header">
-        <v-icon :color="decisionColor" size="28">{{ verdictIcon }}</v-icon>
-        <div class="verdict-card__headline">
-          <span class="verdict-card__word" :class="`text-${decisionColor}`">{{ verdictWord }}</span>
-          <span class="verdict-card__dash text-medium-emphasis">—</span>
-          <span class="verdict-card__short-reason text-medium-emphasis">{{ verdictReason }}</span>
-        </div>
-      </div>
+      <v-expansion-panels variant="accordion" elevation="0" class="bg-transparent w-100">
+        <v-expansion-panel elevation="0" class="bg-transparent" style="background: transparent">
+          <v-expansion-panel-title class="pa-0 min-height-0" style="min-height: auto">
+            <!-- 1 · VERDICT — first and loudest -->
+            <div class="verdict-card__header mb-0 w-100">
+              <v-icon :color="decisionColor" size="28">{{ verdictIcon }}</v-icon>
+              <div class="verdict-card__headline">
+                <span class="verdict-card__word" :class="`text-${decisionColor}`">{{ verdictWord }}</span>
+                <span class="verdict-card__dash text-medium-emphasis">—</span>
+                <span class="verdict-card__short-reason text-medium-emphasis">{{ verdictReason }}</span>
+              </div>
+            </div>
+          </v-expansion-panel-title>
+          
+          <v-expansion-panel-text class="px-0 pt-3 pb-0">
+            <!-- 2 · HUMAN-READABLE REASON -->
+            <p v-if="humanReason" class="verdict-card__explain">
+              {{ humanReason }}
+            </p>
 
-      <!-- 2 · HUMAN-READABLE REASON -->
-      <p v-if="humanReason" class="verdict-card__explain">
-        {{ humanReason }}
-      </p>
+            <!-- 3 · SECURITY SUMMARY — compact secondary row -->
+            <div class="verdict-card__meta">
+              <div class="verdict-card__kv">
+                <span class="verdict-card__label">Risk</span>
+                <span class="text-caption font-weight-bold" :class="riskTextColor">{{ riskPercent }}%</span>
+              </div>
+              <v-progress-linear
+                :model-value="decision!.riskScore * 100"
+                :color="riskColor"
+                height="3"
+                rounded
+                class="verdict-card__bar"
+              />
+              <div class="verdict-card__kv">
+                <span class="verdict-card__label">Action</span>
+                <v-chip :color="decisionColor" size="x-small" label variant="tonal">
+                  {{ decision!.decision }}
+                </v-chip>
+              </div>
+              <div v-if="decision!.intent" class="verdict-card__kv">
+                <span class="verdict-card__label">Intent</span>
+                <span class="text-caption">{{ decision!.intent }}</span>
+              </div>
+            </div>
 
-      <!-- 3 · SECURITY SUMMARY — compact secondary row -->
-      <div class="verdict-card__meta">
-        <div class="verdict-card__kv">
-          <span class="verdict-card__label">Risk</span>
-          <span class="text-caption font-weight-bold" :class="riskTextColor">{{ riskPercent }}%</span>
-        </div>
-        <v-progress-linear
-          :model-value="decision!.riskScore * 100"
-          :color="riskColor"
-          height="3"
-          rounded
-          class="verdict-card__bar"
-        />
-        <div class="verdict-card__kv">
-          <span class="verdict-card__label">Action</span>
-          <v-chip :color="decisionColor" size="x-small" label variant="tonal">
-            {{ decision!.decision }}
-          </v-chip>
-        </div>
-        <div v-if="decision!.intent" class="verdict-card__kv">
-          <span class="verdict-card__label">Intent</span>
-          <span class="text-caption">{{ decision!.intent }}</span>
-        </div>
-      </div>
-
-      <!-- 4 · POLICY SIGNALS — chips in own labeled section -->
-      <div v-if="topFlags.length" class="verdict-card__section">
-        <span class="verdict-card__section-title">Matched signals</span>
-        <div class="verdict-card__signals">
-          <v-chip
-            v-for="f in topFlags"
-            :key="f.key"
-            :color="flagChipColor(f.key, f.value)"
-            size="x-small"
-            label
-            variant="outlined"
-          >
-            {{ f.key }}
-          </v-chip>
-        </div>
-      </div>
+            <!-- 4 · POLICY SIGNALS — chips in own labeled section -->
+            <div v-if="topFlags.length" class="verdict-card__section">
+              <span class="verdict-card__section-title">Matched signals</span>
+              <div class="verdict-card__signals">
+                <v-chip
+                  v-for="f in topFlags"
+                  :key="f.key"
+                  :color="flagChipColor(f.key, f.value)"
+                  size="x-small"
+                  label
+                  variant="outlined"
+                >
+                  {{ f.key }}
+                </v-chip>
+              </div>
+            </div>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
 
       <!-- 5 · RESPONSE CONTENT — at the bottom, quietest -->
-      <div v-if="cleanContent" class="verdict-card__body">
-        <v-divider class="mb-4" />
-        <div class="verdict-card__section-title mb-1">Final outcome</div>
+      <div v-if="cleanContent" class="verdict-card__body mt-2">
         <!-- eslint-disable-next-line vue/no-v-html -- sanitized by DOMPurify -->
         <div class="text-body-2 chat-message__content verdict-card__response" v-html="renderedClean" />
       </div>
@@ -293,7 +299,8 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
   }
 
   &__bubble {
-    max-width: 100%;
+    width: fit-content;
+    max-width: 85%;
     border-radius: 12px !important;
     background: rgb(var(--v-theme-surface)) !important;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
@@ -372,9 +379,12 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
 
 /* ═══ Verdict card ═══ */
 .verdict-card {
-  max-width: 92%;
-  padding: 16px 20px;
-  border-radius: 12px;
+  width: fit-content;
+  min-width: 280px;
+  flex: 0 1 auto;
+  max-width: 60%;
+  padding: 4px 12px;
+  border-radius: 8px;
   border-left: 4px solid transparent;
   background: rgb(var(--v-theme-surface));
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.06);
@@ -409,8 +419,8 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
   }
 
   &__word {
-    font-size: 1.15rem;
-    font-weight: 800;
+    font-size: 0.9rem;
+    font-weight: 700;
     letter-spacing: -0.01em;
     line-height: 1.2;
   }
@@ -421,9 +431,10 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
   }
 
   &__short-reason {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     font-weight: 400;
-    line-height: 1.4;
+    opacity: 0.7;
+    line-height: 1.2;
   }
 
   &__explain {

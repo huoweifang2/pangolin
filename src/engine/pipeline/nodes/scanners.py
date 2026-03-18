@@ -19,11 +19,11 @@ import asyncio
 
 import structlog
 
-from src.pipeline.nodes import timed_node
-from src.pipeline.nodes.llm_guard import llm_guard_node
-from src.pipeline.nodes.nemo_guardrails import nemo_guardrails_node
-from src.pipeline.nodes.presidio import presidio_node
-from src.pipeline.state import PipelineState
+from src.engine.pipeline.nodes import timed_node
+from src.engine.pipeline.nodes.llm_guard import llm_guard_node
+from src.engine.pipeline.nodes.nemo_guardrails import nemo_guardrails_node
+from src.engine.pipeline.nodes.presidio import presidio_node
+from src.engine.pipeline.state import PipelineState
 
 logger = structlog.get_logger()
 

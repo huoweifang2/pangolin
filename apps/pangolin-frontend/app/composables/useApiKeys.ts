@@ -43,7 +43,7 @@ export function detectProviderClient(model: string): string {
   if (m === 'demo') {return 'mock'}
   // OpenRouter model IDs are usually namespaced (e.g. openai/gpt-4o-mini).
   if (m.startsWith('openrouter/') || m.startsWith('openrouter:')) {return 'openrouter'}
-  if (m.startsWith('openai/') || m.startsWith('anthropic/') || m.startsWith('google/') || m.startsWith('mistralai/')) {
+  if (m.startsWith('openai/') || m.startsWith('anthropic/') || m.startsWith('google/') || m.startsWith('mistralai/') || m.startsWith('minimax/')) {
     return 'openrouter'
   }
   if (m.startsWith('deepseek/') || m.startsWith('qwen/') || m.startsWith('meta-llama/')) {return 'openrouter'}

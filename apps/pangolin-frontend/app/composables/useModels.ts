@@ -20,6 +20,7 @@ const FALLBACK_MODELS: ModelInfo[] = [
   { id: 'anthropic/claude-3.7-sonnet', provider: 'openrouter', name: 'Claude 3.7 Sonnet (via OpenRouter)' },
   { id: 'google/gemini-2.0-flash-001', provider: 'openrouter', name: 'Gemini 2.0 Flash (via OpenRouter)' },
   { id: 'mistralai/mistral-small-3.1', provider: 'openrouter', name: 'Mistral Small 3.1 (via OpenRouter)' },
+  { id: 'minimax/minimax-m2.7', provider: 'openrouter', name: 'Minimax-m2.7 (via OpenRouter)' },
 ]
 
 async function fetchModelCatalog(): Promise<ModelInfo[]> {

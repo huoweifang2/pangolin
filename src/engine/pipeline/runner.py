@@ -5,13 +5,13 @@ from __future__ import annotations
 import structlog
 from langgraph.graph import END, StateGraph
 
-from src.pipeline.graph import pipeline
-from src.pipeline.nodes.decision import decision_node
-from src.pipeline.nodes.intent import intent_node
-from src.pipeline.nodes.parse import parse_node
-from src.pipeline.nodes.rules import rules_node
-from src.pipeline.nodes.scanners import parallel_scanners_node
-from src.pipeline.state import PipelineState
+from src.engine.pipeline.graph import pipeline
+from src.engine.pipeline.nodes.decision import decision_node
+from src.engine.pipeline.nodes.intent import intent_node
+from src.engine.pipeline.nodes.parse import parse_node
+from src.engine.pipeline.nodes.rules import rules_node
+from src.engine.pipeline.nodes.scanners import parallel_scanners_node
+from src.engine.pipeline.state import PipelineState
 
 logger = structlog.get_logger()
 
@@ -44,7 +44,7 @@ async def run_pipeline(
     api_key: str | None = None,
 ) -> PipelineState:
     """Run the firewall pipeline and return the final state."""
-    policy_config = await get_policy_config(policy_name)
+    policy_config = get_policy_config(policy_name)
 
     initial_state: PipelineState = {
         "request_id": request_id,
@@ -112,7 +112,7 @@ async def run_pre_llm_pipeline(
     Used for streaming: we need the ALLOW/BLOCK decision *before* starting
     the SSE stream.  The actual LLM call is done separately.
     """
-    policy_config = await get_policy_config(policy_name)
+    policy_config = get_policy_config(policy_name)
 
     initial_state: PipelineState = {
         "request_id": request_id,

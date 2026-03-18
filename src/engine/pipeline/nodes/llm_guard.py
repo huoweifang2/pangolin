@@ -20,9 +20,9 @@ import asyncio
 
 import structlog
 
-from src.config import get_settings
-from src.pipeline.nodes import timed_node
-from src.pipeline.state import PipelineState
+from src.engine.pipeline.config_shim import get_settings
+from src.engine.pipeline.nodes import timed_node
+from src.engine.pipeline.state import PipelineState
 
 logger = structlog.get_logger()
 

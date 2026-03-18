@@ -125,6 +125,8 @@ const PROVIDER_LABELS: Record<string, string> = {
   google: 'Google AI',
   mistral: 'Mistral',
   mock: 'Demo',
+  openrouter: 'OpenRouter',
+  minimax: 'Minimax',
 }
 
 /** Only show models that are currently available. */

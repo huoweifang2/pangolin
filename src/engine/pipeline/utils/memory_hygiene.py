@@ -95,7 +95,7 @@ def _truncate_messages(messages: list[dict], max_chars: int) -> list[dict]:
 
 async def _redact_pii_from_messages(messages: list[dict]) -> list[dict]:
     """Run Presidio on each user/assistant message and anonymise PII."""
-    from src.pipeline.nodes.presidio import PII_ENTITIES, get_analyzer, get_anonymizer
+    from src.engine.pipeline.nodes.presidio import PII_ENTITIES, get_analyzer, get_anonymizer
 
     try:
         analyzer = get_analyzer()
@@ -104,7 +104,7 @@ async def _redact_pii_from_messages(messages: list[dict]) -> list[dict]:
         logger.warning("memory_hygiene_presidio_unavailable")
         return messages
 
-    settings_mod = __import__("src.config", fromlist=["get_settings"])
+    settings_mod = __import__("src.engine.pipeline.config_shim", fromlist=["get_settings"])
     settings = settings_mod.get_settings()
 
     result: list[dict] = []
@@ -139,7 +139,7 @@ async def _redact_pii_from_messages(messages: list[dict]) -> list[dict]:
 
 def _redact_secrets_from_messages(messages: list[dict]) -> list[dict]:
     """Regex-replace secrets in all message contents."""
-    from src.pipeline.nodes.output_filter import SECRET_PATTERNS
+    from src.engine.pipeline.nodes.output_filter import SECRET_PATTERNS
 
     result: list[dict] = []
     for msg in messages:

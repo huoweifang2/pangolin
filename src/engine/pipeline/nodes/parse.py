@@ -6,8 +6,8 @@ import hashlib
 
 import structlog
 
-from src.pipeline.nodes import timed_node
-from src.pipeline.state import PipelineState
+from src.engine.pipeline.nodes import timed_node
+from src.engine.pipeline.state import PipelineState
 
 logger = structlog.get_logger()
 

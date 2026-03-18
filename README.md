@@ -1,173 +1,111 @@
 # Pangolin
 
-Pangolin is a gateway-first runtime for multi-agent operations.
+Pangolin is a full-stack, secure Multi-Agent Gateway and Firewall Runtime.
 
-This repository combines:
+It combines a **TypeScript connection gateway and operations frontend** with a powerful **Python-based ML Security Engine** (integrated from `ai-protector`). This repository serves as the definitive hub for building, securing, and operating multi-agent operations and MCP tools in production.
 
-- a TypeScript gateway and agent runtime,
-- channel and plugin integrations,
-- a Nuxt operations frontend (including MCP Firewall Ops views),
-- security and audit guardrails for production use.
+## 🛡️ Core Capabilities
 
-## Brand Theme
+Pangolin unifies two distinct planes of execution:
 
-Pangolin frontend theme is derived from the icon at `public/pangolin.svg`.
+### 1. Advanced ML Security Engine (Python)
+
+Ported directly from the industry-standard AI Protector, the Pangolin engine deeply sanitizes both raw LLM traffic and granular MCP tool execution:
+
+- **Proxy Firewall (5-Layer Pipeline)**: A LangGraph-powered evaluation pipeline (Static Rules → Semantic Intent → LLM Guard → Presidio PII Redaction → NeMo Guardrails). Native proxy endpoints (e.g., `openai_adapter.py`) ensure safe upstreams.
+- **Agent Runtime Gates**:
+  - **RBAC**: Strict role-based access control for individual MCP tools.
+  - **Budget & Limits**: Token, cost, and rate-limit tracking to prevent abuse.
+  - **Schema Validation**: Pydantic-powered tool argument validation and runtime injection sanitization.
+- **Native Interception**: All MCP `tools/call` events are intercepted upstream, parsed, and scrubbed through the engine before reaching the agent.
+
+### 2. Operations & Gateway (TypeScript)
+
+- **Channel & Plugin Integrations**: Seamlessly hook into Feishu, Slack, and other enterprise channels.
+- **MCP & Automation Skills**: Extensible skill catalog designed for rapid tool deployment.
+- **Nuxt Operations Frontend**: A rich dashboard (`apps/pangolin-frontend`) featuring real-time MCP Firewall streams and operations views.
+
+## 🎨 Brand Theme
+
+The Pangolin frontend theme is derived from the icon at `public/pangolin.svg`.
 
 - Brand anchor color: `#364548`
-- Frontend public asset: `apps/pangolin-frontend/public/pangolin.svg`
-- Theme implementation: Vuetify theme + global SCSS background system
+- The visual direction is earthy and security-focused: dark teal surfaces for dense operations views, sand accents for action highlights, and textured gradient backgrounds.
 
-The visual direction is earthy and security-focused, with:
+## 🏗️ Architecture Layout
 
-- dark teal surfaces for dense operations views,
-- sand accents for action highlights,
-- textured gradient backgrounds to improve depth without reducing readability.
-
-## Phase 6 Status (Repo Consolidation)
-
-Phase 6 is focused on capability retention and path cleanup.
-
-- Keep production capability in active runtime paths.
-- Remove legacy path coupling from docs and scripts.
-- Delete legacy directories only after measurable gates pass.
-
-Use these gates before any structural deletion:
-
-```bash
-pnpm phase6:audit:legacy
-pnpm phase6:audit:legacy:strict
+```text
+.
+├── apps/
+│   └── pangolin-frontend/   # Nuxt 3 Operations Dashboard & Firewall UI
+├── channel/                 # Channel integrations (e.g., Feishu)
+├── skills/                  # Automation skills and legacy MCP wiring
+├── src/
+│   ├── engine/              # (Python) ML Engine, LangGraph Pipeline, Interceptor, Agent Gates
+│   ├── proxy/               # (Python) OpenAI / SSE Adapters for LLM proxy traffic
+│   ├── gateway/             # (TypeScript) Core gateway and protocol handling
+│   └── security/            # (TypeScript) Audit utilities and dashboards
+├── package.json             # Node dependencies (pnpm)
+└── pyproject.toml           # Python dependencies (uv)
 ```
 
-## Core Architecture
+## 🚀 Quick Start
 
-### Runtime Core
+Pangolin requires both Node.js (`pnpm`) for the gateway/frontend and Python (`uv`) for the ML Security Engine.
 
-- Gateway server and protocol handling: `src/gateway/`
-- Agent runtime and policies: `src/agents/`
-- Channel adapters and plugin wiring: `src/channels/`, `channel/`
-- Security and audit utilities: `src/security/`
-- Skills catalog and automation skills: `skills/`
+### 1. Install Dependencies
 
-### Frontend
-
-- Pangolin frontend app: `apps/pangolin-frontend/`
-- MCP Firewall page entry: `apps/pangolin-frontend/app/pages/mcp-firewall.vue`
-- Firewall ops state model: `apps/pangolin-frontend/app/composables/useFirewallOpsConsole.ts`
-
-## Quick Start (Core-Only Baseline)
-
-1. Install dependencies.
+**TypeScript Gateway & Frontend:**
 
 ```bash
 pnpm install
 ```
 
-2. Run capability doctor.
+**Python Security Engine:**
 
 ```bash
-pnpm openclaw:doctor
+uv sync
 ```
 
-Note: the `openclaw:*` script prefix is currently retained for backward compatibility.
+### 2. Start the Stack
 
-3. One-click start the local stack.
+**Terminal A: Python ML Engine (Firewall & Proxy)**
+
+```bash
+uv run python src/main.py
+```
+
+_The engine typically listens on port `9090`. Health check: `curl http://127.0.0.1:9090/health`_
+
+**Terminal B: TypeScript Gateway / Frontend**
+You can use the multi-service dev command:
 
 ```bash
 pnpm pangolin:dev:all
 ```
 
-4. Or start services manually in two terminals.
+Or start them individually:
 
 ```bash
 pnpm gateway:dev
-```
-
-```bash
 pnpm pangolin:frontend:dev
 ```
 
-5. Open the app (Nuxt default):
+### 3. Access the Dashboard
 
-- http://localhost:3000
-- MCP Firewall page: http://localhost:3000/mcp-firewall
+- Operations Hub: http://localhost:3000
+- MCP Firewall Page: http://localhost:3000/mcp-firewall
 
-## Firewall Ops Console
+_(Ensure `NUXT_PUBLIC_FIREWALL_API_BASE=http://localhost:9090` is set so the frontend can stream live audit data from the Python Engine)._
 
-The frontend firewall ops console expects a firewall-compatible API base URL.
+## 🧪 Phase 6 Consolidation & Doctor
 
-- Environment variable: `NUXT_PUBLIC_FIREWALL_API_BASE`
-- Default: `http://localhost:9090`
-- Dashboard stream endpoint: `<base>/ws/dashboard`
+Phase 6 focuses on capability retention and removing legacy coupling:
 
-Example:
-
-```bash
-NUXT_PUBLIC_FIREWALL_API_BASE=http://127.0.0.1:9090 pnpm pangolin:frontend:dev
-```
-
-If the firewall API is unavailable, the page still renders but supplemental datasets and audit feeds will show connectivity errors.
-
-## Common Commands
-
-| Command                           | Purpose                                |
-| --------------------------------- | -------------------------------------- |
-| `pnpm gateway:dev`                | Start gateway in dev mode              |
-| `pnpm gateway:dev:reset`          | Start gateway and reset runtime state  |
-| `pnpm pangolin:dev:all`           | One-click start gateway + frontend     |
-| `pnpm pangolin:frontend:dev`      | Start Nuxt frontend                    |
-| `pnpm check`                      | Format check + type check + lint       |
-| `pnpm test`                       | Run test suite                         |
-| `pnpm openclaw:doctor`            | Validate core capability baseline      |
-| `pnpm phase6:audit:legacy`        | Report legacy path references          |
-| `pnpm phase6:audit:legacy:strict` | Fail when legacy path references exist |
-
-## Capability Doctor Results
-
-`pnpm openclaw:doctor` reports one of three states:
-
-- `CORE BROKEN`: required capability paths are missing.
-- `CORE-ONLY MODE`: core works; optional legacy surfaces are absent.
-- `FULL MODE`: both core and optional legacy surfaces are present.
-
-For the current consolidation stage, `CORE-ONLY MODE` is acceptable.
-
-## Repository Layout (Condensed)
-
-```text
-.
-├── agent-shield.mjs
-├── package.json
-├── apps/
-│   └── pangolin-frontend/
-├── channel/
-│   └── feishu/
-├── docs/
-├── scripts/
-├── skills/
-├── src/
-│   ├── agents/
-│   ├── channels/
-│   ├── gateway/
-│   └── security/
-└── test/
-```
-
-## Troubleshooting
-
-### `pnpm openclaw:doctor` fails
-
-- Fix missing required paths first.
-- Re-run with strict mode only after warnings are addressed.
-
-### Frontend shows no firewall supplement data
-
-- Confirm `NUXT_PUBLIC_FIREWALL_API_BASE` points to a live service.
-- Verify API health and WebSocket availability on that base URL.
-
-### Legacy path audit still reports references
-
-- Remove path literals in docs and script examples.
-- Re-run `pnpm phase6:audit:legacy` until counts reach zero.
+- Keep production capability in active runtime paths.
+- Run `pnpm openclaw:doctor` to validate the core capability baseline.
+- Expected state is `CORE-ONLY MODE` or `FULL MODE`.
+- Run audits via `pnpm phase6:audit:legacy` to ensure structural paths are fully migrated.
 
 ## License
 

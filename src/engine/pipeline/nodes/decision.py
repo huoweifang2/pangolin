@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from src.pipeline.nodes import timed_node
-from src.pipeline.state import PipelineState
+from src.engine.pipeline.nodes import timed_node
+from src.engine.pipeline.state import PipelineState
 
 
 def calculate_risk_score(state: PipelineState) -> float:

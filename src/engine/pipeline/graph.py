@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from langgraph.graph import END, StateGraph
 
-from src.pipeline.nodes.decision import decision_node
-from src.pipeline.nodes.intent import intent_node
-from src.pipeline.nodes.llm_call import llm_call_node
-from src.pipeline.nodes.logging_node import logging_node
-from src.pipeline.nodes.output_filter import output_filter_node
-from src.pipeline.nodes.parse import parse_node
-from src.pipeline.nodes.rules import rules_node
-from src.pipeline.nodes.scanners import parallel_scanners_node
-from src.pipeline.nodes.transform import transform_node
-from src.pipeline.state import PipelineState
+from src.engine.pipeline.nodes.decision import decision_node
+from src.engine.pipeline.nodes.intent import intent_node
+from src.engine.pipeline.nodes.llm_call import llm_call_node
+from src.engine.pipeline.nodes.logging_node import logging_node
+from src.engine.pipeline.nodes.output_filter import output_filter_node
+from src.engine.pipeline.nodes.parse import parse_node
+from src.engine.pipeline.nodes.rules import rules_node
+from src.engine.pipeline.nodes.scanners import parallel_scanners_node
+from src.engine.pipeline.nodes.transform import transform_node
+from src.engine.pipeline.state import PipelineState
 
 
 def route_after_decision(state: PipelineState) -> str:

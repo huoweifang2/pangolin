@@ -43,7 +43,7 @@ const navItems: NavItem[] = [
   { title: 'Compare', icon: 'mdi-compare', to: '/compare' },
   { title: 'Agent Demo', icon: 'mdi-robot', to: '/agent' },
   { title: 'Agent Traces', icon: 'mdi-chart-timeline-variant', to: '/agent-traces' },
-  { title: 'MCP Firewall', icon: 'mdi-shield-network-outline', to: '/mcp-firewall' },
+  { title: 'MCP Firewall', icon: 'mdi-server-security', to: '/mcp-firewall' },
   { title: 'Security Rules', icon: 'mdi-shield-lock-outline', to: '/rules' },
 ]
 

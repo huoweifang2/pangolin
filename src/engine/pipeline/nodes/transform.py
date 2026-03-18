@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import structlog
 
-from src.pipeline.nodes import timed_node
-from src.pipeline.nodes.presidio import mask_pii_in_messages
-from src.pipeline.state import PipelineState
+from src.engine.pipeline.nodes import timed_node
+from src.engine.pipeline.nodes.presidio import mask_pii_in_messages
+from src.engine.pipeline.state import PipelineState
 
 logger = structlog.get_logger()
 

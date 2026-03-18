@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from src.llm.client import llm_completion
-from src.pipeline.nodes import timed_node
-from src.pipeline.state import PipelineState
+from src.engine.pipeline.nodes import timed_node
+from src.engine.pipeline.state import PipelineState
 
 
 @timed_node("llm_call")

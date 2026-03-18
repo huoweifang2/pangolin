@@ -17,11 +17,11 @@ import re
 
 import structlog
 
-from src.config import get_settings
-from src.pipeline.nodes import timed_node
-from src.pipeline.nodes.presidio import get_analyzer, get_anonymizer
-from src.pipeline.state import PipelineState
-from src.pipeline.utils.memory_hygiene import sanitize_conversation
+from src.engine.pipeline.config_shim import get_settings
+from src.engine.pipeline.nodes import timed_node
+from src.engine.pipeline.nodes.presidio import get_analyzer, get_anonymizer
+from src.engine.pipeline.state import PipelineState
+from src.engine.pipeline.utils.memory_hygiene import sanitize_conversation
 
 # Output-specific PII entities — only truly sensitive data that would
 # indicate real data leakage.  General entities like PERSON, DATE_TIME,

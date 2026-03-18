@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from src.pipeline.nodes import timed_node
-from src.pipeline.state import PipelineState
-from src.services.denylist import DenylistHit, check_denylist
+from src.engine.pipeline.nodes import timed_node
+from src.engine.pipeline.state import PipelineState
+from src.engine.pipeline.utils.denylist import DenylistHit, check_denylist
 
 # ── Pattern lists (case-insensitive — caller must .lower() the text) ──
 

@@ -139,19 +139,29 @@ class OpenAIAdapter:
             logger.warning(f"BLOCKED (L1) request: {reason}")
             raise HTTPException(status_code=403, detail=f"Firewall Blocked: {reason}")
 
-        # 3. L2 Analysis (Semantic)
-        # Only run L2 if L1 didn't block (and if configured to do so)
-        # The SemanticAnalyzer handles the "should I run?" logic internally or via config checks usually.
-        l2_result = await self.semantic_analyzer.analyze(
-            method="chat/completions", params=user_content, session_context=[]
+        # 3. L2 Analysis (LangGraph 5-layer Pipeline)
+        from ..engine.pipeline.runner import run_pre_llm_pipeline
+        import uuid
+        
+        request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+        
+        pipeline_state = await run_pre_llm_pipeline(
+            request_id=request_id,
+            client_id="default_client",
+            policy_name="balanced",
+            model=body.get("model", "unknown"),
+            messages=messages,
+            temperature=body.get("temperature", 0.7),
+            max_tokens=body.get("max_tokens"),
+            stream=body.get("stream", False),
+            api_key=None
         )
 
-        # Map L2 threat level to a verdict
-        is_l2_blocked = l2_result.threat_level in (ThreatLevel.CRITICAL, ThreatLevel.HIGH)
+        is_pipeline_blocked = pipeline_state.get("decision") == "BLOCK"
 
-        if is_l2_blocked:
-            reason = f"Semantic Analysis: {l2_result.reasoning}"
-            logger.warning(f"BLOCKED (L2) request: {reason}")
+        if is_pipeline_blocked:
+            reason = f"Security Pipeline: {pipeline_state.get('blocked_reason', 'Blocked by Firewall Policy')}"
+            logger.warning(f"BLOCKED (Pipeline) request: {reason}")
             raise HTTPException(status_code=403, detail=f"Firewall Blocked: {reason}")
         # Build clean upstream headers — only forward safe headers to avoid
         # 400 errors from hop-by-hop or internal headers leaking through.
