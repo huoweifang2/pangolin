@@ -1,12 +1,13 @@
 export default defineEventHandler((event) => {
   const config = useRuntimeConfig()
 
-  const apiBase: string = (config.public.apiBase) || 'http://localhost:8000'
-  const agentBase: string = (config.public.agentApiBase) || 'http://localhost:8002'
+  const apiBase: string = (config.public.apiBase) || 'http://localhost:9090'
+  const agentBase: string = (config.public.agentApiBase) || 'http://localhost:9090'
 
   // Known external LLM provider APIs (for compare page direct calls)
   const providerApis = [
     'https://api.openai.com',
+    'https://openrouter.ai',
     'https://api.anthropic.com',
     'https://api.mistral.ai',
     'https://generativelanguage.googleapis.com',

@@ -102,7 +102,7 @@ class SkillRegistry:
     def __init__(self, skills_dir: str | Path | None = None) -> None:
         if skills_dir is None:
             # Default: <repo_root>/skills/
-            repo_root = Path(__file__).resolve().parent.parent.parent.parent
+            repo_root = Path(__file__).resolve().parent.parent
             skills_dir = repo_root / "skills"
         self._skills_dir = Path(skills_dir)
         self._skills: dict[str, SkillDef] = {}
@@ -261,7 +261,7 @@ class SkillRegistry:
         for s in self._ready_skills.values():
             if name_lower in s.name.lower() or name_lower in s.description.lower():
                 matches.append(s)
-        
+
         if matches:
             # If only one match, return it directly? Maybe risky if ambiguous.
             # Better to return a list of suggestions.
@@ -273,7 +273,7 @@ class SkillRegistry:
                     f"CLI binaries: {', '.join(s.required_bins)}\n\n"
                     f"{s.skill_md_content}"
                 )
-            
+
             # Multiple matches
             parts = [f"Skill '{skill_name}' not found. Did you mean one of these?"]
             for s in matches:

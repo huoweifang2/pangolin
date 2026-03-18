@@ -40,7 +40,7 @@ function mapApiError(error: AxiosError<ApiError>): AppError {
   }
 }
 
-const baseURL = import.meta.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8000'
+const baseURL = import.meta.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:9090'
 
 const api: AxiosInstance = axios.create({
   baseURL,

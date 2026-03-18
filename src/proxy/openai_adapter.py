@@ -161,8 +161,16 @@ class OpenAIAdapter:
             "content-type": "application/json",
             "accept": "application/json, text/event-stream",
         }
-        if self.api_key:
-            upstream_headers["Authorization"] = f"Bearer {self.api_key}"
+
+        request_api_key = request.headers.get("x-api-key", "").strip()
+        if not request_api_key:
+            auth_header = request.headers.get("authorization", "")
+            if auth_header.lower().startswith("bearer "):
+                request_api_key = auth_header[7:].strip()
+
+        effective_api_key = request_api_key or self.api_key
+        if effective_api_key:
+            upstream_headers["Authorization"] = f"Bearer {effective_api_key}"
 
         # Forward HTTP-Referer and X-Title if present (OpenRouter ranking)
         for h in ("http-referer", "x-title"):

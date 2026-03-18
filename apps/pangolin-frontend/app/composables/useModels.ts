@@ -2,8 +2,8 @@
  * Composable for fetching the model catalog and computing availability.
  *
  * Uses @tanstack/vue-query (client-side only) instead of Nuxt's useAsyncData
- * to avoid SSR issues — the frontend Docker container cannot reach the proxy
- * at localhost:8000 during server rendering.
+ * to avoid SSR issues and keep model selection resilient even when
+ * the backend does not expose /v1/models.
  *
  * Models for providers with a browser-stored API key (or ollama) are "available".
  * Others are hidden from dropdowns.
@@ -13,6 +13,28 @@ import { useQuery } from '@tanstack/vue-query'
 import { api } from '~/services/api'
 import type { ModelInfo, ModelsResponse } from '~/types/api'
 import { useApiKeys } from '~/composables/useApiKeys'
+
+const FALLBACK_MODELS: ModelInfo[] = [
+  { id: 'openrouter/auto', provider: 'openrouter', name: 'OpenRouter Auto' },
+  { id: 'openai/gpt-4o-mini', provider: 'openrouter', name: 'GPT-4o mini (via OpenRouter)' },
+  { id: 'anthropic/claude-3.7-sonnet', provider: 'openrouter', name: 'Claude 3.7 Sonnet (via OpenRouter)' },
+  { id: 'google/gemini-2.0-flash-001', provider: 'openrouter', name: 'Gemini 2.0 Flash (via OpenRouter)' },
+  { id: 'mistralai/mistral-small-3.1', provider: 'openrouter', name: 'Mistral Small 3.1 (via OpenRouter)' },
+  { id: 'ollama/llama3.2:3b', provider: 'ollama', name: 'Ollama Llama 3.2 3B' },
+]
+
+async function fetchModelCatalog(): Promise<ModelInfo[]> {
+  try {
+    const response = await api.get<ModelsResponse>('/v1/models')
+    const models = response.data?.models
+    if (Array.isArray(models) && models.length > 0) {
+      return models
+    }
+    return FALLBACK_MODELS
+  } catch {
+    return FALLBACK_MODELS
+  }
+}
 
 /**
  * Shared reactive trigger — lives inside a closure-safe getter so that
@@ -31,7 +53,7 @@ export function useModels() {
 
   const { data: rawModels, isLoading, error, refetch } = useQuery<ModelInfo[]>({
     queryKey: ['models-catalog'],
-    queryFn: () => api.get<ModelsResponse>('/v1/models').then((r) => r.data.models),
+    queryFn: fetchModelCatalog,
     staleTime: 0,
   })
 
@@ -46,7 +68,11 @@ export function useModels() {
     if (!rawModels.value) {return []}
     return rawModels.value.map((m) => ({
       ...m,
-      available: m.provider === 'ollama' || m.provider === 'mock' || hasKeyForProvider(m.provider),
+      available:
+        m.provider === 'ollama'
+        || m.provider === 'mock'
+        || m.provider === 'openrouter'
+        || hasKeyForProvider(m.provider),
     }))
   })
 

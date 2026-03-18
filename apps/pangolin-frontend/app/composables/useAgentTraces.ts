@@ -8,7 +8,7 @@ import type {
   AgentTraceFilters,
 } from '~/types/agentTrace'
 
-const baseURL = import.meta.env.NUXT_PUBLIC_AGENT_API_BASE ?? 'http://localhost:8002'
+const baseURL = import.meta.env.NUXT_PUBLIC_AGENT_API_BASE ?? 'http://localhost:9090'
 
 const agentTracesApi = axios.create({
   baseURL,

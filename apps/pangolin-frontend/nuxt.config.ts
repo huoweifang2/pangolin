@@ -66,10 +66,11 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBase: 'http://localhost:8000',
-      agentApiBase: 'http://localhost:8002',
+      apiBase: 'http://localhost:9090',
+      agentApiBase: 'http://localhost:9090',
       openaiApiBase: 'https://api.openai.com',
       mistralApiBase: 'https://api.mistral.ai',
+      openrouterApiBase: 'https://openrouter.ai/api',
     },
   },
 

@@ -115,7 +115,7 @@ const props = defineProps<{
 
 const showIntegration = ref(false)
 
-const apiBase = import.meta.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8000'
+const apiBase = import.meta.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:9090'
 
 /** True when the direct panel has at least one assistant message with content. */
 const hasDirectResponse = computed(() =>

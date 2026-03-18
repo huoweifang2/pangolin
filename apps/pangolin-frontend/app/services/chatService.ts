@@ -33,6 +33,7 @@ export function getProviderApiBases(): Record<string, string> {
   return {
     openai: (import.meta.env.NUXT_PUBLIC_OPENAI_API_BASE as string) ?? 'https://api.openai.com',
     mistral: (import.meta.env.NUXT_PUBLIC_MISTRAL_API_BASE as string) ?? 'https://api.mistral.ai',
+    openrouter: (import.meta.env.NUXT_PUBLIC_OPENROUTER_API_BASE as string) ?? 'https://openrouter.ai/api',
   }
 }
 
@@ -61,7 +62,7 @@ export async function streamChat(
   options: StreamOptions,
   callbacks: StreamCallbacks,
 ): Promise<Response> {
-  const baseURL = import.meta.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8000'
+  const baseURL = import.meta.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:9090'
 
   // Auto-inject x-api-key from browser storage if model requires an external provider
   const model = options.body.model ?? ''

@@ -32,6 +32,7 @@ import logging
 import mimetypes
 import os
 import re
+import socket
 import time
 import uuid
 from collections.abc import AsyncIterator
@@ -326,12 +327,22 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Register dataset and trace routes
+# Register dataset, trace and scenario routes
 from src.routes.dataset import router as dataset_router
 from src.routes.trace import router as trace_router
+from src.routes.scenarios import router as scenarios_router
+from src.routes.models import router as models_router
+from src.routes.policies import router as policies_router
+from src.routes.rules import router as rules_router
+from src.routes.analytics import router as analytics_router
 
 app.include_router(dataset_router)
 app.include_router(trace_router)
+app.include_router(scenarios_router)
+app.include_router(models_router)
+app.include_router(policies_router)
+app.include_router(rules_router)
+app.include_router(analytics_router)
 
 
 def _state(request: Request | None = None) -> AppState:
@@ -340,6 +351,10 @@ def _state(request: Request | None = None) -> AppState:
     if request is not None:
         return request.app.state.firewall  # type: ignore[no-any-return]
     raise RuntimeError("No request context")
+
+
+DEFAULT_GATEWAY_PORT = 19001
+LEGACY_GATEWAY_PORT = 18789
 
 
 def _build_gateway_config_candidates() -> list[Path]:
@@ -411,6 +426,26 @@ def _resolve_gateway_port(default_port: int) -> int:
         return default_port
 
 
+def _is_tcp_reachable(host: str, port: int, timeout_seconds: float = 0.2) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout_seconds):
+            return True
+    except OSError:
+        return False
+
+
+def _resolve_gateway_runtime_port(host: str, preferred_port: int) -> int:
+    candidates = [preferred_port, DEFAULT_GATEWAY_PORT, LEGACY_GATEWAY_PORT]
+    seen: set[int] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        if _is_tcp_reachable(host, candidate):
+            return candidate
+    return preferred_port
+
+
 def _read_gateway_info_from_local_config() -> dict[str, Any]:
     """Discover local gateway config and return parsed connection/auth metadata."""
 
@@ -428,7 +463,7 @@ def _read_gateway_info_from_local_config() -> dict[str, Any]:
             control_ui = gw.get("controlUi", {})
             result = {
                 "configured": True,
-                "port": gw.get("port", 18789),
+                "port": gw.get("port", DEFAULT_GATEWAY_PORT),
                 "bind": gw.get("bind", "loopback"),
                 "mode": gw.get("mode", "local"),
                 "token": auth.get("token"),
@@ -462,7 +497,7 @@ def _read_gateway_info_from_local_config() -> dict[str, Any]:
         result.setdefault("mode", "local")
         result.setdefault("allowedOrigins", [])
 
-    result["port"] = _resolve_gateway_port(int(result.get("port", 18789)))
+    result["port"] = _resolve_gateway_port(int(result.get("port", DEFAULT_GATEWAY_PORT)))
     return result
 
 
@@ -874,9 +909,13 @@ async def gateway_info() -> dict[str, Any]:
     if not discovered.get("configured"):
         return {"configured": False}
 
+    configured_port = int(discovered.get("port", DEFAULT_GATEWAY_PORT))
+    effective_port = _resolve_gateway_runtime_port("127.0.0.1", configured_port)
+
     result: dict[str, Any] = {
         "configured": True,
-        "port": discovered.get("port", 18789),
+        "port": effective_port,
+        "configuredPort": configured_port,
         "bind": discovered.get("bind", "loopback"),
         "mode": discovered.get("mode", "local"),
         "configPath": discovered.get("configPath"),
@@ -902,14 +941,15 @@ async def monitor_status() -> dict[str, Any]:
         "tokenValid": False,
         "pairingRequired": False,
         "message": "Gateway config not found",
-        "port": discovered.get("port", 18789),
+        "port": discovered.get("port", DEFAULT_GATEWAY_PORT),
         "bind": discovered.get("bind", "loopback"),
         "configPath": discovered.get("configPath"),
         "lastChecked": now_iso,
     }
 
     if discovered.get("configured"):
-        port = int(discovered.get("port", 18789))
+        configured_port = int(discovered.get("port", DEFAULT_GATEWAY_PORT))
+        port = _resolve_gateway_runtime_port("127.0.0.1", configured_port)
         bind_mode = str(discovered.get("bind", "loopback"))
         probe_host = (
             "127.0.0.1" if bind_mode in ("loopback", "localhost", "127.0.0.1") else "127.0.0.1"
@@ -929,6 +969,8 @@ async def monitor_status() -> dict[str, Any]:
                 "pairingRequired": probe.get("pairingRequired", False),
                 "message": probe.get("message", ""),
                 "wsUrl": ws_url,
+                "configuredPort": configured_port,
+                "effectivePort": port,
                 "protocol": probe.get("protocol"),
                 "role": probe.get("role"),
                 "hasToken": bool(discovered.get("token")),
@@ -1635,7 +1677,8 @@ def _get_gateway_auth() -> tuple[str, int, str]:
     """Resolve gateway host/port/auth secret from config + env overrides."""
     discovered = _read_gateway_info_from_local_config()
     host = "127.0.0.1"
-    port = int(discovered.get("port", 18789))
+    configured_port = int(discovered.get("port", DEFAULT_GATEWAY_PORT))
+    port = _resolve_gateway_runtime_port(host, configured_port)
     token = str(discovered.get("token") or "").strip()
     password = str(discovered.get("password") or "").strip()
     # /tools/invoke uses bearer auth. In password mode, bearer value is accepted
@@ -3426,8 +3469,16 @@ async def chat_send(request: Request):
                 "content-type": "application/json",
                 "accept": "application/json",
             }
-            if s.openai_adapter.api_key:
-                upstream_headers["Authorization"] = f"Bearer {s.openai_adapter.api_key}"
+
+            request_api_key = request.headers.get("x-api-key", "").strip()
+            if not request_api_key:
+                auth_header = request.headers.get("authorization", "")
+                if auth_header.lower().startswith("bearer "):
+                    request_api_key = auth_header[7:].strip()
+
+            effective_api_key = request_api_key or s.openai_adapter.api_key
+            if effective_api_key:
+                upstream_headers["Authorization"] = f"Bearer {effective_api_key}"
 
             gw_host, gw_port, gw_token = _get_gateway_auth()
 
