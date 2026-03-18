@@ -46,6 +46,7 @@ export function supportsDirectBrowserCall(provider: string): boolean {
 
 export interface StreamCallbacks {
   onToken: (token: string) => void
+  onToolCallDelta?: (toolCalls: unknown[]) => void
   onDone: () => void
   onError: (error: Error) => void
 }
@@ -133,6 +134,10 @@ export async function streamChat(
         const content = chunk.choices?.[0]?.delta?.content
         if (content) {
           callbacks.onToken(content)
+        }
+        const toolCalls = chunk.choices?.[0]?.delta?.tool_calls
+        if (toolCalls && callbacks.onToolCallDelta) {
+          callbacks.onToolCallDelta(toolCalls)
         }
       } catch {
         // Skip malformed chunks
@@ -227,6 +232,10 @@ export async function streamChatDirect(
         const content = chunk.choices?.[0]?.delta?.content
         if (content) {
           callbacks.onToken(content)
+        }
+        const toolCalls = chunk.choices?.[0]?.delta?.tool_calls
+        if (toolCalls && callbacks.onToolCallDelta) {
+          callbacks.onToolCallDelta(toolCalls)
         }
       } catch {
         // Skip malformed chunks

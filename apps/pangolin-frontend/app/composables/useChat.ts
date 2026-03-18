@@ -19,6 +19,7 @@ export const useChat = () => {
     model: '',          // auto-selected by playground once models load
     temperature: 0.7,
     maxTokens: null as number | null,
+    systemPrompt: '',
   })
 
   async function send(text: string) {
@@ -35,12 +36,17 @@ export const useChat = () => {
 
     const assistantIdx = messages.value.length - 1
 
+    const apiMessages = messages.value.slice(0, -1)
+    if (config.systemPrompt?.trim()) {
+      apiMessages.unshift({ role: 'system', content: config.systemPrompt.trim() })
+    }
+
     try {
       const response = await streamChat(
         {
           body: {
             model: config.model,
-            messages: messages.value.slice(0, -1), // All except empty placeholder
+            messages: apiMessages,
             temperature: config.temperature,
             max_tokens: config.maxTokens ?? undefined,
             stream: true,
@@ -55,6 +61,28 @@ export const useChat = () => {
             const assistantMessage = messages.value[assistantIdx]
             if (!assistantMessage) {return}
             assistantMessage.content = (assistantMessage.content ?? '') + token
+          },
+          onToolCallDelta: (toolCalls: unknown[]) => {
+            const assistantMessage = messages.value[assistantIdx]
+            if (!assistantMessage) {return}
+            if (!assistantMessage.tool_calls) {
+              assistantMessage.tool_calls = []
+            }
+            for (const delta of toolCalls) {
+              const idx = delta.index
+              if (!assistantMessage.tool_calls[idx]) {
+                assistantMessage.tool_calls[idx] = { 
+                  id: delta.id || '', 
+                  type: 'function', 
+                  function: { name: delta.function?.name || '', arguments: '' } 
+                }
+              } else if (delta.function?.name) {
+                assistantMessage.tool_calls[idx].function.name += delta.function.name
+              }
+              if (delta.function?.arguments) {
+                assistantMessage.tool_calls[idx].function.arguments += delta.function.arguments
+              }
+            }
           },
           onDone: () => {
             isStreaming.value = false

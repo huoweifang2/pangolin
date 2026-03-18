@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid class="playground-page pa-0">
+  <v-container fluid class="playground-page pt-4 px-0 pb-0">
     <!-- Scenario context bar -->
     <div v-if="activeScenario" class="scenario-bar">
       <div class="d-flex align-center ga-2 px-4 py-2">
@@ -45,6 +45,7 @@
           :messages="messages"
           :is-streaming="isStreaming"
           @open-scenarios="showScenarios = true"
+          @resend="handleManualSend"
         />
         <playground-chat-input
           ref="chatInputRef"
@@ -59,7 +60,11 @@
           :disabled="isStreaming"
           @update:config="Object.assign(config, $event)"
         />
-        <playground-debug-panel :decision="lastDecision" />
+        <playground-history-sidebar 
+          :current-messages="messages"
+          @load="loadHistory"
+          @new-chat="handleNewChat"
+        />
       </div>
     </div>
 
@@ -165,6 +170,14 @@ function handleAttackSend(prompt: string, scenario: ScenarioItem) {
 function handleManualSend(prompt: string) {
   activeScenario.value = null
   send(prompt)
+}
+
+function loadHistory(historyMsgs: import('~/types/api').ChatMessage[]) {
+  messages.value.splice(0, messages.value.length, ...JSON.parse(JSON.stringify(historyMsgs)))
+}
+
+function handleNewChat() {
+  _clear()
 }
 </script>
 

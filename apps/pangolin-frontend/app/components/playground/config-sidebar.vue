@@ -1,11 +1,28 @@
 <template>
   <v-card variant="flat" class="config-sidebar">
-    <v-card-title class="text-subtitle-1">
+    <v-card-title class="text-subtitle-1 d-flex align-center cursor-pointer" @click="expanded = !expanded" style="user-select: none;">
       <v-icon class="main-icon" start>mdi-cog</v-icon>
       Configuration
+      <v-spacer />
+      <v-icon>{{ expanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
     </v-card-title>
 
-    <v-card-text>
+    <v-expand-transition>
+      <div v-show="expanded">
+        <v-card-text class="pt-2">
+          <v-textarea
+            :model-value="config.systemPrompt"
+            :disabled="disabled"
+            label="System Prompt"
+            placeholder="You are a helpful assistant..."
+            variant="outlined"
+            density="compact"
+            rows="3"
+            auto-grow
+            hide-details
+            class="mb-4"
+            @update:model-value="updateField('systemPrompt', $event)"
+          />
       <v-select
         :model-value="config.policy"
         :items="policyItems"
@@ -52,19 +69,21 @@
         @update:model-value="updateField('temperature', $event)"
       />
 
-      <v-text-field
-        :model-value="config.maxTokens"
-        :disabled="disabled"
-        label="Max tokens"
-        placeholder="Default (model limit)"
-        type="number"
-        min="1"
-        variant="outlined"
-        density="compact"
-        hide-details
-        @update:model-value="updateField('maxTokens', $event ? Math.max(1, Number($event)) : null)"
-      />
-    </v-card-text>
+          <v-text-field
+            :model-value="config.maxTokens"
+            :disabled="disabled"
+            label="Max tokens"
+            placeholder="Default (model limit)"
+            type="number"
+            min="1"
+            variant="outlined"
+            density="compact"
+            hide-details
+            @update:model-value="updateField('maxTokens', $event ? Math.max(1, Number($event)) : null)"
+          />
+        </v-card-text>
+      </div>
+    </v-expand-transition>
   </v-card>
 </template>
 
@@ -80,6 +99,7 @@ interface Config {
   model: string
   temperature: number
   maxTokens: number | null
+  systemPrompt?: string
 }
 
 const props = defineProps<{
@@ -96,6 +116,8 @@ const { groupedModels, isLoading: modelsLoading } = useModels()
 const { isDemo } = useAppMode()
 
 const policyItems = computed(() => sortedPolicyItems(policies.value ?? []))
+
+const expanded = ref(true)
 
 const PROVIDER_LABELS: Record<string, string> = {
   openai: 'OpenAI',

@@ -80,17 +80,75 @@
     </div>
 
     <!-- ═══ REGULAR BUBBLE ═══ -->
-    <v-card
+    <div
       v-else
-      color="surface"
-      variant="flat"
-      class="chat-message__bubble"
+      class="d-flex flex-column"
+      :style="{ alignItems: message.role === 'user' ? 'flex-end' : 'flex-start', minWidth: 0, flex: 1 }"
     >
-      <v-card-text class="text-body-1 chat-message__content">
+      <v-card
+        color="surface"
+        variant="flat"
+        class="chat-message__bubble"
+      >
+      <v-card-text class="text-body-1 chat-message__content px-3 py-2">
         <!-- eslint-disable-next-line vue/no-v-html -- sanitized by DOMPurify -->
-        <div v-html="renderedRaw" />
+        <div v-if="renderedRaw" v-html="renderedRaw" />
+        
+        <!-- ═══ TOOL CALLS ═══ -->
+        <div v-if="message.tool_calls?.length" :class="{ 'mt-2': renderedRaw }">
+          <v-card
+            v-for="(tool, i) in message.tool_calls"
+            :key="i"
+            variant="tonal"
+            color="primary"
+            class="mb-2"
+            rounded="lg"
+          >
+            <v-card-title class="text-caption font-weight-bold d-flex align-center py-2 px-3">
+              <v-icon size="small" class="mr-2">mdi-wrench</v-icon>
+              {{ tool.function?.name || 'Tool Call' }}
+            </v-card-title>
+            <v-card-text class="px-3 pb-2 pt-0" v-if="tool.function?.arguments">
+              <v-expansion-panels variant="accordion" density="compact" class="bg-transparent" elevation="0">
+                <v-expansion-panel elevation="0" class="bg-transparent" style="background: transparent">
+                  <v-expansion-panel-title class="text-caption py-0 min-height-0 px-0 text-medium-emphasis" style="min-height: 28px">
+                    Raw Arguments
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text class="px-0 pb-0">
+                    <pre class="text-caption bg-surface-variant pa-2 rounded overflow-x-auto my-0" style="white-space: pre-wrap; word-break: break-all;">{{ tool.function.arguments }}</pre>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+            </v-card-text>
+          </v-card>
+        </div>
       </v-card-text>
     </v-card>
+    
+      <!-- ═══ ACTIONS ═══ -->
+      <div 
+        class="chat-message__actions d-flex ga-1 mt-1 px-1 text-medium-emphasis"
+        :style="{ flexDirection: message.role === 'user' ? 'row-reverse' : 'row' }"
+      >
+        <v-btn
+          v-if="message.role === 'user'"
+          icon="mdi-refresh"
+          size="x-small"
+          variant="text"
+          density="compact"
+          title="Resend"
+          @click="$emit('resend', message.content)"
+        />
+        <v-btn
+          icon="mdi-content-copy"
+          size="x-small"
+          variant="text"
+          density="compact"
+          title="Copy text"
+          @click="copyText(message.content)"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -108,6 +166,16 @@ import {
 import { renderMarkdown } from '~/utils/markdown'
 
 const props = defineProps<{ message: ChatMessage }>()
+defineEmits<{ 'resend': [text: string] }>()
+
+async function copyText(text: string | undefined) {
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch (e) {
+    console.error('Failed to copy', e)
+  }
+}
 
 // ── core state ──
 const decision = computed(() => props.message.decision ?? null)
@@ -206,7 +274,7 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
 .chat-message {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 
   &--user {
     flex-direction: row-reverse;
@@ -217,7 +285,7 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
   }
 
   &--verdict {
-    margin-bottom: 24px;
+    margin-bottom: 16px;
   }
 
   &__avatar {
@@ -225,14 +293,24 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
   }
 
   &__bubble {
-    max-width: 75%;
+    max-width: 100%;
     border-radius: 12px !important;
     background: rgb(var(--v-theme-surface)) !important;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
   }
+  
+  &__actions {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  &:hover &__actions {
+    opacity: 1;
+  }
 
   &__content {
     :deep(p) {
+      margin-top: 0;
       margin-bottom: 0.4em;
       &:last-child { margin-bottom: 0; }
     }
@@ -295,8 +373,8 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
 /* ═══ Verdict card ═══ */
 .verdict-card {
   max-width: 92%;
-  padding: 28px 28px 24px;
-  border-radius: 14px;
+  padding: 16px 20px;
+  border-radius: 12px;
   border-left: 4px solid transparent;
   background: rgb(var(--v-theme-surface));
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.06);
@@ -320,7 +398,7 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
 
   &__headline {
@@ -331,28 +409,28 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
   }
 
   &__word {
-    font-size: 1.35rem;
+    font-size: 1.15rem;
     font-weight: 800;
     letter-spacing: -0.01em;
     line-height: 1.2;
   }
 
   &__dash {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 400;
   }
 
   &__short-reason {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 400;
     line-height: 1.4;
   }
 
   &__explain {
-    margin: 0 0 20px;
+    margin: 0 0 12px;
     padding-left: 40px;
     font-size: 0.875rem;
-    line-height: 1.6;
+    line-height: 1.5;
     color: rgba(var(--v-theme-on-surface), 0.6);
   }
 
@@ -361,8 +439,8 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
     align-items: center;
     flex-wrap: wrap;
     gap: 16px;
-    margin-bottom: 20px;
-    padding: 10px 14px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
     background: rgba(var(--v-theme-on-surface), 0.04);
     border-radius: 8px;
   }
@@ -388,7 +466,7 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
   }
 
   &__section {
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
 
   &__section-title {

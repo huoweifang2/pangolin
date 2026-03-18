@@ -269,18 +269,80 @@ async def intercept_and_analyze(
     run_l2 = request.method in _HIGH_RISK_METHODS or l1_result.threat_level != ThreatLevel.NONE
 
     if run_l2 and l1_result.threat_level != ThreatLevel.CRITICAL:
-        l2_result = await semantic_analyzer.analyze(
-            method=request.method,
-            params=request.params,
-            session_context=session.messages,
+        import json
+        from .pipeline.runner import run_pre_llm_pipeline
+        
+        # Serialize params so the scanners (Presidio/NeMo) can inspect them
+        params_str = json.dumps(request.params) if isinstance(request.params, dict) else str(request.params)
+        
+        pipeline_state = await run_pre_llm_pipeline(
+            request_id=session.session_id,
+            client_id=session.agent_id,
+            policy_name="balanced",
+            model="intercepted_agent",
+            messages=[{"role": "user", "content": params_str}],
+            temperature=0.0,
+            max_tokens=None,
+            stream=False,
         )
+        
+        decision = pipeline_state.get("decision", "ALLOW")
+        l2_result.is_injection = decision == "BLOCK"
+        l2_result.confidence = pipeline_state.get("risk_score", 0.0)
+        l2_result.reasoning = pipeline_state.get("blocked_reason", "Pipeline blocked") if decision == "BLOCK" else "Clean"
+        
+        # Override l2_result threat level if blocked
+        if decision == "BLOCK":
+            l2_result.threat_level = ThreatLevel.HIGH
 
-    # ── Step 6: Agent-Scan Analysis (if tool call) ───────────────
+    # ── Step 6: Agent-Scan Analysis & Runtime Gates (if tool call) ──────
     agent_scan_result: AgentScanResult | None = None
-    if agent_scan_analyzer and request.method == "tools/call" and isinstance(request.params, dict):
+    if request.method == "tools/call" and isinstance(request.params, dict):
         tool_name = request.params.get("name")
+        args = request.params.get("arguments", {})
         if tool_name:
-            agent_scan_result = agent_scan_analyzer.get_tool_result(tool_name)
+            if agent_scan_analyzer:
+                agent_scan_result = agent_scan_analyzer.get_tool_result(tool_name)
+            
+            from ..models import Issue
+            from .agent.limits.config import get_limits_for_role
+            from .agent.limits.service import get_limits_service
+            from .agent.rbac.service import get_rbac_service
+            from .agent.validation.validator import validate_tool_args
+
+            # 1. RBAC Check
+            try:
+                rbac = get_rbac_service()
+                rbac_res = rbac.check_permission(role="customer", tool=tool_name, scope="read")
+                if not rbac_res.allowed:
+                    if not agent_scan_result:
+                        agent_scan_result = AgentScanResult()
+                    agent_scan_result.issues.append(Issue(code="E001", message=f"RBAC Denied: {rbac_res.reason}", severity="error"))
+            except Exception as e:
+                logger.warning(f"RBAC check failed: {e}")
+
+            # 2. Argument Validation
+            try:
+                val_res = validate_tool_args(tool_name, args)
+                if val_res["decision"] == "INVALID":
+                    if not agent_scan_result:
+                        agent_scan_result = AgentScanResult()
+                    agent_scan_result.issues.append(Issue(code="E002", message=f"Invalid args: {', '.join(val_res['errors'])}", severity="error"))
+                elif val_res["decision"] == "SANITIZED" and val_res["sanitized_args"]:
+                    request.params["arguments"] = val_res["sanitized_args"]
+            except Exception as e:
+                logger.warning(f"Validation check failed: {e}")
+
+            # 3. Limits / Budget
+            try:
+                limits = get_limits_service()
+                lim_res = limits.check_tool_limits(session.session_id, get_limits_for_role("customer"), request_tool_calls=1)
+                if not lim_res.allowed:
+                    if not agent_scan_result:
+                        agent_scan_result = AgentScanResult()
+                    agent_scan_result.issues.append(Issue(code="E003", message=f"Limit exceeded: {lim_res.message}", severity="error"))
+            except Exception as e:
+                logger.warning(f"Limits check failed: {e}")
 
     # ── Step 7: Policy Decision ──────────────────────────────────
     verdict, threat_level, reason = _compute_verdict(l1_result, l2_result, agent_scan_result)
