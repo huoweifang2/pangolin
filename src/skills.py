@@ -11,6 +11,7 @@ and provides:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import platform
@@ -20,9 +21,111 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    import yaml  # type: ignore[import-not-found]
+except Exception:
+    yaml = None
 
 logger = logging.getLogger("agent-firewall.skills")
+
+
+def _strip_quoted(value: str) -> str:
+    v = value.strip()
+    if len(v) >= 2 and ((v[0] == '"' and v[-1] == '"') or (v[0] == "'" and v[-1] == "'")):
+        return v[1:-1].strip()
+    return v
+
+
+def _extract_scalar(raw_frontmatter: str, key: str) -> str:
+    pattern = rf"(?m)^\s*{re.escape(key)}\s*:\s*(.+?)\s*$"
+    m = re.search(pattern, raw_frontmatter)
+    if not m:
+        return ""
+    return _strip_quoted(m.group(1))
+
+
+def _extract_metadata_inline_json(raw_frontmatter: str) -> dict[str, Any]:
+    m = re.search(r"(?m)^\s*metadata\s*:\s*(\{.*)$", raw_frontmatter)
+    if not m:
+        return {}
+    candidate = m.group(1).strip()
+    try:
+        return json.loads(candidate)
+    except Exception:
+        return {}
+
+
+def _extract_openclaw_metadata(raw_frontmatter: str) -> tuple[str, list[str], list[str]]:
+    inline = _extract_metadata_inline_json(raw_frontmatter)
+    openclaw_meta = (
+        inline.get("openclaw", {})
+        if isinstance(inline, dict) and isinstance(inline.get("openclaw", {}), dict)
+        else {}
+    )
+    emoji = _strip_quoted(str(openclaw_meta.get("emoji", ""))) if openclaw_meta else ""
+    os_list = (
+        [str(x) for x in openclaw_meta.get("os", []) if isinstance(x, str)]
+        if openclaw_meta
+        else []
+    )
+    required_bins = (
+        [str(x) for x in openclaw_meta.get("requires", {}).get("bins", []) if isinstance(x, str)]
+        if isinstance(openclaw_meta.get("requires", {}), dict)
+        else []
+    )
+
+    if not emoji:
+        emoji = _extract_scalar(raw_frontmatter, "emoji")
+
+    if not os_list:
+        os_match = re.search(r"(?ms)^\s*os\s*:\s*\[(.*?)\]\s*$", raw_frontmatter)
+        if os_match:
+            os_list = [
+                _strip_quoted(part)
+                for part in os_match.group(1).split(",")
+                if _strip_quoted(part)
+            ]
+
+    if not required_bins:
+        bins_match = re.search(r"(?ms)^\s*bins\s*:\s*\[(.*?)\]\s*$", raw_frontmatter)
+        if bins_match:
+            required_bins = [
+                _strip_quoted(part)
+                for part in bins_match.group(1).split(",")
+                if _strip_quoted(part)
+            ]
+
+    return emoji, os_list, required_bins
+
+
+def _parse_frontmatter(raw_frontmatter: str) -> dict[str, Any] | None:
+    if yaml is not None:
+        try:
+            parsed = yaml.safe_load(raw_frontmatter)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception as e:
+            logger.warning("Bad YAML frontmatter: %s", e)
+
+    name = _extract_scalar(raw_frontmatter, "name")
+    if not name:
+        return None
+    description = _extract_scalar(raw_frontmatter, "description")
+    homepage = _extract_scalar(raw_frontmatter, "homepage")
+    emoji, os_list, required_bins = _extract_openclaw_metadata(raw_frontmatter)
+
+    return {
+        "name": name,
+        "description": description,
+        "homepage": homepage,
+        "metadata": {
+            "openclaw": {
+                "emoji": emoji or "🔧",
+                "os": os_list,
+                "requires": {"bins": required_bins},
+            }
+        },
+    }
 
 
 @dataclass(frozen=True)
@@ -67,11 +170,7 @@ def _parse_skill_md(path: Path) -> SkillDef | None:
 
     fm_raw, body = fm_match.group(1), fm_match.group(2)
 
-    try:
-        fm = yaml.safe_load(fm_raw)
-    except Exception as e:
-        logger.warning("Bad YAML in %s: %s", path, e)
-        return None
+    fm = _parse_frontmatter(fm_raw)
 
     if not isinstance(fm, dict) or "name" not in fm:
         return None

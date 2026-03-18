@@ -51,7 +51,7 @@ export function detectProviderClient(model: string): string {
   if (m.startsWith('claude-')) {return 'anthropic'}
   if (m.startsWith('gemini/') || m.startsWith('gemini-')) {return 'google'}
   if (m.startsWith('mistral-') || m.startsWith('mistral/') || m.startsWith('codestral')) {return 'mistral'}
-  return 'ollama'
+  return 'openrouter'
 }
 
 /**
@@ -92,7 +92,6 @@ export function useApiKeys() {
 
   function getKeyForModel(model: string): string | null {
     const provider = detectProviderClient(model)
-    if (provider === 'ollama') {return null}
     return getKey(provider)
   }
 

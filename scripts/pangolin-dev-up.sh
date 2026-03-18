@@ -72,6 +72,25 @@ if [[ "$reset_gateway" -eq 1 ]]; then
 fi
 
 frontend_cmd=(pnpm pangolin:frontend:dev)
+python_bin="${PANGOLIN_PYTHON_BIN:-python3.11}"
+if ! command -v "$python_bin" >/dev/null 2>&1; then
+  python_bin="python3"
+fi
+backend_cmd=(".venv/bin/uvicorn" "src.main:app" "--host" "127.0.0.1" "--port" "9090")
+
+if [[ ! -x ".venv/bin/python" ]]; then
+  echo "[setup] python venv not found, creating .venv with ${python_bin}..."
+  "$python_bin" -m venv ".venv"
+fi
+
+if ! .venv/bin/python -c "import fastapi, uvicorn" >/dev/null 2>&1; then
+  echo "[setup] installing backend dependencies..."
+  .venv/bin/pip install -r requirements.txt
+fi
+
+echo "[start] ${backend_cmd[*]}"
+"${backend_cmd[@]}" &
+backend_pid=$!
 
 echo "[start] ${gateway_cmd[*]}"
 "${gateway_cmd[@]}" &
@@ -91,15 +110,20 @@ cleanup() {
   if kill -0 "$gateway_pid" >/dev/null 2>&1; then
     kill "$gateway_pid" >/dev/null 2>&1 || true
   fi
+  if kill -0 "$backend_pid" >/dev/null 2>&1; then
+    kill "$backend_pid" >/dev/null 2>&1 || true
+  fi
   wait "$frontend_pid" 2>/dev/null || true
   wait "$gateway_pid" 2>/dev/null || true
+  wait "$backend_pid" 2>/dev/null || true
 }
 
 trap cleanup INT TERM EXIT
 
 echo "[ready] Pangolin local stack is starting."
 echo "[ready] Frontend: http://localhost:3000"
-echo "[ready] Gateway:  http://localhost:9090"
+echo "[ready] Backend:  http://localhost:9090"
+echo "[ready] Gateway:  ws://127.0.0.1:19001"
 if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
   echo "[ready] OPENROUTER_API_KEY detected."
 else
@@ -110,6 +134,16 @@ stopped_service=""
 exit_code=0
 
 while true; do
+  if ! kill -0 "$backend_pid" >/dev/null 2>&1; then
+    stopped_service="backend"
+    if wait "$backend_pid"; then
+      exit_code=0
+    else
+      exit_code=$?
+    fi
+    break
+  fi
+
   if ! kill -0 "$gateway_pid" >/dev/null 2>&1; then
     stopped_service="gateway"
     if wait "$gateway_pid"; then

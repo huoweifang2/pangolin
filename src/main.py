@@ -1438,6 +1438,7 @@ async def list_mcp_tools(request: Request) -> JSONResponse:
         {"name": t.name, "description": t.description, "source": "gateway"}
         for t in gw_registry.tools.values()
     ]
+    custom_gateway_info = _build_custom_gateway_tools()
 
     # Skill tools info
     skill_registry = _get_skill_registry()
@@ -1451,12 +1452,30 @@ async def list_mcp_tools(request: Request) -> JSONResponse:
         }
         for s in skill_registry.ready_skills.values()
     ]
+    cfg = _load_custom_config()
+    custom_skills = cfg.get("skills", [])
+    if isinstance(custom_skills, list):
+        for item in custom_skills:
+            if not isinstance(item, dict):
+                continue
+            sid = str(item.get("id", "")).strip()
+            if not sid:
+                continue
+            skills_info.append(
+                {
+                    "name": sid,
+                    "description": str(item.get("description", "")).strip(),
+                    "emoji": "🧩",
+                    "bins": [],
+                    "source": "custom_skill",
+                }
+            )
 
     return JSONResponse(
         {
             "tools": tools,
             "count": len(tools),
-            "gateway_tools": gateway_info,
+            "gateway_tools": gateway_info + custom_gateway_info,
             "skills": skills_info,
         }
     )
@@ -1480,6 +1499,86 @@ def _load_custom_config() -> dict:
 def _save_custom_config(data: dict) -> None:
     """Persist custom config to JSON file."""
     _CUSTOM_CONFIG_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _normalize_custom_mcp_servers() -> dict[str, dict[str, Any]]:
+    cfg = _load_custom_config()
+    servers = cfg.get("mcp_servers", [])
+    normalized: dict[str, dict[str, Any]] = {}
+    if not isinstance(servers, list):
+        return normalized
+    for item in servers:
+        if not isinstance(item, dict):
+            continue
+        sid = str(item.get("id", "")).strip()
+        if not sid:
+            continue
+        normalized[sid] = {
+            "id": sid,
+            "name": str(item.get("name", sid)).strip() or sid,
+            "transport": str(item.get("transport", "streamable_http")).strip().lower()
+            or "streamable_http",
+            "url": str(item.get("url", "")).strip(),
+        }
+    return normalized
+
+
+def _build_custom_gateway_tools() -> list[dict[str, str]]:
+    servers = _normalize_custom_mcp_servers()
+    tools: list[dict[str, str]] = []
+    for server in servers.values():
+        name = server["id"]
+        transport = server["transport"]
+        endpoint = server["url"] or "(missing url)"
+        tools.append(
+            {
+                "name": name,
+                "description": (
+                    f"Custom MCP server {server['name']} via {transport}. "
+                    f"Use invoke_gateway(tool_name='{name}', arguments={{method, params}}). "
+                    f"Endpoint: {endpoint}"
+                ),
+                "source": "custom_mcp",
+            }
+        )
+    return tools
+
+
+async def _invoke_custom_mcp_server(server: dict[str, Any], arguments: dict[str, Any]) -> str:
+    transport = str(server.get("transport", "streamable_http")).strip().lower()
+    base_url = str(server.get("url", "")).strip()
+    if not base_url:
+        return "[Custom MCP error] Missing server url in custom config."
+
+    method = str(arguments.get("method", "tools/list")).strip() or "tools/list"
+    params = arguments.get("params", {})
+    if not isinstance(params, dict):
+        params = {}
+
+    if transport not in {"streamable_http", "http", "https"}:
+        return f"[Custom MCP error] Unsupported transport '{transport}'. Use streamable_http/http."
+
+    import httpx
+
+    payload = {
+        "jsonrpc": "2.0",
+        "id": str(uuid.uuid4()),
+        "method": method,
+        "params": params,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(base_url, json=payload, headers={"content-type": "application/json"})
+            if resp.status_code != 200:
+                return f"[Custom MCP HTTP {resp.status_code}] {resp.text[:500]}"
+            data = resp.json()
+            if isinstance(data, dict) and "error" in data:
+                err = data.get("error")
+                return f"[Custom MCP error] {json.dumps(err, ensure_ascii=False)[:500]}"
+            result = data.get("result") if isinstance(data, dict) else data
+            return json.dumps(result, ensure_ascii=False)[:4000]
+    except Exception as e:
+        return f"[Custom MCP exception] {e}"
 
 
 @app.get("/api/custom-config")
@@ -3598,81 +3697,122 @@ async def chat_send(request: Request):
             tool_calls_log: list[dict[str, Any]] = []
             max_iterations = 100
             max_retries = 4
+            mock_toolchain_mode = str(model).strip().lower() in {
+                "mock/toolchain",
+                "mock/tools",
+            }
 
             async with httpx.AsyncClient(
                 timeout=httpx.Timeout(connect=15.0, read=120.0, write=30.0, pool=30.0),
                 limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
             ) as client:
                 for iteration in range(max_iterations):
-                    # Retry loop: fetch + parse as one atomic unit
                     resp = None
                     resp_json = None
-                    for attempt in range(max_retries):
-                        try:
-                            resp = await client.post(
-                                upstream_url, headers=upstream_headers, json=chat_body
-                            )
-                            if resp.status_code == 429 or resp.status_code >= 502:
+                    if mock_toolchain_mode:
+                        if iteration == 0:
+                            mock_gateway_tool = tool_names[0] if tool_names else "web_search"
+                            resp_json = {
+                                "choices": [
+                                    {
+                                        "message": {
+                                            "role": "assistant",
+                                            "content": None,
+                                            "tool_calls": [
+                                                {
+                                                    "id": f"call_{uuid.uuid4().hex[:8]}",
+                                                    "function": {
+                                                        "name": "get_skill_docs",
+                                                        "arguments": json.dumps(
+                                                            {"skill_name": "weather"},
+                                                            ensure_ascii=False,
+                                                        ),
+                                                    },
+                                                },
+                                                {
+                                                    "id": f"call_{uuid.uuid4().hex[:8]}",
+                                                    "function": {
+                                                        "name": "invoke_gateway",
+                                                        "arguments": json.dumps(
+                                                            {
+                                                                "tool_name": mock_gateway_tool,
+                                                                "arguments": {
+                                                                    "method": "tools/list",
+                                                                    "params": {},
+                                                                },
+                                                            },
+                                                            ensure_ascii=False,
+                                                        ),
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                        "finish_reason": "tool_calls",
+                                    }
+                                ]
+                            }
+                        else:
+                            resp_json = {
+                                "choices": [
+                                    {
+                                        "message": {
+                                            "role": "assistant",
+                                            "content": "Mock toolchain mode complete. Skills and MCP gateway tool were invoked.",
+                                        },
+                                        "finish_reason": "stop",
+                                    }
+                                ]
+                            }
+                    else:
+                        for attempt in range(max_retries):
+                            try:
+                                resp = await client.post(
+                                    upstream_url, headers=upstream_headers, json=chat_body
+                                )
+                                if resp.status_code == 429 or resp.status_code >= 502:
+                                    wait = (2**attempt) + 0.5
+                                    logger.warning(
+                                        "Upstream %d on attempt %d/%d, retrying in %.1fs",
+                                        resp.status_code,
+                                        attempt + 1,
+                                        max_retries,
+                                        wait,
+                                    )
+                                    await asyncio.sleep(wait)
+                                    continue
+                                if resp.status_code == 200:
+                                    resp_json = resp.json()
+                                break
+                            except (
+                                httpx.RemoteProtocolError,
+                                httpx.ReadError,
+                                httpx.ReadTimeout,
+                                httpx.ConnectError,
+                                httpx.ConnectTimeout,
+                            ) as exc:
                                 wait = (2**attempt) + 0.5
                                 logger.warning(
-                                    "Upstream %d on attempt %d/%d, retrying in %.1fs",
-                                    resp.status_code,
+                                    "Upstream connection error on attempt %d/%d: %s, retrying in %.1fs",
                                     attempt + 1,
                                     max_retries,
+                                    exc,
                                     wait,
                                 )
-                                await asyncio.sleep(wait)
-                                continue
-                            if resp.status_code == 200:
-                                resp_json = resp.json()
-                            break  # success or non-retryable error
-                        except (
-                            httpx.RemoteProtocolError,
-                            httpx.ReadError,
-                            httpx.ReadTimeout,
-                            httpx.ConnectError,
-                            httpx.ConnectTimeout,
-                        ) as exc:
-                            wait = (2**attempt) + 0.5
-                            logger.warning(
-                                "Upstream connection error on attempt %d/%d: %s, retrying in %.1fs",
-                                attempt + 1,
-                                max_retries,
-                                exc,
-                                wait,
-                            )
-                            if attempt < max_retries - 1:
-                                await asyncio.sleep(wait)
-                            else:
-                                raise
+                                if attempt < max_retries - 1:
+                                    await asyncio.sleep(wait)
+                                else:
+                                    raise
 
-                    if resp is None or resp.status_code != 200:
-                        # Fallback for 401/403 in test environment
+                    if mock_toolchain_mode:
+                        pass
+                    elif resp is None or resp.status_code != 200:
                         if resp and resp.status_code in (401, 403):
                             logger.warning(f"Upstream auth failed ({resp.status_code}).")
-                            # Try to parse error details
                             try:
                                 error_json = resp.json()
                                 error_msg = error_json.get("error", {}).get("message", resp.text)
-                            except:
+                            except Exception:
                                 error_msg = resp.text
-
-                            # If it's the "No cookie auth credentials found" error, it means we hit the Agent Shield Gateway
-                            # but didn't provide credentials. In this dev environment, we can try to fallback to a direct
-                            # OpenRouter call if the user INTENDED to just use LLM directly, OR we can mock the response
-                            # to show the user the firewall flow is working (which is what we did before).
-
-                            # But wait, if the user provided AF_L2_API_KEY, maybe they wanted to use THAT as the auth?
-                            # The issue is that OpenAIAdapter uses `api_key` for `Authorization: Bearer <key>`.
-                            # If upstream is Agent Shield Gateway, it expects a cookie or token.
-                            # If upstream is OpenRouter, it expects Bearer token.
-
-                            # If the user configured AF_L2_MODEL_ENDPOINT=https://openrouter.ai/..., then upstream_url
-                            # should be pointing to OpenRouter, not 127.0.0.1:18789.
-                            # However, `s.openai_adapter` is initialized with `config.l2_model_endpoint` derived URL.
-
-                            # Let's check if we can recover by forcing a direct OpenRouter call if we have a key.
-                            # (This is a "smart" fix for the user's likely intent).
 
                             if (
                                 s.openai_adapter.api_key
@@ -3681,34 +3821,28 @@ async def chat_send(request: Request):
                                 logger.info(
                                     "Attempting fallback to direct OpenRouter call since gateway failed."
                                 )
-                                # We need to create a new client or request to OpenRouter directly
                                 try:
                                     direct_url = "https://openrouter.ai/api/v1/chat/completions"
                                     direct_headers = {
                                         "Authorization": f"Bearer {s.openai_adapter.api_key}",
                                         "Content-Type": "application/json",
                                     }
-                                    # Use the same chat_body
                                     direct_resp = await client.post(
                                         direct_url, headers=direct_headers, json=chat_body
                                     )
                                     if direct_resp.status_code == 200:
                                         resp = direct_resp
                                         resp_json = direct_resp.json()
-                                        # Proceed as if original request succeeded
                                     else:
-                                        # Fallback failed too
                                         logger.warning(
                                             f"Direct fallback failed: {direct_resp.status_code}"
                                         )
                                 except Exception as e:
                                     logger.warning(f"Direct fallback exception: {e}")
 
-                            # If recovery succeeded (resp_json is set), continue loop
                             if resp_json:
                                 break
 
-                            # Otherwise show the informative error/mock
                             yield _emit(
                                 {
                                     "type": "content",
@@ -3864,15 +3998,22 @@ async def chat_send(request: Request):
                                         try:
                                             gw_arguments = json.loads(gw_arguments)
                                         except Exception:
-                                            # If not valid JSON, treat as dict with 'arguments' key if possible, or fail
                                             pass
+                                    if not isinstance(gw_arguments, dict):
+                                        gw_arguments = {}
 
                                     logger.info(
                                         "invoke_gateway: %s args=%s",
                                         gw_tool_name,
                                         json.dumps(gw_arguments, ensure_ascii=False)[:200],
                                     )
-                                    if gw_tool_name == "web_search":
+                                    custom_servers = _normalize_custom_mcp_servers()
+                                    custom_server = custom_servers.get(str(gw_tool_name))
+                                    if custom_server:
+                                        tool_result = await _invoke_custom_mcp_server(
+                                            custom_server, gw_arguments
+                                        )
+                                    elif gw_tool_name == "web_search":
                                         search_query = gw_arguments.get("query", "")
                                         search_count = gw_arguments.get("count", 5)
                                         tool_result = await _tavily_web_search(

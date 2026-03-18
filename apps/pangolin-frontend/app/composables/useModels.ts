@@ -5,8 +5,8 @@
  * to avoid SSR issues and keep model selection resilient even when
  * the backend does not expose /v1/models.
  *
- * Models for providers with a browser-stored API key (or ollama) are "available".
- * Others are hidden from dropdowns.
+ * Models for providers with a browser-stored API key are "available".
+ * Built-in providers like openrouter/demo are always available.
  */
 import { computed, ref, type Ref } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
@@ -20,7 +20,6 @@ const FALLBACK_MODELS: ModelInfo[] = [
   { id: 'anthropic/claude-3.7-sonnet', provider: 'openrouter', name: 'Claude 3.7 Sonnet (via OpenRouter)' },
   { id: 'google/gemini-2.0-flash-001', provider: 'openrouter', name: 'Gemini 2.0 Flash (via OpenRouter)' },
   { id: 'mistralai/mistral-small-3.1', provider: 'openrouter', name: 'Mistral Small 3.1 (via OpenRouter)' },
-  { id: 'ollama/llama3.2:3b', provider: 'ollama', name: 'Ollama Llama 3.2 3B' },
 ]
 
 async function fetchModelCatalog(): Promise<ModelInfo[]> {
@@ -69,14 +68,13 @@ export function useModels() {
     return rawModels.value.map((m) => ({
       ...m,
       available:
-        m.provider === 'ollama'
-        || m.provider === 'mock'
+        m.provider === 'mock'
         || m.provider === 'openrouter'
         || hasKeyForProvider(m.provider),
     }))
   })
 
-  /** Only models for providers that have a key (or ollama). */
+  /** Only models that are currently available to use. */
   const availableModels = computed<ModelInfo[]>(() =>
     groupedModels.value.filter((m) => m.available),
   )

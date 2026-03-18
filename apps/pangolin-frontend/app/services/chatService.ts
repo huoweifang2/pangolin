@@ -69,7 +69,7 @@ export async function streamChat(
   const apiKeyHeaders: Record<string, string> = {}
   if (model) {
     const provider = detectProviderClient(model)
-    if (provider !== 'ollama') {
+    if (provider !== 'mock') {
       const key = getKey(provider)
       if (key) {
         apiKeyHeaders['x-api-key'] = key

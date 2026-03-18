@@ -246,10 +246,10 @@ export interface IntentCount {
 
 // ─── Models catalog ───
 export interface ModelInfo {
-  id: string        // "gpt-4o" or "ollama/llama3.1:8b"
-  provider: string  // "openai", "anthropic", "google", "mistral", "ollama"
-  name: string      // "GPT-4o", "Llama 3.1 8B"
-  available?: boolean  // Set client-side: true if provider has a key or is ollama
+  id: string        // "gpt-4o" or "openrouter/auto"
+  provider: string  // "openrouter", "openai", "anthropic", "google", "mistral", "mock"
+  name: string      // "GPT-4o", "OpenRouter Auto"
+  available?: boolean  // Set client-side based on provider key / built-in availability
 }
 
 export interface ModelsResponse {

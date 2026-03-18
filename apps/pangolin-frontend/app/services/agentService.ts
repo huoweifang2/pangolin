@@ -2,6 +2,19 @@ import type { AgentChatRequest, AgentChatResponse } from '~/types/agent'
 import { detectProviderClient, getKey } from '~/composables/useApiKeys'
 
 const baseURL = import.meta.env.NUXT_PUBLIC_AGENT_API_BASE ?? 'http://localhost:9090'
+const MCP_TOOL_CACHE_TTL_MS = 30_000
+
+interface ExternalGatewayTool {
+  name: string
+  description: string
+}
+
+interface MCPToolsResponse {
+  gateway_tools?: ExternalGatewayTool[]
+}
+
+let cachedExternalTools: ExternalGatewayTool[] = []
+let cachedExternalToolsAt = 0
 
 interface StreamAnalysis {
   verdict?: string
@@ -84,6 +97,32 @@ async function parseNdjsonStream(response: Response): Promise<ParsedStream> {
   return { text, tools, analysis, streamError }
 }
 
+async function resolveExternalTools(): Promise<ExternalGatewayTool[]> {
+  const now = Date.now()
+  if (now - cachedExternalToolsAt < MCP_TOOL_CACHE_TTL_MS) {
+    return cachedExternalTools
+  }
+
+  try {
+    const resp = await fetch(`${baseURL}/api/mcp/tools`)
+    if (!resp.ok) {
+      cachedExternalTools = []
+      cachedExternalToolsAt = now
+      return cachedExternalTools
+    }
+    const payload = await resp.json() as MCPToolsResponse
+    const externalTools = Array.isArray(payload.gateway_tools) ? payload.gateway_tools : []
+    cachedExternalTools = externalTools
+    cachedExternalToolsAt = now
+    return externalTools
+  }
+  catch {
+    cachedExternalTools = []
+    cachedExternalToolsAt = now
+    return cachedExternalTools
+  }
+}
+
 export const agentService = {
   async chat(request: AgentChatRequest): Promise<AgentChatResponse> {
     const startedAt = Date.now()
@@ -92,7 +131,7 @@ export const agentService = {
     // Inject API key for external providers
     if (request.model) {
       const provider = detectProviderClient(request.model)
-      if (provider !== 'ollama') {
+      if (provider !== 'mock') {
         const apiKey = getKey(provider)
         if (apiKey) {
           headers['x-api-key'] = apiKey
@@ -103,6 +142,8 @@ export const agentService = {
     headers['x-correlation-id'] = crypto.randomUUID()
     headers['Content-Type'] = 'application/json'
 
+    const externalTools = await resolveExternalTools()
+
     const response = await fetch(`${baseURL}/api/chat/send`, {
       method: 'POST',
       headers,
@@ -110,6 +151,7 @@ export const agentService = {
         messages: [{ role: 'user', content: request.message }],
         model: request.model || 'openrouter/auto',
         enable_tools: true,
+        external_tools: externalTools,
       }),
     })
 
