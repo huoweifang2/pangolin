@@ -8,7 +8,7 @@ provideFirewallOpsConsole(firewallOpsConsole)
 </script>
 
 <template>
-  <v-container fluid class="transparent-page">
+  <v-container fluid class="transparent-page min-h-screen">
     <mcp-firewall-ops-header />
     <mcp-firewall-status-alerts />
     <mcp-firewall-metrics-overview />
@@ -20,3 +20,9 @@ provideFirewallOpsConsole(firewallOpsConsole)
     <mcp-firewall-custom-config-grid />
   </v-container>
 </template>
+
+<style scoped>
+.min-h-screen {
+  min-height: calc(100vh - 64px);
+}
+</style>
