@@ -5,9 +5,13 @@ import type {
   FirewallAuditEntry,
   FirewallDashboardEvent,
   FirewallDataset,
+  FirewallGatewayInfoResponse,
+  FirewallGatewayToolSummary,
   FirewallMcpServer,
   FirewallMcpServerInput,
+  FirewallMonitorGatewayStatus,
   FirewallSkill,
+  FirewallSkillSummary,
   FirewallSkillInput,
   FirewallTrace,
 } from '../types/firewallSupplement'
@@ -101,6 +105,12 @@ export function useFirewallOpsConsole() {
   const datasets = ref<FirewallDataset[]>([])
   const skills = ref<FirewallSkill[]>([])
   const mcpServers = ref<FirewallMcpServer[]>([])
+  const gatewayInfo = ref<FirewallGatewayInfoResponse | null>(null)
+  const gatewayMonitor = ref<FirewallMonitorGatewayStatus | null>(null)
+  const gatewayToolsCatalog = ref<FirewallGatewayToolSummary[]>([])
+  const gatewaySkillsCatalog = ref<FirewallSkillSummary[]>([])
+  const gatewayManagementError = ref<string | null>(null)
+  const gatewayRefreshLoading = ref(false)
 
   const dashboardConnected = ref(false)
   const dashboardError = ref<string | null>(null)
@@ -190,6 +200,27 @@ export function useFirewallOpsConsole() {
   const totalDatasets = computed(() => datasets.value.length)
   const totalSkills = computed(() => skills.value.length)
   const totalServers = computed(() => mcpServers.value.length)
+  const totalGatewayCatalogTools = computed(() => gatewayToolsCatalog.value.length)
+  const totalGatewayCatalogSkills = computed(() => gatewaySkillsCatalog.value.length)
+  const gatewayConfigured = computed(() => Boolean(gatewayInfo.value?.configured || gatewayMonitor.value?.configured))
+  const gatewayEffectivePort = computed(() => {
+    return gatewayMonitor.value?.effectivePort
+      ?? gatewayInfo.value?.port
+      ?? gatewayInfo.value?.configuredPort
+      ?? gatewayMonitor.value?.configuredPort
+      ?? null
+  })
+  const gatewayWsEndpoint = computed(() => cleanText(gatewayMonitor.value?.wsUrl))
+  const gatewayMonitorStatus = computed(() => {
+    if (gatewayMonitor.value?.status) {
+      return gatewayMonitor.value.status
+    }
+    if (gatewayConfigured.value) {
+      return 'configured'
+    }
+    return 'not_configured'
+  })
+  const gatewayMonitorMessage = computed(() => cleanText(gatewayMonitor.value?.message))
   const dashboardEventCount = computed(() => dashboardEvents.value.length)
   const normalizedDashboardQuery = computed(() => dashboardQuery.value.trim().toLowerCase())
   const hasActiveDashboardFilters = computed(() => {
@@ -553,6 +584,48 @@ export function useFirewallOpsConsole() {
         return 'blue'
       default:
         return 'grey'
+    }
+  }
+
+  function gatewayStatusColor(status?: string): string {
+    switch ((status ?? '').toLowerCase()) {
+      case 'ok':
+        return 'success'
+      case 'pairing_required':
+      case 'timeout':
+        return 'warning'
+      case 'not_configured':
+      case 'missing_token':
+        return 'grey'
+      case 'invalid_token':
+      case 'rejected':
+      case 'unreachable':
+        return 'error'
+      default:
+        return gatewayConfigured.value ? 'primary' : 'grey'
+    }
+  }
+
+  function gatewayStatusLabel(status?: string): string {
+    switch ((status ?? '').toLowerCase()) {
+      case 'ok':
+        return 'Connected'
+      case 'pairing_required':
+        return 'Pairing Required'
+      case 'missing_token':
+        return 'Missing Token'
+      case 'invalid_token':
+        return 'Invalid Token'
+      case 'rejected':
+        return 'Rejected'
+      case 'unreachable':
+        return 'Unreachable'
+      case 'timeout':
+        return 'Timeout'
+      case 'not_configured':
+        return 'Not Configured'
+      default:
+        return status ? status.toUpperCase() : 'Unknown'
     }
   }
 
@@ -1853,11 +1926,38 @@ export function useFirewallOpsConsole() {
     void sendDashboardAction(action, requestId)
   }
 
+  async function refreshGatewayManagement(): Promise<void> {
+    gatewayRefreshLoading.value = true
+    gatewayManagementError.value = null
+
+    try {
+      const [gateway, monitor, toolsCatalog] = await Promise.all([
+        firewallSupplementService.getGatewayInfo(),
+        firewallSupplementService.getMonitorStatus(),
+        firewallSupplementService.getMcpToolsCatalog(),
+      ])
+
+      gatewayInfo.value = gateway
+      gatewayMonitor.value = monitor.gateway ?? null
+      gatewayToolsCatalog.value = toolsCatalog.gateway_tools ?? []
+      gatewaySkillsCatalog.value = toolsCatalog.skills ?? []
+    } catch (error) {
+      gatewayInfo.value = null
+      gatewayMonitor.value = null
+      gatewayToolsCatalog.value = []
+      gatewaySkillsCatalog.value = []
+      gatewayManagementError.value = toErrorMessage(error)
+    } finally {
+      gatewayRefreshLoading.value = false
+    }
+  }
+
   async function refresh(): Promise<void> {
     loading.value = true
     errorMessage.value = null
 
     try {
+      const gatewayRefreshTask = refreshGatewayManagement()
       const [audit, traceList, datasetList, customConfig] = await Promise.all([
         firewallSupplementService.getAudit(25),
         firewallSupplementService.getTraces(25),
@@ -1870,6 +1970,7 @@ export function useFirewallOpsConsole() {
       datasets.value = datasetList.datasets ?? []
       skills.value = customConfig.skills ?? []
       mcpServers.value = customConfig.mcp_servers ?? []
+      await gatewayRefreshTask
       lastUpdated.value = new Date()
     } catch (error) {
       errorMessage.value = toErrorMessage(error)
@@ -2003,6 +2104,12 @@ export function useFirewallOpsConsole() {
     datasets,
     skills,
     mcpServers,
+    gatewayInfo,
+    gatewayMonitor,
+    gatewayToolsCatalog,
+    gatewaySkillsCatalog,
+    gatewayManagementError,
+    gatewayRefreshLoading,
     dashboardConnected,
     dashboardError,
     dashboardEvents,
@@ -2044,6 +2151,13 @@ export function useFirewallOpsConsole() {
     totalDatasets,
     totalSkills,
     totalServers,
+    totalGatewayCatalogTools,
+    totalGatewayCatalogSkills,
+    gatewayConfigured,
+    gatewayEffectivePort,
+    gatewayWsEndpoint,
+    gatewayMonitorStatus,
+    gatewayMonitorMessage,
     dashboardEventCount,
     visibleDashboardEventCount,
     recentDashboardEvents,
@@ -2075,6 +2189,8 @@ export function useFirewallOpsConsole() {
     canUpdateSelectedDashboardPreset,
     verdictColor,
     threatColor,
+    gatewayStatusColor,
+    gatewayStatusLabel,
     formatTimestamp,
     formatDurationSeconds,
     escalationAgeLabel,
@@ -2126,6 +2242,7 @@ export function useFirewallOpsConsole() {
     acknowledgeVisibleEscalationsByThreat,
     onHumanAction,
     refresh,
+    refreshGatewayManagement,
     addSkill,
     removeSkill,
     addMcpServer,

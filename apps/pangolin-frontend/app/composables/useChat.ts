@@ -1,10 +1,42 @@
 import { ref, reactive } from 'vue'
 import {
-  streamChat,
-  extractPipelineDecision,
+  streamPlaygroundChat,
   extractBlockDecision,
 } from '~/services/chatService'
-import type { ChatMessage, PipelineDecision, ApiError } from '~/types/api'
+import type {
+  ChatMessage,
+  PipelineDecision,
+  ApiError,
+  ChatAnalysis,
+} from '~/types/api'
+
+function normalizeDecision(verdict: string | undefined): PipelineDecision['decision'] {
+  if (verdict === 'ALLOW') {
+    return 'ALLOW'
+  }
+  if (verdict === 'MODIFY') {
+    return 'MODIFY'
+  }
+  return 'BLOCK'
+}
+
+function analysisToDecision(analysis: ChatAnalysis): PipelineDecision {
+  const riskFlags: Record<string, unknown> = {}
+  for (const pattern of analysis.l1_patterns ?? []) {
+    riskFlags[pattern] = 1
+  }
+  if (analysis.l2_is_injection) {
+    riskFlags.l2_injection = analysis.l2_confidence
+  }
+
+  return {
+    decision: normalizeDecision(analysis.verdict),
+    intent: analysis.threat_level ?? 'unknown',
+    riskScore: Math.max(0, Math.min(1, analysis.l2_confidence ?? 0)),
+    riskFlags,
+    blockedReason: analysis.blocked_reason || undefined,
+  }
+}
 
 export const useChat = () => {
   const messages = ref<ChatMessage[]>([])
@@ -25,8 +57,6 @@ export const useChat = () => {
   async function send(text: string) {
     // Push user message
     messages.value.push({ role: 'user', content: text })
-    // Push empty assistant placeholder for streaming
-    messages.value.push({ role: 'assistant', content: '' })
 
     isStreaming.value = true
     error.value = null
@@ -34,22 +64,35 @@ export const useChat = () => {
 
     abortController = new AbortController()
 
-    const assistantIdx = messages.value.length - 1
+    const apiMessages = messages.value
+      .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+      .map((msg) => ({ role: msg.role, content: msg.content }))
 
-    const apiMessages = messages.value.slice(0, -1)
     if (config.systemPrompt?.trim()) {
       apiMessages.unshift({ role: 'system', content: config.systemPrompt.trim() })
     }
 
+    let assistantIdx: number | null = null
+    const ensureAssistantMessage = (): ChatMessage => {
+      const existingMessage = assistantIdx != null ? messages.value[assistantIdx] : undefined
+      if (existingMessage) {
+        return existingMessage
+      }
+      const msg: ChatMessage = { role: 'assistant', content: '' }
+      messages.value.push(msg)
+      assistantIdx = messages.value.length - 1
+      return msg
+    }
+
     try {
-      const response = await streamChat(
+      await streamPlaygroundChat(
         {
           body: {
             model: config.model,
             messages: apiMessages,
             temperature: config.temperature,
             max_tokens: config.maxTokens ?? undefined,
-            stream: true,
+            enable_tools: true,
           },
           headers: {
             'x-policy': config.policy,
@@ -57,31 +100,29 @@ export const useChat = () => {
           signal: abortController.signal,
         },
         {
-          onToken: (token: string) => {
-            const assistantMessage = messages.value[assistantIdx]
-            if (!assistantMessage) {return}
-            assistantMessage.content = (assistantMessage.content ?? '') + token
-          },
-          onToolCallDelta: (toolCalls: unknown[]) => {
-            const assistantMessage = messages.value[assistantIdx]
-            if (!assistantMessage) {return}
-            if (!assistantMessage.tool_calls) {
-              assistantMessage.tool_calls = []
+          onAnalysis: (analysis: ChatAnalysis, blocked: boolean) => {
+            const decision = analysisToDecision(analysis)
+            lastDecision.value = decision
+
+            if (blocked) {
+              const assistantMessage = ensureAssistantMessage()
+              assistantMessage.content = `⛔ Blocked: ${analysis.blocked_reason || 'Security policy violation'}`
+              assistantMessage.decision = decision
+              assistantMessage.analysis = analysis
             }
-            for (const delta of toolCalls) {
-              const idx = delta.index
-              if (!assistantMessage.tool_calls[idx]) {
-                assistantMessage.tool_calls[idx] = { 
-                  id: delta.id || '', 
-                  type: 'function', 
-                  function: { name: delta.function?.name || '', arguments: '' } 
-                }
-              } else if (delta.function?.name) {
-                assistantMessage.tool_calls[idx].function.name += delta.function.name
-              }
-              if (delta.function?.arguments) {
-                assistantMessage.tool_calls[idx].function.arguments += delta.function.arguments
-              }
+          },
+          onToolCall: (toolCall) => {
+            messages.value.push({
+              role: 'tool',
+              content: '',
+              tool_events: [toolCall],
+            })
+          },
+          onContent: (content: string) => {
+            const assistantMessage = ensureAssistantMessage()
+            assistantMessage.content = content
+            if (lastDecision.value) {
+              assistantMessage.decision = lastDecision.value
             }
           },
           onDone: () => {
@@ -89,23 +130,24 @@ export const useChat = () => {
           },
           onError: (err: Error) => {
             error.value = err.message
-            // Show error in assistant message instead of removing
-            if (!messages.value[assistantIdx]?.content) {
-              messages.value[assistantIdx] = {
-                role: 'assistant',
-                content: `⚠️ ${err.message}`,
-              }
+            const assistantMessage = ensureAssistantMessage()
+            if (!assistantMessage.content) {
+              assistantMessage.content = `⚠️ ${err.message}`
             }
-            isStreaming.value = false
           },
         },
       )
 
-      // Extract pipeline decision from response headers
-      lastDecision.value = extractPipelineDecision(response)
-      // Attach decision to assistant message
-      if (lastDecision.value && messages.value[assistantIdx]) {
-        messages.value[assistantIdx].decision = lastDecision.value
+      if (assistantIdx != null) {
+        const assistantMessage = messages.value[assistantIdx]
+        if (assistantMessage) {
+          if (lastDecision.value && !assistantMessage.decision) {
+            assistantMessage.decision = lastDecision.value
+          }
+          if (!assistantMessage.content && !assistantMessage.analysis) {
+            messages.value.splice(assistantIdx, 1)
+          }
+        }
       }
     } catch (err: unknown) {
       isStreaming.value = false
@@ -119,22 +161,24 @@ export const useChat = () => {
       const apiErr = err as ApiError
       if (apiErr?.error?.message) {
         lastDecision.value = extractBlockDecision(apiErr)
-        // Replace empty assistant message with block message
-        messages.value[assistantIdx] = {
+        messages.value.push({
           role: 'assistant',
           content: `⛔ Blocked: ${apiErr.error.message}`,
           decision: lastDecision.value ?? undefined,
-        }
+        })
         error.value = apiErr.error.message
       } else {
         // Unknown error — show in message bubble instead of silently removing
         const errMsg = err instanceof Error ? err.message : String(err)
-        messages.value[assistantIdx] = {
+        messages.value.push({
           role: 'assistant',
           content: `⚠️ ${errMsg || 'An unexpected error occurred'}`,
-        }
+        })
         error.value = errMsg || 'An unexpected error occurred'
       }
+    } finally {
+      abortController = null
+      isStreaming.value = false
     }
   }
 

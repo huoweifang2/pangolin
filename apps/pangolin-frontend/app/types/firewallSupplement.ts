@@ -78,6 +78,70 @@ export interface FirewallCustomConfigResponse {
   skills: FirewallSkill[]
 }
 
+export interface FirewallGatewayInfoResponse {
+  configured: boolean
+  port?: number
+  configuredPort?: number
+  bind?: string
+  mode?: string
+  configPath?: string
+  token?: string
+  hasPassword?: boolean
+  allowedOrigins?: string[]
+}
+
+export interface FirewallMonitorBackendStatus {
+  ok?: boolean
+  status?: string
+  service?: string
+  lastChecked?: string
+}
+
+export interface FirewallMonitorGatewayStatus {
+  configured?: boolean
+  status?: string
+  tokenValid?: boolean | null
+  pairingRequired?: boolean
+  message?: string
+  port?: number
+  configuredPort?: number
+  effectivePort?: number
+  bind?: string
+  configPath?: string
+  wsUrl?: string
+  protocol?: number
+  role?: string
+  hasToken?: boolean
+  hasPassword?: boolean
+  lastChecked?: string
+}
+
+export interface FirewallMonitorStatusResponse {
+  backend?: FirewallMonitorBackendStatus
+  gateway?: FirewallMonitorGatewayStatus
+}
+
+export interface FirewallGatewayToolSummary {
+  name: string
+  description?: string
+  source?: string
+}
+
+export interface FirewallSkillSummary {
+  name: string
+  description?: string
+  emoji?: string
+  bins?: string[]
+  source?: string
+}
+
+export interface FirewallMcpToolsResponse {
+  tools: Array<Record<string, unknown>>
+  count: number
+  gateway_tools: FirewallGatewayToolSummary[]
+  skills: FirewallSkillSummary[]
+}
+
 export interface FirewallDashboardEvent {
   event_type?: string
   timestamp?: number

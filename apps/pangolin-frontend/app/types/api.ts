@@ -32,11 +32,37 @@ export interface ChatMessage {
   content: string
   name?: string
   decision?: PipelineDecision
+  analysis?: ChatAnalysis
   tool_calls?: Array<{
     id: string
     type: 'function'
     function: { name: string; arguments: string }
   }>
+  tool_events?: ChatToolInvocation[]
+}
+
+export interface ChatToolInvocation {
+  tool_name: string
+  arguments: Record<string, unknown> | string
+  iteration?: number
+  l1_patterns?: string[]
+  l1_blocked?: boolean
+  blocked?: boolean
+  result_preview?: string
+  l2_confidence?: number
+  l2_reasoning?: string
+  l2_blocked?: boolean
+}
+
+export interface ChatAnalysis {
+  request_id: string
+  verdict: 'ALLOW' | 'MODIFY' | 'BLOCK' | 'ESCALATE'
+  threat_level: string
+  l1_patterns: string[]
+  l2_is_injection: boolean
+  l2_confidence: number
+  l2_reasoning: string
+  blocked_reason: string
 }
 
 export interface ChatCompletionRequest {
