@@ -335,6 +335,7 @@ from src.routes.models import router as models_router
 from src.routes.policies import router as policies_router
 from src.routes.rules import router as rules_router
 from src.routes.analytics import router as analytics_router
+from src.routes.agent_studio import router as agent_studio_router
 
 app.include_router(dataset_router)
 app.include_router(trace_router)
@@ -343,6 +344,7 @@ app.include_router(models_router)
 app.include_router(policies_router)
 app.include_router(rules_router)
 app.include_router(analytics_router)
+app.include_router(agent_studio_router)
 
 
 def _state(request: Request | None = None) -> AppState:
@@ -1568,7 +1570,9 @@ async def _invoke_custom_mcp_server(server: dict[str, Any], arguments: dict[str,
     }
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(base_url, json=payload, headers={"content-type": "application/json"})
+            resp = await client.post(
+                base_url, json=payload, headers={"content-type": "application/json"}
+            )
             if resp.status_code != 200:
                 return f"[Custom MCP HTTP {resp.status_code}] {resp.text[:500]}"
             data = resp.json()
