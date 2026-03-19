@@ -16,6 +16,26 @@ interface StudioLogEntry {
   at: string
 }
 
+export interface AgentGraphNode {
+  id: string
+  agentId: string
+  agentName: string
+  emoji: string
+  status: 'pending' | 'running' | 'completed' | 'error'
+  stageIndex: number
+  objective?: string
+}
+
+export interface AgentGraphEdge {
+  source: string
+  target: string
+}
+
+export interface AgentGraphData {
+  nodes: AgentGraphNode[]
+  edges: AgentGraphEdge[]
+}
+
 function logNow(): string {
   return new Date().toLocaleTimeString()
 }
@@ -50,12 +70,14 @@ export function useAgentStudio() {
   const finalReport = ref('')
   const logs = ref<StudioLogEntry[]>([])
   const resultEvents = ref<AgentStudioAgentResultEvent['result'][]>([])
+  const graphData = ref<AgentGraphData>({ nodes: [], edges: [] })
 
   const runs = ref<AgentStudioRunSummary[]>([])
   const totalRuns = ref(0)
   const selectedRunDetail = ref<AgentStudioRunDetail | null>(null)
 
   let abortController: AbortController | null = null
+  let currentStageIndex = 0
 
   const canRun = computed(() => {
     return task.value.trim().length > 0 && !isRunning.value
@@ -98,6 +120,17 @@ export function useAgentStudio() {
   async function openRun(runId: string): Promise<void> {
     try {
       selectedRunDetail.value = await agentStudioService.getRun(runId)
+      
+      // Reconstruct state for visualization
+      if (selectedRunDetail.value) {
+         clearLiveRunState()
+         currentRunId.value = selectedRunDetail.value.id
+         
+         const events = selectedRunDetail.value.timeline || []
+         events.forEach(evt => {
+            onStreamEvent(evt as AgentStudioStreamEvent)
+         })
+      }
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : String(err)
     }
@@ -108,6 +141,8 @@ export function useAgentStudio() {
     finalReport.value = ''
     logs.value = []
     resultEvents.value = []
+    graphData.value = { nodes: [], edges: [] }
+    currentStageIndex = 0
     error.value = null
   }
 
@@ -122,6 +157,7 @@ export function useAgentStudio() {
       }
       case 'stage_started': {
         const stageEvent = event
+        currentStageIndex = stageEvent.stage.index
         logs.value.unshift(
           makeLog(
             'stage',
@@ -140,6 +176,37 @@ export function useAgentStudio() {
             delegation.objective,
           ),
         )
+
+        const p = profiles.value.find((x) => x.id === delegation.to_agent)
+        const n = graphData.value.nodes.find((x) => x.id === delegation.step_id)
+        if (!n) {
+          graphData.value.nodes.push({
+            id: delegation.step_id,
+            agentId: delegation.to_agent,
+            agentName: delegation.to_agent_name,
+            emoji: p ? p.emoji : '🤖',
+            stageIndex: currentStageIndex,
+            status: 'running',
+            objective: delegation.objective,
+          })
+        } else {
+          n.status = 'running'
+        }
+
+        if (delegation.depends_on) {
+          delegation.depends_on.forEach((dep) => {
+            if (
+              !graphData.value.edges.find(
+                (e) => e.source === dep && e.target === delegation.step_id,
+              )
+            ) {
+              graphData.value.edges.push({
+                source: dep,
+                target: delegation.step_id,
+              })
+            }
+          })
+        }
         break
       }
       case 'agent_result': {
@@ -152,6 +219,11 @@ export function useAgentStudio() {
             `${result.tool_calls} tool call(s), ${result.blocked_tool_calls} blocked`,
           ),
         )
+
+        const n = graphData.value.nodes.find((x) => x.id === result.step_id)
+        if (n) {
+          n.status = 'completed'
+        }
         break
       }
       case 'synthesis': {
@@ -163,17 +235,42 @@ export function useAgentStudio() {
             'Consolidated delivery package generated',
           ),
         )
+
+        const synthId = 'synthesis_step'
+        graphData.value.nodes.push({
+          id: synthId,
+          agentId: event.result.agent_id,
+          agentName: 'Final Synthesis',
+          emoji: '📝',
+          status: 'completed',
+          stageIndex: currentStageIndex + 1,
+        })
+
+        const allSources = new Set(graphData.value.edges.map((e) => e.source))
+        graphData.value.nodes.forEach((node) => {
+          if (!allSources.has(node.id) && node.id !== synthId) {
+            graphData.value.edges.push({ source: node.id, target: synthId })
+          }
+        })
         break
       }
       case 'error': {
         error.value = event.error
         logs.value.unshift(makeLog('error', 'Run error', event.error))
+        graphData.value.nodes.forEach((n) => {
+          if (n.status === 'running') {n.status = 'error'}
+        })
         break
       }
       case 'done': {
         logs.value.unshift(
           makeLog('done', `Run ${event.status}`, `Run ID: ${event.run_id}`),
         )
+        if (event.status === 'failed') {
+          graphData.value.nodes.forEach((n) => {
+            if (n.status === 'running') {n.status = 'error'}
+          })
+        }
         break
       }
       default:
@@ -249,6 +346,7 @@ export function useAgentStudio() {
     finalReport,
     logs,
     resultEvents,
+    graphData,
     runs,
     totalRuns,
     selectedRunDetail,

@@ -113,20 +113,30 @@
               Start a run to see multi-agent delegation and execution events.
             </v-alert>
 
-            <v-timeline v-else density="compact" align="start" side="end">
-              <v-timeline-item
-                v-for="entry in logs"
-                :key="entry.id"
-                size="small"
-                dot-color="primary"
-              >
-                <div class="d-flex align-center ga-2 mb-1">
-                  <strong>{{ entry.title }}</strong>
-                  <v-chip size="x-small" variant="outlined">{{ entry.at }}</v-chip>
-                </div>
-                <div class="text-body-2 text-medium-emphasis">{{ entry.detail }}</div>
-              </v-timeline-item>
-            </v-timeline>
+            <div v-else class="d-flex flex-column ga-4">
+              <AgentStudioGraph :graph="graphData" v-if="graphData.nodes.length > 0" />
+
+              <v-expansion-panels variant="accordion">
+                 <v-expansion-panel title="Streaming Execution Logs">
+                   <v-expansion-panel-text>
+                      <v-timeline density="compact" align="start" side="end">
+                        <v-timeline-item
+                          v-for="entry in logs"
+                          :key="entry.id"
+                          size="small"
+                          dot-color="primary"
+                        >
+                          <div class="d-flex align-center ga-2 mb-1">
+                            <strong>{{ entry.title }}</strong>
+                            <v-chip size="x-small" variant="outlined">{{ entry.at }}</v-chip>
+                          </div>
+                          <div class="text-body-2 text-medium-emphasis">{{ entry.detail }}</div>
+                        </v-timeline-item>
+                      </v-timeline>
+                   </v-expansion-panel-text>
+                 </v-expansion-panel>
+              </v-expansion-panels>
+            </div>
           </v-card-text>
         </v-card>
 
@@ -237,6 +247,7 @@ const {
   currentRunId,
   finalReport,
   logs,
+  graphData,
   resultEvents,
   runs,
   selectedRunDetail,
