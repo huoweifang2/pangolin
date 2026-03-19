@@ -141,3 +141,5 @@ extensions/agent-firewall/logs/*.pid
 extensions/agent-firewall/data/*.db-shm
 extensions/agent-firewall/data/*.db-wal
 .venv/
+
+agency-agents-main

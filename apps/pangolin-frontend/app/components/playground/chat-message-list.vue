@@ -35,7 +35,7 @@
     />
 
     <v-progress-linear
-      v-if="isStreaming && lastMessageEmpty"
+      v-if="isStreaming"
       indeterminate
       color="primary"
       class="mt-2"
@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import type { ChatMessage } from '~/types/api'
 
 const props = defineProps<{
@@ -61,11 +61,6 @@ const emit = defineEmits<{
 
 const listRef = ref<HTMLElement | null>(null)
 const anchorRef = ref<HTMLElement | null>(null)
-
-const lastMessageEmpty = computed(() => {
-  const last = props.messages[props.messages.length - 1]
-  return last?.role === 'assistant' && !last.content
-})
 
 watch(
   () => props.messages.length,

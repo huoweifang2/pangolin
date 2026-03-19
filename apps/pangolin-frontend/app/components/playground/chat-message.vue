@@ -101,32 +101,78 @@
         <div v-if="renderedRaw" v-html="renderedRaw" />
         
         <!-- ═══ TOOL CALLS ═══ -->
-        <div v-if="message.tool_calls?.length" :class="{ 'mt-2': renderedRaw }">
-          <v-card
-            v-for="(tool, i) in message.tool_calls"
-            :key="i"
-            variant="tonal"
-            color="primary"
-            class="mb-2"
-            rounded="lg"
+        <div v-if="toolCards.length" :class="{ 'mt-2': renderedRaw }">
+          <v-expansion-panels
+            v-for="tool in toolCards"
+            :key="tool.key"
+            variant="accordion"
+            elevation="0"
+            class="tool-call-panels mb-2"
           >
-            <v-card-title class="text-caption font-weight-bold d-flex align-center py-2 px-3">
-              <v-icon size="small" class="mr-2">mdi-wrench</v-icon>
-              {{ tool.function?.name || 'Tool Call' }}
-            </v-card-title>
-            <v-card-text class="px-3 pb-2 pt-0" v-if="tool.function?.arguments">
-              <v-expansion-panels variant="accordion" density="compact" class="bg-transparent" elevation="0">
-                <v-expansion-panel elevation="0" class="bg-transparent" style="background: transparent">
-                  <v-expansion-panel-title class="text-caption py-0 min-height-0 px-0 text-medium-emphasis" style="min-height: 28px">
-                    Raw Arguments
-                  </v-expansion-panel-title>
-                  <v-expansion-panel-text class="px-0 pb-0">
-                    <pre class="text-caption bg-surface-variant pa-2 rounded overflow-x-auto my-0" style="white-space: pre-wrap; word-break: break-all;">{{ tool.function.arguments }}</pre>
-                  </v-expansion-panel-text>
-                </v-expansion-panel>
-              </v-expansion-panels>
-            </v-card-text>
-          </v-card>
+            <v-expansion-panel
+              elevation="0"
+              rounded="lg"
+              class="tool-call-panel"
+              :class="tool.blocked ? 'tool-call-panel--blocked' : 'tool-call-panel--allowed'"
+            >
+              <v-expansion-panel-title class="tool-call-panel__title py-2 px-3">
+                <div class="d-flex align-center justify-space-between w-100 ga-2">
+                  <div class="d-flex align-center ga-2 min-w-0">
+                    <v-icon size="small" color="primary">mdi-wrench</v-icon>
+                    <span class="tool-call-panel__name text-caption">{{ tool.name }}</span>
+                  </div>
+                  <v-chip
+                    size="x-small"
+                    label
+                    :color="tool.blocked ? 'error' : 'success'"
+                    variant="tonal"
+                  >
+                    {{ tool.blocked ? 'Blocked' : 'Executed' }}
+                  </v-chip>
+                </div>
+              </v-expansion-panel-title>
+
+              <v-expansion-panel-text class="tool-call-panel__body px-3 pb-3 pt-1">
+                <div class="tool-call-panel__section">
+                  <div class="tool-call-panel__label">Input</div>
+                  <pre class="tool-call-panel__code">{{ tool.input }}</pre>
+                </div>
+
+                <div v-if="tool.output" class="tool-call-panel__section mt-2">
+                  <div class="tool-call-panel__label">Output</div>
+                  <pre class="tool-call-panel__code tool-call-panel__code--output">{{ tool.output }}</pre>
+                </div>
+
+                <div
+                  v-if="tool.l1Patterns.length || tool.l2Confidence !== null || tool.l2Reasoning"
+                  class="tool-call-panel__meta mt-2"
+                >
+                  <v-chip
+                    v-for="pattern in tool.l1Patterns"
+                    :key="pattern"
+                    size="x-small"
+                    label
+                    color="error"
+                    variant="outlined"
+                  >
+                    {{ pattern }}
+                  </v-chip>
+                  <v-chip
+                    v-if="tool.l2Confidence !== null"
+                    size="x-small"
+                    label
+                    :color="toolRiskColor(tool.l2Confidence)"
+                    variant="tonal"
+                  >
+                    L2 {{ (tool.l2Confidence * 100).toFixed(0) }}%
+                  </v-chip>
+                  <div v-if="tool.l2Reasoning" class="tool-call-panel__reasoning text-caption text-medium-emphasis">
+                    {{ tool.l2Reasoning }}
+                  </div>
+                </div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
         </div>
       </v-card-text>
     </v-card>
@@ -160,7 +206,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ChatMessage } from '~/types/api'
+import type { ChatMessage, ChatToolInvocation } from '~/types/api'
 import {
   decisionColor as _dc,
   decisionIcon as _di,
@@ -174,6 +220,17 @@ import { renderMarkdown } from '~/utils/markdown'
 const props = defineProps<{ message: ChatMessage }>()
 defineEmits<{ 'resend': [text: string] }>()
 
+interface ToolCardViewModel {
+  key: string
+  name: string
+  input: string
+  output: string
+  blocked: boolean
+  l1Patterns: string[]
+  l2Confidence: number | null
+  l2Reasoning: string
+}
+
 async function copyText(text: string | undefined) {
   if (!text) return
   try {
@@ -183,6 +240,68 @@ async function copyText(text: string | undefined) {
   }
 }
 
+function formatToolPayload(value: unknown): string {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return '{}'
+    }
+    try {
+      return JSON.stringify(JSON.parse(trimmed), null, 2)
+    } catch {
+      return trimmed
+    }
+  }
+
+  if (value == null) {
+    return '{}'
+  }
+
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
+}
+
+function fromToolEvent(tool: ChatToolInvocation, index: number): ToolCardViewModel {
+  return {
+    key: `${tool.tool_name}-${index}`,
+    name: tool.tool_name || 'Tool Call',
+    input: formatToolPayload(tool.arguments),
+    output: typeof tool.result_preview === 'string' ? tool.result_preview.trim() : '',
+    blocked: Boolean(tool.blocked),
+    l1Patterns: tool.l1_patterns ?? [],
+    l2Confidence: typeof tool.l2_confidence === 'number' ? tool.l2_confidence : null,
+    l2Reasoning: typeof tool.l2_reasoning === 'string' ? tool.l2_reasoning : '',
+  }
+}
+
+const toolCards = computed<ToolCardViewModel[]>(() => {
+  if (props.message.tool_events?.length) {
+    return props.message.tool_events.map((tool, index) => fromToolEvent(tool, index))
+  }
+
+  if (props.message.tool_calls?.length) {
+    return props.message.tool_calls.map((tool, index) => ({
+      key: `${tool.id || tool.function?.name || 'tool'}-${index}`,
+      name: tool.function?.name || 'Tool Call',
+      input: formatToolPayload(tool.function?.arguments ?? '{}'),
+      output: '',
+      blocked: false,
+      l1Patterns: [],
+      l2Confidence: null,
+      l2Reasoning: '',
+    }))
+  }
+
+  return []
+})
+
+function toolRiskColor(score: number | null): string {
+  return _rc(score)
+}
+
 // ── core state ──
 const decision = computed(() => props.message.decision ?? null)
 const isVerdict = computed(() => !!decision.value && props.message.role === 'assistant')
@@ -190,6 +309,7 @@ const isVerdict = computed(() => !!decision.value && props.message.role === 'ass
 // ── icons ──
 const avatarIcon = computed(() => {
   if (isVerdict.value) return _di(decision.value?.decision)
+  if (props.message.role === 'tool') return 'mdi-wrench'
   if (props.message.content?.startsWith('⛔')) return 'mdi-shield-alert'
   return props.message.role === 'user' ? 'mdi-account-circle' : 'mdi-robot'
 })
@@ -375,6 +495,79 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
       padding: 4px 8px;
     }
   }
+}
+
+.tool-call-panels {
+  background: transparent;
+}
+
+.tool-call-panel {
+  background: rgba(var(--v-theme-on-surface), 0.03) !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.tool-call-panel--allowed {
+  border-left: 3px solid rgba(var(--v-theme-success), 0.7);
+}
+
+.tool-call-panel--blocked {
+  border-left: 3px solid rgba(var(--v-theme-error), 0.8);
+}
+
+.tool-call-panel__title {
+  min-height: 38px !important;
+}
+
+.tool-call-panel__name {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tool-call-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tool-call-panel__label {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  font-weight: 600;
+}
+
+.tool-call-panel__code {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.tool-call-panel__code--output {
+  max-height: 260px;
+  overflow: auto;
+}
+
+.tool-call-panel__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tool-call-panel__reasoning {
+  width: 100%;
+  margin-top: 2px;
+  line-height: 1.4;
 }
 
 /* ═══ Verdict card ═══ */

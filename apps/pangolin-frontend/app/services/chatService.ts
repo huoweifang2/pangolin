@@ -5,6 +5,8 @@ import type {
   ChatCompletionResponse,
   PipelineDecision,
   ApiError,
+  ChatAnalysis,
+  ChatToolInvocation,
 } from '~/types/api'
 
 // ─── Non-streaming ───
@@ -57,6 +59,175 @@ export interface StreamOptions {
   signal?: AbortSignal
   /** Custom endpoint path (default: /v1/chat/completions) */
   url?: string
+}
+
+export interface PlaygroundStreamCallbacks {
+  onAnalysis?: (analysis: ChatAnalysis, blocked: boolean) => void
+  onToolCall?: (toolCall: ChatToolInvocation) => void
+  onContent?: (content: string) => void
+  onDone: () => void
+  onError: (error: Error) => void
+}
+
+export interface PlaygroundStreamOptions {
+  body: ChatCompletionRequest & {
+    modified_content?: string
+    force_forward?: boolean
+    analyze_only?: boolean
+    top_p?: number
+    enable_tools?: boolean
+    external_tools?: Array<{ name: string; description?: string }>
+  }
+  headers?: Record<string, string>
+  signal?: AbortSignal
+}
+
+function toApiError(status: number, statusText: string, payload: unknown): ApiError {
+  const fallback = `Server error (${status} ${statusText})`
+
+  if (payload && typeof payload === 'object') {
+    const record = payload as Record<string, unknown>
+    const directError = record.error
+    if (directError && typeof directError === 'object') {
+      const errObj = directError as Record<string, unknown>
+      const message = typeof errObj.message === 'string' ? errObj.message : fallback
+      const type = typeof errObj.type === 'string' ? errObj.type : 'server_error'
+      const code = typeof errObj.code === 'string' ? errObj.code : String(status)
+      return {
+        error: {
+          message,
+          type,
+          code,
+        },
+      }
+    }
+
+    const detail = record.detail
+    if (typeof detail === 'string' && detail.trim()) {
+      return {
+        error: {
+          message: detail,
+          type: 'server_error',
+          code: String(status),
+        },
+      }
+    }
+  }
+
+  return {
+    error: {
+      message: fallback,
+      type: 'server_error',
+      code: String(status),
+    },
+  }
+}
+
+export async function streamPlaygroundChat(
+  options: PlaygroundStreamOptions,
+  callbacks: PlaygroundStreamCallbacks,
+): Promise<Response> {
+  const baseURL = import.meta.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:9090'
+
+  const model = options.body.model ?? ''
+  const apiKeyHeaders: Record<string, string> = {}
+  if (model) {
+    const provider = detectProviderClient(model)
+    if (provider !== 'mock') {
+      const key = getKey(provider)
+      if (key) {
+        apiKeyHeaders['x-api-key'] = key
+      }
+    }
+  }
+
+  const response = await fetch(`${baseURL}/api/chat/send`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-client-id': 'playground',
+      ...apiKeyHeaders,
+      ...options.headers,
+    },
+    body: JSON.stringify(options.body),
+    signal: options.signal,
+  })
+
+  if (!response.ok) {
+    let payload: unknown = null
+    try {
+      payload = await response.json()
+    } catch {
+      payload = null
+    }
+    throw toApiError(response.status, response.statusText, payload)
+  }
+
+  const reader = response.body?.getReader()
+  if (!reader) {
+    callbacks.onError(new Error('Server returned an empty stream body'))
+    callbacks.onDone()
+    return response
+  }
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) {
+        continue
+      }
+
+      let event: Record<string, unknown>
+      try {
+        event = JSON.parse(trimmed) as Record<string, unknown>
+      } catch {
+        continue
+      }
+
+      const eventType = typeof event.type === 'string' ? event.type : ''
+      if (eventType === 'analysis' && event.analysis && typeof event.analysis === 'object') {
+        callbacks.onAnalysis?.(event.analysis as ChatAnalysis, Boolean(event.blocked))
+        continue
+      }
+
+      if (eventType === 'tool_call' && event.tool_call && typeof event.tool_call === 'object') {
+        callbacks.onToolCall?.(event.tool_call as ChatToolInvocation)
+        continue
+      }
+
+      if (eventType === 'content') {
+        const content = typeof event.content === 'string' ? event.content : ''
+        callbacks.onContent?.(content)
+        continue
+      }
+
+      if (eventType === 'error') {
+        const errorMsg = typeof event.error === 'string' ? event.error : 'Unknown stream error'
+        callbacks.onError(new Error(errorMsg))
+        continue
+      }
+
+      if (eventType === 'done') {
+        callbacks.onDone()
+        return response
+      }
+    }
+  }
+
+  callbacks.onDone()
+  return response
 }
 
 export async function streamChat(

@@ -4,6 +4,19 @@ export default defineEventHandler((event) => {
   const apiBase: string = (config.public.apiBase) || 'http://localhost:9090'
   const agentBase: string = (config.public.agentApiBase) || 'http://localhost:9090'
 
+  function toWsOrigin(raw: string): string | null {
+    try {
+      const parsed = new URL(raw)
+      const protocol = parsed.protocol === 'https:' ? 'wss:' : parsed.protocol === 'http:' ? 'ws:' : null
+      if (!protocol) {
+        return null
+      }
+      return `${protocol}//${parsed.host}`
+    } catch {
+      return null
+    }
+  }
+
   // Known external LLM provider APIs (for compare page direct calls)
   const providerApis = [
     'https://api.openai.com',
@@ -15,9 +28,13 @@ export default defineEventHandler((event) => {
 
   // Dev mode: allow HMR WebSocket
   const isDev = import.meta.dev
-  const devSources = isDev ? ' ws://localhost:3000 ws://localhost:24678' : ''
+  const devSources = isDev ? ' ws://localhost:3000 ws://localhost:24678 ws://127.0.0.1:3000 ws://127.0.0.1:24678' : ''
 
-  const connectSrc = `'self' ${apiBase} ${agentBase} ${providerApis}${devSources}`
+  const wsOrigins = [toWsOrigin(apiBase), toWsOrigin(agentBase)]
+    .filter((value): value is string => Boolean(value))
+    .join(' ')
+
+  const connectSrc = `'self' ${apiBase} ${agentBase} ${providerApis}${wsOrigins ? ` ${wsOrigins}` : ''}${devSources}`
 
   const csp = [
     "default-src 'self'",

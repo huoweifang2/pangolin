@@ -3,24 +3,37 @@ import type {
   FirewallAuditResponse,
   FirewallCustomConfigResponse,
   FirewallDatasetListResponse,
+  FirewallGatewayInfoResponse,
+  FirewallMcpToolsResponse,
   FirewallMcpServerInput,
+  FirewallMonitorStatusResponse,
   FirewallSkillInput,
   FirewallTraceListResponse,
 } from '../types/firewallSupplement'
 
 const baseURL = import.meta.env.NUXT_PUBLIC_FIREWALL_API_BASE ?? 'http://localhost:9090'
 
-function toWsBase(httpBaseURL: string): string {
-  if (httpBaseURL.startsWith('https://')) {
-    return `wss://${httpBaseURL.slice('https://'.length)}`
+function toDashboardWsURL(httpBaseURL: string): string {
+  try {
+    const parsed = new URL(httpBaseURL)
+    parsed.protocol = parsed.protocol === 'https:' ? 'wss:' : 'ws:'
+    parsed.pathname = '/ws/dashboard'
+    parsed.search = ''
+    parsed.hash = ''
+    return parsed.toString()
+  } catch {
+    const normalized = httpBaseURL.replace(/\/+$/, '')
+    if (normalized.startsWith('https://')) {
+      return `wss://${normalized.slice('https://'.length)}/ws/dashboard`
+    }
+    if (normalized.startsWith('http://')) {
+      return `ws://${normalized.slice('http://'.length)}/ws/dashboard`
+    }
+    return `${normalized}/ws/dashboard`
   }
-  if (httpBaseURL.startsWith('http://')) {
-    return `ws://${httpBaseURL.slice('http://'.length)}`
-  }
-  return httpBaseURL
 }
 
-const dashboardWsURL = `${toWsBase(baseURL)}/ws/dashboard`
+const dashboardWsURL = import.meta.env.NUXT_PUBLIC_FIREWALL_WS_URL ?? toDashboardWsURL(baseURL)
 
 const firewallApi = axios.create({
   baseURL,
@@ -62,6 +75,21 @@ export const firewallSupplementService = {
   getCustomConfig(): Promise<FirewallCustomConfigResponse> {
     return firewallApi
       .get<FirewallCustomConfigResponse>('/api/custom-config')
+      .then((r) => r.data)
+  },
+  getGatewayInfo(): Promise<FirewallGatewayInfoResponse> {
+    return firewallApi
+      .get<FirewallGatewayInfoResponse>('/api/gateway-info')
+      .then((r) => r.data)
+  },
+  getMonitorStatus(): Promise<FirewallMonitorStatusResponse> {
+    return firewallApi
+      .get<FirewallMonitorStatusResponse>('/api/monitor/status')
+      .then((r) => r.data)
+  },
+  getMcpToolsCatalog(): Promise<FirewallMcpToolsResponse> {
+    return firewallApi
+      .get<FirewallMcpToolsResponse>('/api/mcp/tools')
       .then((r) => r.data)
   },
   upsertSkill(skill: FirewallSkillInput): Promise<void> {
