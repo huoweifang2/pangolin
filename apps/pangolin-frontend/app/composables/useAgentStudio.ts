@@ -14,6 +14,8 @@ interface StudioLogEntry {
   title: string
   detail: string
   at: string
+  agentId?: string
+  agentName?: string
 }
 
 export interface AgentGraphNode {
@@ -44,6 +46,7 @@ function makeLog(
   type: StudioLogEntry['type'],
   title: string,
   detail: string,
+  meta?: Pick<StudioLogEntry, 'agentId' | 'agentName'>,
 ): StudioLogEntry {
   return {
     id: crypto.randomUUID(),
@@ -51,6 +54,7 @@ function makeLog(
     title,
     detail,
     at: logNow(),
+    ...meta,
   }
 }
 
@@ -128,7 +132,7 @@ export function useAgentStudio() {
          
          const events = selectedRunDetail.value.timeline || []
          events.forEach(evt => {
-            onStreamEvent(evt as AgentStudioStreamEvent)
+          onStreamEvent(evt as unknown as AgentStudioStreamEvent)
          })
       }
     } catch (err: unknown) {
@@ -174,6 +178,10 @@ export function useAgentStudio() {
             'delegation',
             `${delegation.from_agent} -> ${delegation.to_agent_name}`,
             delegation.objective,
+            {
+              agentId: delegation.to_agent,
+              agentName: delegation.to_agent_name,
+            },
           ),
         )
 
@@ -217,6 +225,10 @@ export function useAgentStudio() {
             'result',
             `${result.agent_name} completed`,
             `${result.tool_calls} tool call(s), ${result.blocked_tool_calls} blocked`,
+            {
+              agentId: result.agent_id,
+              agentName: result.agent_name,
+            },
           ),
         )
 
@@ -233,6 +245,10 @@ export function useAgentStudio() {
             'synthesis',
             `Final synthesis by ${event.result.agent_name}`,
             'Consolidated delivery package generated',
+            {
+              agentId: event.result.agent_id,
+              agentName: event.result.agent_name,
+            },
           ),
         )
 
