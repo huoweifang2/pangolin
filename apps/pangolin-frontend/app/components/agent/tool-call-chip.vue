@@ -58,12 +58,12 @@ const props = defineProps<{
 
 /** Tool chip color logic:
  *  - Tool blocked by RBAC → always red (error)
- *  - Tool allowed + overall ALLOW → green (success)
- *  - Tool allowed + overall BLOCK → neutral amber (ran, but request was blocked)
+ *  - Tool allowed + overall ALLOW → neutral success tone
+ *  - Tool allowed + overall BLOCK → neutral warning tone (ran, but request was blocked)
  */
 const chipColor = computed(() => {
   if (!props.tool.allowed) return 'error'
-  if (props.verdict?.toLowerCase() === 'block') return 'blue-grey'
+  if (props.verdict?.toLowerCase() === 'block') return 'warning'
   return 'success'
 })
 

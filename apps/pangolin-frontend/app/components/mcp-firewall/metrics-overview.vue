@@ -61,7 +61,7 @@ const {
       </v-card>
     </v-col>
     <v-col cols="12" sm="6" md="4" lg="2">
-      <v-card variant="tonal" color="deep-purple">
+      <v-card variant="tonal" color="info">
         <v-card-text>
           <div class="text-caption text-medium-emphasis">Live Events</div>
           <div class="text-h4 font-weight-bold">{{ dashboardEventCount }}</div>
@@ -77,7 +77,7 @@ const {
       </v-card>
     </v-col>
     <v-col cols="12" sm="6" md="4" lg="2">
-      <v-card variant="tonal" color="red-darken-2">
+      <v-card variant="tonal" color="error">
         <v-card-text>
           <div class="text-caption text-medium-emphasis">Visible Critical</div>
           <div class="text-h4 font-weight-bold">{{ visibleEscalationThreatSummary.critical }}</div>
@@ -85,7 +85,7 @@ const {
       </v-card>
     </v-col>
     <v-col cols="12" sm="6" md="4" lg="2">
-      <v-card variant="tonal" color="orange-darken-2">
+      <v-card variant="tonal" color="warning">
         <v-card-text>
           <div class="text-caption text-medium-emphasis">Oldest Escalation</div>
           <div class="text-h5 font-weight-bold">{{ oldestVisibleEscalationAgeLabel }}</div>
@@ -93,7 +93,7 @@ const {
       </v-card>
     </v-col>
     <v-col cols="12" sm="6" md="4" lg="2">
-      <v-card variant="tonal" :color="hasVisibleEscalationSlaBreach ? 'error' : 'green'">
+      <v-card variant="tonal" :color="hasVisibleEscalationSlaBreach ? 'error' : 'success'">
         <v-card-text>
           <div class="text-caption text-medium-emphasis">SLA Breaches (>{{ escalationSlaMinutes }}m)</div>
           <div class="text-h4 font-weight-bold">{{ staleVisibleEscalationCount }}</div>
@@ -101,7 +101,7 @@ const {
       </v-card>
     </v-col>
     <v-col cols="12" sm="6" md="4" lg="2">
-      <v-card variant="tonal" :color="staleCriticalVisibleEscalationCount > 0 ? 'red-darken-2' : 'green'">
+      <v-card variant="tonal" :color="staleCriticalVisibleEscalationCount > 0 ? 'error' : 'success'">
         <v-card-text>
           <div class="text-caption text-medium-emphasis">SLA Critical (>{{ escalationSlaMinutes * 2 }}m)</div>
           <div class="text-h4 font-weight-bold">{{ staleCriticalVisibleEscalationCount }}</div>

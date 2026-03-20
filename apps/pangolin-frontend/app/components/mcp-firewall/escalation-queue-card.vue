@@ -97,7 +97,7 @@ function escalationSlaChipColor(item: EscalationItem): string {
       <v-chip size="small" variant="tonal">
         Oldest: {{ oldestVisibleEscalationAgeLabel }}
       </v-chip>
-      <v-chip :color="hasVisibleEscalationSlaBreach ? 'error' : 'green'" size="small" variant="tonal">
+      <v-chip :color="hasVisibleEscalationSlaBreach ? 'error' : 'success'" size="small" variant="tonal">
         SLA {{ escalationSlaMinutes }}m: {{ staleVisibleEscalationCount }}
       </v-chip>
       <v-chip

@@ -55,7 +55,7 @@ const chartOption = computed(() => {
           fontSize: 18,
           fontWeight: 'bold',
           formatter: () => String(totalCount),
-          color: '#666',
+          color: CHART.axisLabel,
         },
         emphasis: {
           label: {

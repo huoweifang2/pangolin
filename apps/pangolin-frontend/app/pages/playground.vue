@@ -84,7 +84,7 @@
       elevation="8"
       @click="showScenarios = !showScenarios"
     >
-      <v-icon color="red-darken-2">mdi-skull-crossbones</v-icon>
+      <v-icon color="error">mdi-skull-crossbones</v-icon>
       <v-tooltip activator="parent" location="left">Attack Scenarios</v-tooltip>
     </v-btn>
   </v-container>
@@ -103,7 +103,7 @@ const ATTACK_SUBMIT_DELAY_MS = 300
 
 definePageMeta({ title: 'Playground' })
 
-const { messages, isStreaming, lastDecision, error: _error, config, send, clear: _clear, abort: _abort } = useChat()
+const { messages, isStreaming, lastDecision: _lastDecision, error: _error, config, send, clear: _clear, abort: _abort } = useChat()
 const { scenarios, isLoading: scenariosLoading } = useScenarios('playground')
 const { groupedModels, refreshAvailability } = useModels()
 const rememberedModel = useRememberedModel('playground')

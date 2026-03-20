@@ -179,7 +179,7 @@ function applySelectedEntryToTriage(): void {
               <v-btn
                 size="x-small"
                 variant="tonal"
-                color="deep-orange"
+                color="warning"
                 @click="focusEscalationQueueByRequest(entry.requestId, entry.sessionId)"
               >
                 Queue
@@ -187,7 +187,7 @@ function applySelectedEntryToTriage(): void {
               <v-btn
                 size="x-small"
                 variant="tonal"
-                color="teal"
+                color="info"
                 :disabled="!entry.requestId"
                 @click="focusActionHistoryByRequestId(entry.requestId)"
               >
@@ -262,7 +262,7 @@ function applySelectedEntryToTriage(): void {
         <v-card-actions class="pa-4 d-flex ga-2 justify-end">
           <v-btn
             variant="tonal"
-            color="deep-orange"
+            color="warning"
             :disabled="!selectedUnifiedTrafficEntry"
             @click="focusEscalationQueueByRequest(selectedUnifiedTrafficEntry?.requestId ?? null, selectedUnifiedTrafficEntry?.sessionId)"
           >
@@ -270,7 +270,7 @@ function applySelectedEntryToTriage(): void {
           </v-btn>
           <v-btn
             variant="tonal"
-            color="teal"
+            color="info"
             :disabled="!selectedUnifiedTrafficEntry?.requestId"
             @click="focusActionHistoryByRequestId(selectedUnifiedTrafficEntry?.requestId ?? null)"
           >
