@@ -562,11 +562,11 @@ export function useFirewallOpsConsole() {
   function verdictColor(verdict?: string): string {
     switch ((verdict ?? '').toUpperCase()) {
       case 'BLOCK':
-        return 'red'
+        return 'error'
       case 'ESCALATE':
-        return 'orange'
+        return 'warning'
       case 'ALLOW':
-        return 'green'
+        return 'success'
       default:
         return 'grey'
     }
@@ -575,13 +575,13 @@ export function useFirewallOpsConsole() {
   function threatColor(level?: string): string {
     switch ((level ?? '').toUpperCase()) {
       case 'CRITICAL':
-        return 'red-darken-2'
+        return 'error'
       case 'HIGH':
-        return 'red'
+        return 'warning'
       case 'MEDIUM':
-        return 'orange'
+        return 'info'
       case 'LOW':
-        return 'blue'
+        return 'secondary'
       default:
         return 'grey'
     }
@@ -772,9 +772,9 @@ export function useFirewallOpsConsole() {
 
   function unifiedTrafficSourceColor(source: UnifiedTrafficSource): string {
     if (source === 'dashboard') {
-      return 'blue'
+      return 'primary'
     }
-    return 'teal'
+    return 'secondary'
   }
 
   function unifiedTrafficKindLabel(kind: UnifiedTrafficKind): string {
@@ -789,10 +789,10 @@ export function useFirewallOpsConsole() {
 
   function unifiedTrafficKindColor(kind: UnifiedTrafficKind): string {
     if (kind === 'mcp') {
-      return 'indigo'
+      return 'info'
     }
     if (kind === 'llm') {
-      return 'deep-orange'
+      return 'warning'
     }
     return 'grey'
   }

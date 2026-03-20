@@ -123,7 +123,7 @@ const {
             :subtitle="dataset.description || 'No description'"
           >
             <template #append>
-              <v-chip size="x-small" variant="tonal" :color="dataset.is_public ? 'green' : 'blue'">
+              <v-chip size="x-small" variant="tonal" :color="dataset.is_public ? 'success' : 'info'">
                 {{ dataset.is_public ? 'Public' : 'Private' }}
               </v-chip>
             </template>

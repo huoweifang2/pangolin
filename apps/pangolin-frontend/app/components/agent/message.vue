@@ -353,7 +353,7 @@ const cleanContent = computed(() => {
   &__bubble {
     max-width: 100%;
     border-radius: 12px !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
   }
 }
 
@@ -363,7 +363,7 @@ const cleanContent = computed(() => {
   border-radius: 14px;
   border-left: 4px solid transparent;
   background: rgb(var(--v-theme-surface));
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.08);
 
   &--block {
     border-left-color: rgb(var(--v-theme-error));
@@ -371,13 +371,13 @@ const cleanContent = computed(() => {
   }
 
   &--allow {
-    border-left-color: rgb(var(--v-theme-success));
-    background: linear-gradient(135deg, rgba(var(--v-theme-success), 0.03) 0%, rgb(var(--v-theme-surface)) 50%);
+    border-left-color: rgba(var(--v-theme-on-surface), 0.35);
+    background: linear-gradient(135deg, rgba(var(--v-theme-on-surface), 0.02) 0%, rgb(var(--v-theme-surface)) 50%);
   }
 
   &--modify {
-    border-left-color: rgb(var(--v-theme-warning));
-    background: linear-gradient(135deg, rgba(var(--v-theme-warning), 0.04) 0%, rgb(var(--v-theme-surface)) 50%);
+    border-left-color: rgba(var(--v-theme-on-surface), 0.55);
+    background: linear-gradient(135deg, rgba(var(--v-theme-on-surface), 0.03) 0%, rgb(var(--v-theme-surface)) 50%);
   }
 
   &__header {

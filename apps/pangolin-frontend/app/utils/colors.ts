@@ -2,18 +2,16 @@
  * Unified semantic color system for the entire product.
  *
  * Color semantics:
- *   BLOCK / danger     → error (red)
- *   MODIFY / caution   → warning (amber)
- *   ALLOW / safe       → success (green)
- *   TOTAL / neutral    → primary (blue) or info
- *   Brand / navigation → secondary (teal) — never used for security states
+ *   BLOCK / danger     → error (red accent)
+ *   MODIFY / caution   → warning (neutral gray)
+ *   ALLOW / safe       → success (neutral gray)
+ *   TOTAL / neutral    → primary / info (grayscale)
+ *   Brand / navigation → secondary (grayscale)
  *
- * Hex palette (dark theme reference):
- *   error:   #EF4444  — punchy red for BLOCK / high-risk / danger
- *   warning: #F59E0B  — amber for MODIFY / caution / medium-risk
- *   success: #22C55E  — green for ALLOW / safe / low-risk
- *   primary: #7C8FD4  — muted indigo-blue for totals / baseline
- *   info:    #38BDF8  — cyan-blue for neutral metrics
+ * Hex palette (light theme reference):
+ *   error:   #C53B31  — reserved for critical risk only
+ *   primary: #151515  — headline neutral
+ *   secondary/info/warning/success: grayscale tones
  */
 
 // ─── Decision colors ───────────────────────────────────────
@@ -25,7 +23,7 @@ export function decisionColor(decision: string | undefined | null): string {
     case 'BLOCK': return 'error'
     case 'MODIFY': return 'warning'
     case 'ALLOW': return 'success'
-    case 'REDACT': return 'orange'
+    case 'REDACT': return 'warning'
     default: return 'grey'
   }
 }
@@ -50,12 +48,12 @@ export function decisionLabel(decision: string | undefined | null, reason?: stri
 }
 
 // ─── Risk score colors ─────────────────────────────────────
-// 4-tier scale: green → amber → orange → red
+// 4-tier scale: grayscale → red (critical only)
 export function riskColor(score: number | null | undefined): string {
   if (score == null) {return 'grey'}
   if (score < 0.25) {return 'success'}
-  if (score < 0.50) {return 'warning'}
-  if (score < 0.75) {return 'orange'}
+  if (score < 0.50) {return 'info'}
+  if (score < 0.75) {return 'warning'}
   return 'error'
 }
 
@@ -63,8 +61,8 @@ export function riskColor(score: number | null | undefined): string {
 export function riskTextColor(score: number | null | undefined): string {
   if (score == null) {return 'text-grey'}
   if (score < 0.25) {return 'text-success'}
-  if (score < 0.50) {return 'text-warning'}
-  if (score < 0.75) {return 'text-orange'}
+  if (score < 0.50) {return 'text-info'}
+  if (score < 0.75) {return 'text-warning'}
   return 'text-error'
 }
 
@@ -76,11 +74,11 @@ export function flagColor(key: string, val?: unknown): string {
   if (key.includes('denylist') || key.includes('custom')) {return 'error'}
   if (key.includes('jailbreak')) {return 'error'}
 
-  // Medium-severity → amber/orange accent
-  if (key.includes('pii')) {return 'orange'}
-  if (key.includes('toxicity') || key.includes('harm')) {return 'amber'}
-  if (key.includes('suspicious')) {return 'warning'}
-  if (key.includes('secrets')) {return 'purple'}
+  // Non-critical tags use neutral hierarchy
+  if (key.includes('pii')) {return 'warning'}
+  if (key.includes('toxicity') || key.includes('harm')) {return 'warning'}
+  if (key.includes('suspicious')) {return 'info'}
+  if (key.includes('secrets')) {return 'info'}
 
   // Numeric score-based
   if (typeof val === 'number') {
@@ -99,13 +97,13 @@ export const FLAG_COLORS: Record<string, string> = {
   promptinjection: 'error',
   injection: 'error',
   jailbreak: 'error',
-  pii_detected: 'orange',
-  pii: 'orange',
-  pii_count: 'orange',
-  toxicity: 'amber',
-  secrets: 'purple',
-  suspicious_intent: 'warning',
-  score_boost: 'warning',
+  pii_detected: 'warning',
+  pii: 'warning',
+  pii_count: 'warning',
+  toxicity: 'warning',
+  secrets: 'info',
+  suspicious_intent: 'info',
+  score_boost: 'info',
 }
 
 export function analyticsFlagColor(flag: string): string {
@@ -119,7 +117,7 @@ export function actionColor(action: string): string {
 }
 
 export function severityColor(severity: string): string {
-  const map: Record<string, string> = { critical: 'error', high: 'orange', medium: 'warning', low: 'grey' }
+  const map: Record<string, string> = { critical: 'error', high: 'warning', medium: 'info', low: 'secondary' }
   return map[severity] ?? 'default'
 }
 
@@ -127,9 +125,9 @@ export function severityColor(severity: string): string {
 export function policyColor(name: string): string {
   const map: Record<string, string> = {
     fast: 'success',
-    balanced: 'primary',
-    strict: 'warning',
-    paranoid: 'error',
+    balanced: 'info',
+    strict: 'secondary',
+    paranoid: 'primary',
   }
   return map[name] ?? 'grey'
 }
@@ -138,35 +136,35 @@ export function policyColor(name: string): string {
 // These match the Vuetify theme but as hex values for ECharts
 export const CHART = {
   // Decision series
-  total:    '#5B8DEF',  // muted blue — baseline
-  blocked:  '#EF4444',  // red — danger
-  modified: '#F59E0B',  // amber — caution
-  allowed:  '#22C55E',  // green — safe
+  total:    '#202020',
+  blocked:  '#C53B31',
+  modified: '#6A6A6A',
+  allowed:  '#9B9B9B',
 
   // Grid / axis
-  gridLine:  'rgba(255, 255, 255, 0.06)',
-  axisLine:  'rgba(255, 255, 255, 0.15)',
-  axisLabel: 'rgba(255, 255, 255, 0.45)',
+  gridLine:  'rgba(0, 0, 0, 0.08)',
+  axisLine:  'rgba(0, 0, 0, 0.18)',
+  axisLabel: 'rgba(0, 0, 0, 0.55)',
 
   // Policy-specific (chart bars)
-  policyFast:      '#22C55E',
-  policyBalanced:  '#F59E0B',
-  policyStrict:    '#FB923C',
-  policyParanoid:  '#EF4444',
-  policyDefault:   '#6B7280',
+  policyFast:      '#BEBEBE',
+  policyBalanced:  '#8F8F8F',
+  policyStrict:    '#5F5F5F',
+  policyParanoid:  '#2E2E2E',
+  policyDefault:   '#A7A7A7',
 
-  // Intents donut — muted varied palette
+  // Intents donut — neutral grayscale palette
   intents: [
-    '#5B8DEF', // blue
-    '#22C55E', // green
-    '#EF4444', // red
-    '#F59E0B', // amber
-    '#A855F7', // purple
-    '#06B6D4', // cyan
-    '#8B5CF6', // violet
-    '#64748B', // slate
-    '#EC4899', // pink
-    '#3B82F6', // blue-500
+    '#1E1E1E',
+    '#353535',
+    '#4A4A4A',
+    '#5D5D5D',
+    '#6F6F6F',
+    '#818181',
+    '#949494',
+    '#A8A8A8',
+    '#BCBCBC',
+    '#D0D0D0',
   ],
 } as const
 

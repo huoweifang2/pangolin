@@ -162,15 +162,15 @@ onBeforeUnmount(() => {
 
     <v-spacer />
 
-    <v-chip :color="dashboardConnected ? 'green' : 'grey'" variant="tonal" size="small">
+    <v-chip :color="dashboardConnected ? 'success' : 'grey'" variant="tonal" size="small">
       {{ dashboardConnected ? 'Dashboard Connected' : 'Dashboard Disconnected' }}
     </v-chip>
 
-    <v-chip :color="streamPaused ? 'amber' : 'green'" variant="tonal" size="small">
+    <v-chip :color="streamPaused ? 'warning' : 'success'" variant="tonal" size="small">
       Capture {{ streamPaused ? 'Paused' : 'Active' }}
     </v-chip>
 
-    <v-chip :color="totalPendingEscalations > 0 ? 'error' : 'green'" variant="tonal" size="small">
+    <v-chip :color="totalPendingEscalations > 0 ? 'error' : 'success'" variant="tonal" size="small">
       Pending Escalations: {{ totalPendingEscalations }}
     </v-chip>
 
@@ -180,7 +180,7 @@ onBeforeUnmount(() => {
 
     <v-chip
       v-if="dashboardReconnectDelaySeconds != null"
-      color="amber"
+      color="warning"
       variant="tonal"
       size="small"
     >

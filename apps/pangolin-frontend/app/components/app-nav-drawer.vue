@@ -62,8 +62,9 @@ const manageItems: NavItem[] = [
 
 :deep(.nav-item--active) {
   border-radius: 12px !important;
-  background: rgb(var(--v-theme-secondary)) !important;
-  color: rgb(var(--v-theme-on-secondary)) !important;
+  background: rgb(var(--v-theme-primary)) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
+  border: 1px solid rgb(var(--v-theme-primary));
 
   .v-list-item__overlay {
     opacity: 0 !important;

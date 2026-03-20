@@ -253,7 +253,7 @@ const codeComment = computed(() =>
   }
 
   &__url-highlight {
-    color: #e879f9;
+    color: rgb(var(--v-theme-primary));
     font-weight: 700;
   }
 }
@@ -324,17 +324,17 @@ const codeComment = computed(() =>
   line-height: 1.6;
   margin: 0;
   padding: 8px 12px;
-  background: #1e1e2e;
-  color: #e0e4f0;
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface-variant));
   border-radius: 6px;
   overflow-x: auto;
   white-space: pre;
 }
 
-.c-var { color: #7dd3fc; font-weight: 600; }
-.c-fn { color: #fde68a; font-weight: 600; }
-.c-key { color: #86efac; }
-.c-str { color: #86efac; }
-.c-url { color: #f0abfc; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
-.c-comment { color: #9ca3af; font-style: italic; }
+.c-var { color: rgba(255, 255, 255, 0.96); font-weight: 600; }
+.c-fn { color: rgba(255, 255, 255, 0.9); font-weight: 600; }
+.c-key { color: rgba(255, 255, 255, 0.84); }
+.c-str { color: rgba(255, 255, 255, 0.78); }
+.c-url { color: rgba(255, 255, 255, 1); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.c-comment { color: rgba(255, 255, 255, 0.56); font-style: italic; }
 </style>

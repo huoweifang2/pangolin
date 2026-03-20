@@ -83,7 +83,7 @@ const {
       <v-chip size="small" variant="tonal" class="mr-2">
         Showing {{ recentDashboardEvents.length }} / {{ visibleDashboardEventCount }}
       </v-chip>
-      <v-chip :color="dashboardConnected ? 'green' : 'grey'" size="small" variant="tonal">
+      <v-chip :color="dashboardConnected ? 'success' : 'grey'" size="small" variant="tonal">
         {{ dashboardConnected ? 'Online' : 'Offline' }}
       </v-chip>
     </v-card-title>

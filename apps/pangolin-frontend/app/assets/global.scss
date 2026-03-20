@@ -1,13 +1,9 @@
 :root {
   --pangolin-radius: 12px;
-  --pangolin-shadow-soft: 0 10px 28px rgba(11, 26, 24, 0.16);
-  --pangolin-shadow-deep: 0 22px 50px rgba(7, 19, 18, 0.34);
-  --pangolin-bg-light: radial-gradient(circle at 18% 10%, rgba(112, 138, 128, 0.18), transparent 40%),
-    radial-gradient(circle at 88% 0%, rgba(196, 159, 106, 0.2), transparent 32%),
-    linear-gradient(180deg, #f4f7f4 0%, #e9efeb 100%);
-  --pangolin-bg-dark: radial-gradient(circle at 18% 8%, rgba(130, 163, 154, 0.2), transparent 40%),
-    radial-gradient(circle at 88% 2%, rgba(201, 163, 102, 0.16), transparent 35%),
-    linear-gradient(180deg, #0d1717 0%, #132021 100%);
+  --pangolin-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --pangolin-shadow-deep: 0 20px 45px rgba(0, 0, 0, 0.16);
+  --pangolin-bg-light: linear-gradient(180deg, #fafafa 0%, #f1f1f1 100%);
+  --pangolin-bg-dark: linear-gradient(180deg, #111111 0%, #181818 100%);
 }
 
 html,
@@ -40,30 +36,30 @@ h3,
 
 .v-main {
   background-image: linear-gradient(
-      125deg,
-      rgba(var(--v-theme-primary), 0.04) 0%,
-      transparent 42%
+      0deg,
+      rgba(var(--v-theme-on-surface), 0.02),
+      rgba(var(--v-theme-on-surface), 0.02)
     ),
     repeating-linear-gradient(
-      145deg,
-      rgba(var(--v-theme-secondary), 0.08) 0,
-      rgba(var(--v-theme-secondary), 0.08) 1px,
+      90deg,
+      rgba(var(--v-theme-on-surface), 0.02) 0,
+      rgba(var(--v-theme-on-surface), 0.02) 1px,
       transparent 1px,
-      transparent 12px
+      transparent 16px
     );
-  background-size: cover, 14px 14px;
+  background-size: cover, 16px 16px;
 }
 
 .v-navigation-drawer {
-  border-right: 1px solid rgba(var(--v-theme-primary), 0.2) !important;
-  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 90%, rgb(var(--v-theme-primary)) 10%) !important;
-  backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.1) !important;
+  background: rgb(var(--v-theme-surface)) !important;
+  backdrop-filter: blur(8px);
 }
 
 .v-app-bar {
-  border-bottom: 1px solid rgba(var(--v-theme-primary), 0.18) !important;
-  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 90%, rgb(var(--v-theme-background)) 10%) !important;
-  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1) !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 94%, rgb(var(--v-theme-background)) 6%) !important;
+  backdrop-filter: blur(10px);
 }
 
 // ── Global input border-radius (12px) ──────────────────────────
@@ -99,6 +95,7 @@ h3,
 // ── Global v-chip font size (12px) ─────────────────────────────
 .v-chip {
   font-size: 12px !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 // ── Global v-card-title font size (18px) + margin ──────────────
@@ -110,6 +107,7 @@ h3,
 // ── Global v-card border-radius (12px) ─────────────────────────
 .v-card {
   border-radius: var(--pangolin-radius) !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   box-shadow: var(--pangolin-shadow-soft);
 }
 
@@ -118,10 +116,23 @@ h3,
   border-radius: var(--pangolin-radius) !important;
 }
 
-// ── Action button – solid teal background ──────────────────────
+.v-table thead th {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.56) !important;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1) !important;
+}
+
+.v-table tbody tr:nth-child(even) {
+  background: rgba(var(--v-theme-on-surface), 0.015);
+}
+
+// ── Action button – solid neutral background ────────────────────
 .btn-action {
   background-color: rgb(var(--v-theme-secondary)) !important;
-  color: #fff !important;
+  color: rgb(var(--v-theme-on-secondary)) !important;
 
   &:hover {
     filter: brightness(1.15);
@@ -135,7 +146,7 @@ h3,
 
 .btn-action--danger {
   background-color: rgb(var(--v-theme-error)) !important;
-  color: #fff !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
 
   &:hover {
     filter: brightness(1.15);
@@ -144,7 +155,7 @@ h3,
 
 // ── Dialog card – subtle white border ──────────────────────────
 .v-dialog > .v-overlay__content > .v-card {
-  border: 1px solid rgba(var(--v-theme-primary), 0.24) !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12) !important;
   box-shadow: var(--pangolin-shadow-deep) !important;
 }
 
@@ -156,4 +167,3 @@ h3,
 .transparent-page {
   background: transparent !important;
 }
-
