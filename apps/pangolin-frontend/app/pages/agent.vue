@@ -38,7 +38,33 @@ const activeTab = ref<'studio' | 'security'>('studio')
 }
 
 .agent-tabs {
-  border-bottom: 1px solid rgba(var(--v-theme-outline), 0.35);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-surface), 0.9);
+
+  :deep(.v-slide-group__content) {
+    gap: 10px;
+    padding-bottom: 8px;
+  }
+
+  :deep(.v-tab) {
+    border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
+    border-radius: 999px;
+    min-height: 36px;
+    text-transform: none;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    background: rgba(var(--v-theme-surface), 1);
+  }
+
+  :deep(.v-tab.v-tab-item--selected) {
+    background: rgb(var(--v-theme-primary));
+    color: rgb(var(--v-theme-on-primary));
+    border-color: rgb(var(--v-theme-primary));
+  }
+
+  :deep(.v-tab__slider) {
+    display: none;
+  }
 }
 
 .agent-window {

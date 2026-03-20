@@ -5,11 +5,11 @@
       <v-card
         v-else
         variant="outlined"
-        class="h-100"
+        class="h-100 kpi-card"
         :class="{ 'kpi-block-rate': card.accent }"
       >
         <v-card-text class="d-flex align-center">
-          <v-avatar :color="card.color" variant="tonal" size="48" class="mr-4">
+          <v-avatar :color="card.color" variant="tonal" size="48" class="mr-4 kpi-avatar">
             <v-icon :icon="card.icon" />
           </v-avatar>
           <div>
@@ -81,6 +81,15 @@ const cards = computed(() => {
 </script>
 
 <style scoped>
+.kpi-card {
+  border-color: rgba(var(--v-theme-on-surface), 0.14) !important;
+  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 96%, rgb(var(--v-theme-background)) 4%);
+}
+
+.kpi-avatar {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
+}
+
 .kpi-block-rate {
   border-color: rgba(var(--v-theme-error), 0.3) !important;
   border-top: 3px solid rgb(var(--v-theme-error)) !important;

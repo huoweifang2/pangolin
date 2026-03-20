@@ -110,3 +110,11 @@ const {
     </v-col>
   </v-row>
 </template>
+
+<style scoped>
+:deep(.v-card) {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  min-height: 116px;
+  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 96%, rgb(var(--v-theme-background)) 4%);
+}
+</style>

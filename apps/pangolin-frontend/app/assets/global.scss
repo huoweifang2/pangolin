@@ -95,6 +95,7 @@ h3,
 // ── Global v-chip font size (12px) ─────────────────────────────
 .v-chip {
   font-size: 12px !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 // ── Global v-card-title font size (18px) + margin ──────────────
@@ -113,6 +114,19 @@ h3,
 // ── Global button border-radius (12px) ─────────────────────────
 .v-btn {
   border-radius: var(--pangolin-radius) !important;
+}
+
+.v-table thead th {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.56) !important;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1) !important;
+}
+
+.v-table tbody tr:nth-child(even) {
+  background: rgba(var(--v-theme-on-surface), 0.015);
 }
 
 // ── Action button – solid neutral background ────────────────────

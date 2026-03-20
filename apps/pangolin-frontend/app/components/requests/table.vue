@@ -222,7 +222,7 @@ function riskColor(score: number | null) {
 
 <style lang="scss" scoped>
 .expanded-parent-row {
-  background: rgba(var(--v-theme-primary), 0.04) !important;
+  background: rgba(var(--v-theme-on-surface), 0.035) !important;
   border-left: 3px solid rgb(var(--v-theme-primary));
 
   td:first-child {
@@ -234,7 +234,7 @@ function riskColor(score: number | null) {
   background: rgba(var(--v-theme-on-surface), 0.015);
 
   > td {
-    border-bottom: 2px solid rgba(var(--v-theme-primary), 0.12) !important;
+    border-bottom: 2px solid rgba(var(--v-theme-on-surface), 0.12) !important;
   }
 }
 </style>
