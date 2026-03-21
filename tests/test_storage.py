@@ -5,7 +5,6 @@ Verifies that both JSONL and SQLite storage backends correctly
 implement the StorageBackend interface.
 """
 
-import asyncio
 import tempfile
 from pathlib import Path
 

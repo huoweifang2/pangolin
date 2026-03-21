@@ -2,7 +2,6 @@
   <v-container fluid class="policies-page">
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
-        <h1 class="text-h5 mb-1">Policies</h1>
         <p class="text-body-2 text-medium-emphasis">
           Manage firewall policy levels with custom thresholds and scanner nodes
         </p>

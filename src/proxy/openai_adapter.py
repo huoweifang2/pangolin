@@ -140,11 +140,12 @@ class OpenAIAdapter:
             raise HTTPException(status_code=403, detail=f"Firewall Blocked: {reason}")
 
         # 3. L2 Analysis (LangGraph 5-layer Pipeline)
-        from ..engine.pipeline.runner import run_pre_llm_pipeline
         import uuid
-        
+
+        from ..engine.pipeline.runner import run_pre_llm_pipeline
+
         request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
-        
+
         pipeline_state = await run_pre_llm_pipeline(
             request_id=request_id,
             client_id="default_client",
@@ -154,7 +155,7 @@ class OpenAIAdapter:
             temperature=body.get("temperature", 0.7),
             max_tokens=body.get("max_tokens"),
             stream=body.get("stream", False),
-            api_key=None
+            api_key=None,
         )
 
         is_pipeline_blocked = pipeline_state.get("decision") == "BLOCK"
@@ -218,7 +219,7 @@ class OpenAIAdapter:
         # headers like transfer-encoding, content-encoding, content-length as
         # they conflict with ASGI/uvicorn's own framing and cause broken streams.
         safe_response_headers: dict[str, str] = {}
-        _SKIP_RESPONSE_HEADERS = frozenset(
+        _skip_response_headers = frozenset(
             {
                 "transfer-encoding",
                 "content-encoding",
@@ -228,7 +229,7 @@ class OpenAIAdapter:
             }
         )
         for key, value in r.headers.items():
-            if key.lower() not in _SKIP_RESPONSE_HEADERS:
+            if key.lower() not in _skip_response_headers:
                 safe_response_headers[key] = value
 
         # Use aiter_bytes() to get decoded (decompressed) content, since we

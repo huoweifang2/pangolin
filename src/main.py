@@ -328,14 +328,14 @@ app.add_middleware(
 )
 
 # Register dataset, trace and scenario routes
+from src.routes.agent_studio import router as agent_studio_router
+from src.routes.analytics import router as analytics_router
 from src.routes.dataset import router as dataset_router
-from src.routes.trace import router as trace_router
-from src.routes.scenarios import router as scenarios_router
 from src.routes.models import router as models_router
 from src.routes.policies import router as policies_router
 from src.routes.rules import router as rules_router
-from src.routes.analytics import router as analytics_router
-from src.routes.agent_studio import router as agent_studio_router
+from src.routes.scenarios import router as scenarios_router
+from src.routes.trace import router as trace_router
 
 app.include_router(dataset_router)
 app.include_router(trace_router)
@@ -781,7 +781,7 @@ async def stream_logs(request: Request) -> StreamingResponse:
 
         # Initial read of recent lines for context
         try:
-            with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+            with open(log_file, encoding="utf-8", errors="ignore") as f:
                 lines = f.readlines()
                 for line in lines[-120:]:
                     yield serialize_event(line)
@@ -1370,7 +1370,7 @@ async def get_feishu_config(request: Request) -> JSONResponse:
 @app.post("/api/feishu/config")
 async def update_feishu_config(request: Request) -> JSONResponse:
     """Update Feishu channel configuration."""
-    updates = await request.json()
+    _updates = await request.json()
     # TODO: Implement config update logic
     # For now, just return success
     return JSONResponse({"status": "ok", "message": "Configuration saved. Restart required."})

@@ -112,31 +112,35 @@
             >
               Start a run to see multi-agent delegation and execution events.
             </v-alert>
-
-            <div v-else class="d-flex flex-column ga-4">
-              <AgentStudioGraph :graph="graphData" v-if="graphData.nodes.length > 0" />
-
-              <v-expansion-panels variant="accordion">
-                 <v-expansion-panel title="Streaming Execution Logs">
-                   <v-expansion-panel-text>
-                      <v-timeline density="compact" align="start" side="end">
-                        <v-timeline-item
-                          v-for="entry in logs"
-                          :key="entry.id"
-                          size="small"
-                          dot-color="primary"
-                        >
-                          <div class="d-flex align-center ga-2 mb-1">
-                            <strong>{{ entry.title }}</strong>
-                            <v-chip size="x-small" variant="outlined">{{ entry.at }}</v-chip>
-                          </div>
-                          <div class="text-body-2 text-medium-emphasis">{{ entry.detail }}</div>
-                        </v-timeline-item>
-                      </v-timeline>
-                   </v-expansion-panel-text>
-                 </v-expansion-panel>
-              </v-expansion-panels>
-            </div>
+            <v-timeline v-else density="compact" align="start" side="end" truncate-line="both">
+              <v-timeline-item
+                v-for="entry in logs"
+                :key="entry.id"
+                size="small"
+                fill-dot
+                :dot-color="agentDotColor(entry.agentId)"
+              >
+                <div class="d-flex align-center ga-2 mb-1 flex-wrap">
+                  <span
+                    v-if="entry.agentId"
+                    class="agent-color-block"
+                    :style="{ backgroundColor: agentBlockColor(entry.agentId) }"
+                  />
+                  <v-chip
+                    v-if="entry.agentName"
+                    size="x-small"
+                    variant="flat"
+                    class="agent-event-chip"
+                    :style="{ backgroundColor: agentBlockColor(entry.agentId) }"
+                  >
+                    {{ entry.agentName }}
+                  </v-chip>
+                  <strong>{{ entry.title }}</strong>
+                  <v-chip size="x-small" variant="outlined">{{ entry.at }}</v-chip>
+                </div>
+                <div class="text-body-2 text-medium-emphasis">{{ entry.detail }}</div>
+              </v-timeline-item>
+            </v-timeline>
           </v-card-text>
         </v-card>
 
@@ -160,6 +164,22 @@
                 <div class="text-caption text-medium-emphasis mb-2">
                   Tool calls: {{ result.tool_calls }} · Blocked: {{ result.blocked_tool_calls }}
                 </div>
+
+                <div v-if="result.tool_events?.length" class="agent-tool-events mb-3">
+                  <div class="text-caption text-medium-emphasis mb-2">Tool execution details</div>
+                  <div class="d-flex flex-wrap ga-2">
+                    <agent-tool-call-chip
+                      v-for="(tool, idx) in toolCallsForResult(result.tool_events)"
+                      :key="`${result.step_id}-tool-${idx}`"
+                      :tool="tool"
+                      :verdict="result.blocked_tool_calls > 0 ? 'BLOCK' : 'ALLOW'"
+                    />
+                  </div>
+                </div>
+                <div v-else-if="result.tool_calls > 0" class="text-caption text-disabled mb-3">
+                  Tool call details are not available for this historical run.
+                </div>
+
                 <div class="text-body-2 agent-result-content">{{ result.content || '(empty output)' }}</div>
               </template>
             </v-expansion-panel>
@@ -232,6 +252,8 @@
 import { computed, onMounted } from 'vue'
 import { useModels } from '~/composables/useModels'
 import { useAgentStudio } from '~/composables/useAgentStudio'
+import type { ToolCall } from '~/types/agent'
+import type { AgentStudioToolEvent } from '~/types/agentStudio'
 
 const {
   profiles,
@@ -247,7 +269,6 @@ const {
   currentRunId,
   finalReport,
   logs,
-  graphData,
   resultEvents,
   runs,
   selectedRunDetail,
@@ -270,6 +291,107 @@ const modelItems = computed(() => {
     }))
 })
 
+interface AgentColorPair {
+  block: string
+  dot: string
+}
+
+const AGENT_COLORS: AgentColorPair[] = [
+  { block: '#e6eef7', dot: '#355c8c' },
+  { block: '#e7f3ec', dot: '#2f6b4b' },
+  { block: '#f7efe4', dot: '#8c5e2e' },
+  { block: '#efe9f7', dot: '#5b3e8c' },
+  { block: '#e7f4f4', dot: '#2d6d6d' },
+  { block: '#f7e7ea', dot: '#8a3f4d' },
+  { block: '#ececec', dot: '#4a4a4a' },
+  { block: '#e9eef1', dot: '#3e5568' },
+]
+
+const FALLBACK_COLOR: AgentColorPair = {
+  block: '#f1f1f1',
+  dot: '#7a7a7a',
+}
+
+const agentColorMap = computed(() => {
+  const out = new Map<string, AgentColorPair>()
+  profiles.value.forEach((profile, idx) => {
+    out.set(profile.id, AGENT_COLORS[idx % AGENT_COLORS.length] ?? FALLBACK_COLOR)
+  })
+  return out
+})
+
+function hashString(value: string): number {
+  let hash = 0
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(i)
+    hash |= 0
+  }
+  return Math.abs(hash)
+}
+
+function resolveAgentColor(agentId?: string): AgentColorPair {
+  if (!agentId) {
+    return FALLBACK_COLOR
+  }
+
+  const existing = agentColorMap.value.get(agentId)
+  if (existing) {
+    return existing
+  }
+
+  return AGENT_COLORS[hashString(agentId) % AGENT_COLORS.length] ?? FALLBACK_COLOR
+}
+
+function agentBlockColor(agentId?: string): string {
+  return resolveAgentColor(agentId).block
+}
+
+function agentDotColor(agentId?: string): string {
+  return resolveAgentColor(agentId).dot
+}
+
+function normalizeToolArgs(value: unknown): Record<string, unknown> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return {}
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>
+      }
+    } catch {
+      // Ignore parse errors and fall back to empty args.
+    }
+  }
+
+  return {}
+}
+
+function toToolCall(event: AgentStudioToolEvent): ToolCall {
+  return {
+    tool: typeof event.tool === 'string' && event.tool.trim() ? event.tool : 'unknown',
+    args: normalizeToolArgs(event.args),
+    result_preview: typeof event.result_preview === 'string' ? event.result_preview : '',
+    allowed: Boolean(event.allowed ?? true),
+    blocked_reason: event.blocked_reason ?? null,
+  }
+}
+
+function toolCallsForResult(toolEvents?: AgentStudioToolEvent[]): ToolCall[] {
+  if (!toolEvents?.length) {
+    return []
+  }
+
+  return toolEvents.map((toolEvent) => toToolCall(toolEvent))
+}
+
 onMounted(async () => {
   await refreshAvailability()
   await bootstrap()
@@ -289,6 +411,26 @@ onMounted(async () => {
 .timeline-pane {
   max-height: 360px;
   overflow-y: auto;
+}
+
+.agent-tool-events {
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.18);
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.agent-color-block {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.2);
+  flex: 0 0 auto;
+}
+
+.agent-event-chip {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
+  color: rgb(var(--v-theme-on-surface));
+  font-weight: 600;
 }
 
 .report-pane {

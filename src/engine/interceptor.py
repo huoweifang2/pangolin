@@ -119,7 +119,7 @@ def _compute_verdict(
                 ThreatLevel.CRITICAL,
                 f"Agent-Scan Critical: {issue.code} - {issue.message}",
             )
-        
+
         if agent_scan.has_toxic_flows():
             flow = agent_scan.toxic_flows[0]
             # Default to ESCALATE for toxic flows unless configured otherwise
@@ -270,11 +270,12 @@ async def intercept_and_analyze(
 
     if run_l2 and l1_result.threat_level != ThreatLevel.CRITICAL:
         import json
+
         from .pipeline.runner import run_pre_llm_pipeline
-        
+
         # Serialize params so the scanners (Presidio/NeMo) can inspect them
         params_str = json.dumps(request.params) if isinstance(request.params, dict) else str(request.params)
-        
+
         pipeline_state = await run_pre_llm_pipeline(
             request_id=session.session_id,
             client_id=session.agent_id,
@@ -285,12 +286,12 @@ async def intercept_and_analyze(
             max_tokens=None,
             stream=False,
         )
-        
+
         decision = pipeline_state.get("decision", "ALLOW")
         l2_result.is_injection = decision == "BLOCK"
         l2_result.confidence = pipeline_state.get("risk_score", 0.0)
         l2_result.reasoning = pipeline_state.get("blocked_reason", "Pipeline blocked") if decision == "BLOCK" else "Clean"
-        
+
         # Override l2_result threat level if blocked
         if decision == "BLOCK":
             l2_result.threat_level = ThreatLevel.HIGH
@@ -303,7 +304,7 @@ async def intercept_and_analyze(
         if tool_name:
             if agent_scan_analyzer:
                 agent_scan_result = agent_scan_analyzer.get_tool_result(tool_name)
-            
+
             from ..models import Issue
             from .agent.limits.config import get_limits_for_role
             from .agent.limits.service import get_limits_service

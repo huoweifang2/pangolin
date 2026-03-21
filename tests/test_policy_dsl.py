@@ -3,7 +3,8 @@ Tests for Policy DSL Parser and Evaluator.
 """
 
 import pytest
-from src.engine.policy_dsl import PolicyEngine, PolicyEvaluationError, PolicyResult
+
+from src.engine.policy_dsl import PolicyEngine
 
 
 @pytest.mark.asyncio

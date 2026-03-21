@@ -1,6 +1,5 @@
 <template>
   <v-container fluid>
-    <h1 class="text-h5 mb-1">Security Rules</h1>
     <p class="text-body-2 text-medium-emphasis mb-4">
       Custom pattern rules (regex / plain text). Applied to all scanning policies.
       ML scanners (LLM Guard, Presidio) run independently.

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
+
 from src.config import get_config
+
 
 @dataclass
 class DenylistHit:
@@ -24,9 +25,9 @@ async def check_denylist(text: str, policy_name: str) -> list[DenylistHit]:
     """
     hits: list[DenylistHit] = []
     text_lower = text.lower()
-    
+
     config = get_config()
-    
+
     for phrase in config.blocked_commands:
         if phrase.lower() in text_lower:
             hits.append(

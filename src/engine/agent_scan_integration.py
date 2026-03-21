@@ -26,10 +26,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import time
-from dataclasses import dataclass
 from typing import Any
-
-from pydantic import BaseModel
 
 from ..models import AgentScanResult, Issue, ScalarToolLabels, ToxicFlow
 

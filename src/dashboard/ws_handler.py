@@ -82,7 +82,7 @@ class DashboardHub:
         """
         data = event.to_bytes()
         dropped = 0
-        for client_id, queue in self._clients.items():
+        for _client_id, queue in self._clients.items():
             try:
                 queue.put_nowait(data)
             except asyncio.QueueFull:

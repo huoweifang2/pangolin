@@ -52,6 +52,17 @@ export interface AgentStudioDelegationEvent {
   }
 }
 
+export interface AgentStudioToolEvent {
+  tool?: string
+  args?: Record<string, unknown>
+  result_preview?: string
+  allowed?: boolean
+  blocked_reason?: string | null
+  l1_patterns?: string[]
+  l2_confidence?: number | null
+  l2_reasoning?: string
+}
+
 export interface AgentStudioAgentResultEvent {
   type: 'agent_result'
   result: {
@@ -65,6 +76,7 @@ export interface AgentStudioAgentResultEvent {
     analysis: Record<string, unknown>
     tool_calls: number
     blocked_tool_calls: number
+    tool_events?: AgentStudioToolEvent[]
     started_at: string
     ended_at: string
   }
@@ -145,6 +157,7 @@ export interface AgentStudioRunDetail {
     content: string
     tool_calls: number
     blocked_tool_calls: number
+    tool_events?: AgentStudioToolEvent[]
     analysis: Record<string, unknown>
     started_at: string
     ended_at: string

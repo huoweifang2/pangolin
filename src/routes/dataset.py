@@ -8,13 +8,12 @@ which are collections of traces organized for analysis and policy testing.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 
 from src.config import get_config
-from src.models import Dataset, Policy, Trace
+from src.models import Dataset
 from src.storage import get_storage_backend
 
 logger = logging.getLogger("agent_firewall.routes.dataset")

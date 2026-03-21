@@ -90,14 +90,10 @@ class FirewallConfig:
     )
 
     # ── Feishu/Lark Channel ──────────────────────────────────────────
-    feishu_enabled: bool = field(
-        default_factory=lambda: os.getenv("AF_FEISHU_ENABLED", "0") == "1"
-    )
+    feishu_enabled: bool = field(default_factory=lambda: os.getenv("AF_FEISHU_ENABLED", "0") == "1")
     feishu_app_id: str = field(default_factory=lambda: os.getenv("AF_FEISHU_APP_ID", ""))
     feishu_app_secret: str = field(default_factory=lambda: os.getenv("AF_FEISHU_APP_SECRET", ""))
-    feishu_encrypt_key: str = field(
-        default_factory=lambda: os.getenv("AF_FEISHU_ENCRYPT_KEY", "")
-    )
+    feishu_encrypt_key: str = field(default_factory=lambda: os.getenv("AF_FEISHU_ENCRYPT_KEY", ""))
     feishu_verification_token: str = field(
         default_factory=lambda: os.getenv("AF_FEISHU_VERIFICATION_TOKEN", "")
     )
@@ -115,9 +111,7 @@ class FirewallConfig:
     agent_scan_mode: str = field(
         default_factory=lambda: os.getenv("AF_AGENT_SCAN_MODE", "local")  # local | remote
     )
-    agent_scan_api_key: str = field(
-        default_factory=lambda: os.getenv("AF_AGENT_SCAN_API_KEY", "")
-    )
+    agent_scan_api_key: str = field(default_factory=lambda: os.getenv("AF_AGENT_SCAN_API_KEY", ""))
     agent_scan_cache_ttl: int = field(
         default_factory=lambda: int(os.getenv("AF_AGENT_SCAN_CACHE_TTL", "3600"))
     )
@@ -129,14 +123,9 @@ class FirewallConfig:
     )
 
     # ── Storage (Phase 1) ────────────────────────────────────────────
-    storage_backend: str = field(
-        default_factory=lambda: os.getenv("AF_STORAGE_BACKEND", "jsonl")
-    )
-    storage_path: str = field(
-        default_factory=lambda: os.getenv("AF_STORAGE_PATH", "./data")
-    )
+    storage_backend: str = field(default_factory=lambda: os.getenv("AF_STORAGE_BACKEND", "jsonl"))
+    storage_path: str = field(default_factory=lambda: os.getenv("AF_STORAGE_PATH", "./data"))
     # For JSONL: directory containing *.jsonl files
-
 
 
 # Global config instance
@@ -146,9 +135,9 @@ _config_instance: FirewallConfig | None = None
 def get_config() -> FirewallConfig:
     """
     Get the global FirewallConfig instance.
-    
+
     Creates the instance on first call (singleton pattern).
-    
+
     Returns:
         FirewallConfig: The global configuration instance
     """

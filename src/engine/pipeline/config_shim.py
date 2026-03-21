@@ -1,5 +1,6 @@
 import logging
-from src.config import get_config, FirewallConfig
+
+from src.config import FirewallConfig, get_config
 
 logger = logging.getLogger("agent_firewall.shim")
 
