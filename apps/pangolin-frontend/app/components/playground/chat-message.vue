@@ -18,9 +18,9 @@
           <v-expansion-panel-title class="pa-0 min-height-0" style="min-height: auto">
             <!-- 1 · VERDICT — first and loudest -->
             <div class="verdict-card__header mb-0 w-100">
-              <v-icon :color="decisionColor" size="28">{{ verdictIcon }}</v-icon>
+              <v-icon class="verdict-card__status-icon" size="24">{{ verdictIcon }}</v-icon>
               <div class="verdict-card__headline">
-                <span class="verdict-card__word" :class="`text-${decisionColor}`">{{ verdictWord }}</span>
+                <span class="verdict-card__word">{{ verdictWord }}</span>
                 <span class="verdict-card__dash text-medium-emphasis">—</span>
                 <span class="verdict-card__short-reason text-medium-emphasis">{{ verdictReason }}</span>
               </div>
@@ -37,18 +37,18 @@
             <div class="verdict-card__meta">
               <div class="verdict-card__kv">
                 <span class="verdict-card__label">Risk</span>
-                <span class="text-caption font-weight-bold" :class="riskTextColor">{{ riskPercent }}%</span>
+                <span class="text-caption font-weight-bold" :class="riskTextClass">{{ riskPercent }}%</span>
               </div>
               <v-progress-linear
                 :model-value="decision!.riskScore * 100"
-                :color="riskColor"
+                :color="riskBarColor"
                 height="3"
                 rounded
                 class="verdict-card__bar"
               />
               <div class="verdict-card__kv">
                 <span class="verdict-card__label">Action</span>
-                <v-chip :color="decisionColor" size="x-small" label variant="tonal">
+                <v-chip size="x-small" label variant="outlined" class="verdict-card__action-chip">
                   {{ decision!.decision }}
                 </v-chip>
               </div>
@@ -124,8 +124,11 @@
                   <v-chip
                     size="x-small"
                     label
-                    :color="tool.blocked ? 'error' : 'success'"
-                    variant="tonal"
+                    variant="outlined"
+                    :class="[
+                      'tool-call-panel__state-chip',
+                      tool.blocked ? 'tool-call-panel__state-chip--blocked' : 'tool-call-panel__state-chip--allowed',
+                    ]"
                   >
                     {{ tool.blocked ? 'Blocked' : 'Executed' }}
                   </v-chip>
@@ -208,10 +211,7 @@
 import { computed } from 'vue'
 import type { ChatMessage, ChatToolInvocation } from '~/types/api'
 import {
-  decisionColor as _dc,
   decisionIcon as _di,
-  riskColor as _rc,
-  riskTextColor as _rtc,
   flagColor as _fc,
   intentLabel as _il,
 } from '~/utils/colors'
@@ -299,7 +299,15 @@ const toolCards = computed<ToolCardViewModel[]>(() => {
 })
 
 function toolRiskColor(score: number | null): string {
-  return _rc(score)
+  return scoreToneColor(score)
+}
+
+function scoreToneColor(score: number | null | undefined): string {
+  if (score == null) {return 'grey'}
+  if (score < 0.25) {return 'green-darken-2'}
+  if (score < 0.5) {return 'light-green-darken-1'}
+  if (score < 0.75) {return 'amber-darken-2'}
+  return 'red-darken-2'
 }
 
 // ── core state ──
@@ -316,9 +324,15 @@ const avatarIcon = computed(() => {
 const verdictIcon = computed(() => _di(decision.value?.decision))
 
 // ── colors ──
-const decisionColor = computed(() => _dc(decision.value?.decision))
-const riskColor = computed(() => _rc(decision.value?.riskScore))
-const riskTextColor = computed(() => _rtc(decision.value?.riskScore))
+const riskBarColor = computed(() => scoreToneColor(decision.value?.riskScore))
+const riskTextClass = computed(() => {
+  const score = decision.value?.riskScore
+  if (score == null) {return 'verdict-card__risk-text verdict-card__risk-text--unknown'}
+  if (score < 0.25) {return 'verdict-card__risk-text verdict-card__risk-text--low'}
+  if (score < 0.5) {return 'verdict-card__risk-text verdict-card__risk-text--medium'}
+  if (score < 0.75) {return 'verdict-card__risk-text verdict-card__risk-text--elevated'}
+  return 'verdict-card__risk-text verdict-card__risk-text--high'
+})
 const riskPercent = computed(() => Math.round((decision.value?.riskScore ?? 0) * 100))
 
 // ── verdict text ──
@@ -507,7 +521,7 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
 }
 
 .tool-call-panel--allowed {
-  border-left: 3px solid rgba(var(--v-theme-success), 0.7);
+  border-left: 3px solid rgba(46, 125, 50, 0.75);
 }
 
 .tool-call-panel--blocked {
@@ -572,36 +586,62 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
 
 /* ═══ Verdict card ═══ */
 .verdict-card {
+  --verdict-tone: 120, 120, 120;
   width: fit-content;
   min-width: 280px;
   flex: 0 1 auto;
-  max-width: 60%;
-  padding: 4px 12px;
+  max-width: 520px;
+  padding: 8px 12px 10px;
   border-radius: 8px;
   border-left: 4px solid transparent;
   background: rgb(var(--v-theme-surface));
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.06);
 
+  :deep(.v-expansion-panel-title) {
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+
+  :deep(.v-expansion-panel-title__overlay) {
+    display: none;
+  }
+
+  :deep(.v-expansion-panel-text) {
+    padding: 0 !important;
+  }
+
+  :deep(.v-expansion-panel-text__wrapper) {
+    padding: 6px 0 0 !important;
+  }
+
   &--block {
+    --verdict-tone: 197, 59, 49;
     border-left-color: rgb(var(--v-theme-error));
     background: linear-gradient(135deg, rgba(var(--v-theme-error), 0.04) 0%, rgb(var(--v-theme-surface)) 50%);
   }
 
   &--allow {
-    border-left-color: rgb(var(--v-theme-success));
-    background: linear-gradient(135deg, rgba(var(--v-theme-success), 0.03) 0%, rgb(var(--v-theme-surface)) 50%);
+    --verdict-tone: 46, 125, 50;
+    border-left-color: rgb(var(--verdict-tone));
+    background: linear-gradient(135deg, rgba(var(--verdict-tone), 0.08) 0%, rgb(var(--v-theme-surface)) 55%);
   }
 
   &--modify {
-    border-left-color: rgb(var(--v-theme-warning));
-    background: linear-gradient(135deg, rgba(var(--v-theme-warning), 0.04) 0%, rgb(var(--v-theme-surface)) 50%);
+    --verdict-tone: 176, 120, 24;
+    border-left-color: rgb(var(--verdict-tone));
+    background: linear-gradient(135deg, rgba(var(--verdict-tone), 0.08) 0%, rgb(var(--v-theme-surface)) 55%);
   }
 
   &__header {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  &__status-icon {
+    color: rgb(var(--verdict-tone));
+    margin-top: 1px;
   }
 
   &__headline {
@@ -612,10 +652,11 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
   }
 
   &__word {
-    font-size: 0.9rem;
-    font-weight: 700;
+    font-size: 0.98rem;
+    font-weight: 800;
     letter-spacing: -0.01em;
     line-height: 1.2;
+    color: rgb(var(--verdict-tone));
   }
 
   &__dash {
@@ -624,17 +665,17 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
   }
 
   &__short-reason {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     font-weight: 400;
     opacity: 0.7;
-    line-height: 1.2;
+    line-height: 1.3;
   }
 
   &__explain {
-    margin: 0 0 12px;
-    padding-left: 40px;
-    font-size: 0.875rem;
-    line-height: 1.5;
+    margin: 0 0 8px;
+    padding-left: 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
     color: rgba(var(--v-theme-on-surface), 0.6);
   }
 
@@ -642,9 +683,9 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 16px;
-    margin-bottom: 12px;
-    padding: 8px 12px;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 6px 8px;
     background: rgba(var(--v-theme-on-surface), 0.04);
     border-radius: 8px;
   }
@@ -666,11 +707,11 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
 
   &__bar {
     flex: 1;
-    max-width: 120px;
+    max-width: 84px;
   }
 
   &__section {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
 
   &__section-title {
@@ -680,7 +721,7 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
     letter-spacing: 0.1em;
     opacity: 0.4;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   &__signals {
@@ -690,11 +731,60 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
   }
 
   &__body {
-    margin-top: 8px;
+    margin-top: 4px;
   }
 
   &__response {
-    opacity: 0.8;
+    opacity: 0.88;
   }
+
+  &__action-chip {
+    color: rgb(var(--verdict-tone)) !important;
+    border-color: rgba(var(--verdict-tone), 0.45) !important;
+    background: rgba(var(--verdict-tone), 0.08) !important;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  &__risk-text {
+    font-weight: 700;
+  }
+
+  &__risk-text--low {
+    color: #2e7d32;
+  }
+
+  &__risk-text--medium {
+    color: #558b2f;
+  }
+
+  &__risk-text--elevated {
+    color: #b7791f;
+  }
+
+  &__risk-text--high {
+    color: #c53b31;
+  }
+
+  &__risk-text--unknown {
+    color: rgba(var(--v-theme-on-surface), 0.65);
+  }
+}
+
+.tool-call-panel__state-chip {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.tool-call-panel__state-chip--allowed {
+  color: #2e7d32 !important;
+  border-color: rgba(46, 125, 50, 0.42) !important;
+  background: rgba(46, 125, 50, 0.1) !important;
+}
+
+.tool-call-panel__state-chip--blocked {
+  color: #c53b31 !important;
+  border-color: rgba(197, 59, 49, 0.42) !important;
+  background: rgba(197, 59, 49, 0.1) !important;
 }
 </style>

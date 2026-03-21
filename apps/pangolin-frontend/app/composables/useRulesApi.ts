@@ -17,6 +17,10 @@ interface BackendRulesPayload {
   pattern_rules?: BackendPatternRule[]
 }
 
+interface BackendV1RulesPayload {
+  items?: Rule[]
+}
+
 function fromEpoch(value: number | undefined): string {
   if (!value) {return new Date().toISOString()}
   return new Date(value * 1000).toISOString()
@@ -77,10 +81,23 @@ function applyFilters(rules: Rule[], params?: { category?: string, action?: stri
   })
 }
 
+function normalizeV1RulesPayload(payload: Rule[] | BackendV1RulesPayload): Rule[] {
+  if (Array.isArray(payload)) {
+    return payload
+  }
+  if (Array.isArray(payload.items)) {
+    return payload.items
+  }
+  return []
+}
+
 export function useRulesApi() {
   const listRules = async (params?: { category?: string, action?: string, search?: string }) => {
     try {
-      return await api.get<Rule[]>('/v1/rules', { params }).then(r => r.data)
+      const payload = await api
+        .get<Rule[] | BackendV1RulesPayload>('/v1/rules', { params })
+        .then(r => r.data)
+      return applyFilters(normalizeV1RulesPayload(payload), params)
     } catch {
       const payload = await api.get<BackendRulesPayload>('/api/rules').then(r => r.data)
       const mapped = (payload.pattern_rules ?? []).map(mapBackendRule)

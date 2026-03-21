@@ -470,6 +470,7 @@ def _read_gateway_info_from_local_config() -> dict[str, Any]:
                 "mode": gw.get("mode", "local"),
                 "token": auth.get("token"),
                 "password": auth.get("password"),
+                "authMode": auth.get("mode"),
                 "configPath": str(config_path),
                 "allowedOrigins": control_ui.get("allowedOrigins", []),
             }
@@ -488,9 +489,14 @@ def _read_gateway_info_from_local_config() -> dict[str, Any]:
         "CLAWDBOT_GATEWAY_PASSWORD",
         "OPENCLAW_GATEWAY_PASSWORD",
     )
-    if env_token:
+    configured_token = str(result.get("token") or "").strip()
+    configured_password = str(result.get("password") or "").strip()
+
+    # Prefer explicit gateway config values and only use env vars as fallback when
+    # the corresponding config field is missing.
+    if env_token and not configured_token:
         result["token"] = env_token
-    if env_password:
+    if env_password and not configured_password:
         result["password"] = env_password
 
     if env_token or env_password:
@@ -1776,18 +1782,26 @@ def _get_gateway_tool_registry() -> GatewayToolRegistry:
     return _gateway_tool_registry
 
 
-def _get_gateway_auth() -> tuple[str, int, str]:
-    """Resolve gateway host/port/auth secret from config + env overrides."""
+def _get_gateway_auth() -> tuple[str, int, str, str]:
+    """Resolve gateway host/port and preferred auth secrets from config."""
     discovered = _read_gateway_info_from_local_config()
     host = "127.0.0.1"
     configured_port = int(discovered.get("port", DEFAULT_GATEWAY_PORT))
     port = _resolve_gateway_runtime_port(host, configured_port)
     token = str(discovered.get("token") or "").strip()
     password = str(discovered.get("password") or "").strip()
+    auth_mode = str(discovered.get("authMode") or "").strip().lower()
+
     # /tools/invoke uses bearer auth. In password mode, bearer value is accepted
     # as password by the gateway auth resolver.
-    auth_secret = token or password
-    return host, port, auth_secret
+    if auth_mode == "password":
+        primary_secret = password or token
+        secondary_secret = token if token and token != primary_secret else ""
+    else:
+        primary_secret = token or password
+        secondary_secret = password if password and password != primary_secret else ""
+
+    return host, port, primary_secret, secondary_secret
 
 
 def _all_tools_openai_format(request: Request) -> list[dict[str, Any]]:
@@ -3580,10 +3594,43 @@ async def chat_send(request: Request):
                     request_api_key = auth_header[7:].strip()
 
             effective_api_key = request_api_key or s.openai_adapter.api_key
+            if not effective_api_key and str(model).startswith("openrouter/"):
+                effective_api_key = _first_non_empty_env("OPENROUTER_API_KEY", "AF_L2_API_KEY")
+
             if effective_api_key:
                 upstream_headers["Authorization"] = f"Bearer {effective_api_key}"
+            active_api_key = effective_api_key or ""
 
-            gw_host, gw_port, gw_token = _get_gateway_auth()
+            gw_host, gw_port, gw_auth_primary, gw_auth_secondary = _get_gateway_auth()
+
+            async def _invoke_gateway_with_auth_fallback(
+                resolved_tool_name: str,
+                resolved_args: dict[str, Any],
+            ) -> str:
+                result = await GatewayToolRegistry.execute(
+                    gw_host,
+                    gw_port,
+                    gw_auth_primary,
+                    resolved_tool_name,
+                    resolved_args,
+                )
+                if (
+                    "[Gateway auth error]" in result
+                    and gw_auth_secondary
+                    and gw_auth_secondary != gw_auth_primary
+                ):
+                    logger.warning(
+                        "Gateway auth failed with primary credential; retrying tool %s with secondary credential.",
+                        resolved_tool_name,
+                    )
+                    result = await GatewayToolRegistry.execute(
+                        gw_host,
+                        gw_port,
+                        gw_auth_secondary,
+                        resolved_tool_name,
+                        resolved_args,
+                    )
+                return result
 
             registry = _get_skill_registry()
             gw_registry = _get_gateway_tool_registry()
@@ -3773,6 +3820,28 @@ async def chat_send(request: Request):
                                 resp = await client.post(
                                     upstream_url, headers=upstream_headers, json=chat_body
                                 )
+
+                                if resp.status_code == 401 and str(model).startswith("openrouter/"):
+                                    fallback_key = (
+                                        _first_non_empty_env("OPENROUTER_API_KEY", "AF_L2_API_KEY")
+                                        or ""
+                                    )
+                                    if fallback_key and fallback_key != active_api_key:
+                                        retry_headers = dict(upstream_headers)
+                                        retry_headers["Authorization"] = f"Bearer {fallback_key}"
+                                        logger.warning(
+                                            "Upstream 401 with current API key; retrying once with fallback key."
+                                        )
+                                        retry_resp = await client.post(
+                                            upstream_url,
+                                            headers=retry_headers,
+                                            json=chat_body,
+                                        )
+                                        resp = retry_resp
+                                        if retry_resp.status_code == 200:
+                                            upstream_headers = retry_headers
+                                            active_api_key = fallback_key
+
                                 if resp.status_code == 429 or resp.status_code >= 502:
                                     wait = (2**attempt) + 0.5
                                     logger.warning(
@@ -4024,8 +4093,9 @@ async def chat_send(request: Request):
                                             search_query, search_count
                                         )
                                     else:
-                                        tool_result = await GatewayToolRegistry.execute(
-                                            gw_host, gw_port, gw_token, gw_tool_name, gw_arguments
+                                        tool_result = await _invoke_gateway_with_auth_fallback(
+                                            gw_tool_name,
+                                            gw_arguments,
                                         )
                                         # Fix: Retry with underscore if hyphenated name not found (e.g. feishu-doc -> feishu_doc)
                                         if (
@@ -4037,8 +4107,9 @@ async def chat_send(request: Request):
                                             logger.info(
                                                 "Retrying tool %s as %s", gw_tool_name, alt_name
                                             )
-                                            tool_result = await GatewayToolRegistry.execute(
-                                                gw_host, gw_port, gw_token, alt_name, gw_arguments
+                                            tool_result = await _invoke_gateway_with_auth_fallback(
+                                                alt_name,
+                                                gw_arguments,
                                             )
                                 else:
                                     # Fix: Handle wrapped arguments (LLM confusion when calling tools directly)
@@ -4057,8 +4128,9 @@ async def chat_send(request: Request):
                                             except Exception:
                                                 pass
 
-                                    tool_result = await GatewayToolRegistry.execute(
-                                        gw_host, gw_port, gw_token, tool_name, real_args
+                                    tool_result = await _invoke_gateway_with_auth_fallback(
+                                        tool_name,
+                                        real_args,
                                     )
                                     # Fix: Retry with underscore if hyphenated name not found
                                     if (
@@ -4068,8 +4140,9 @@ async def chat_send(request: Request):
                                     ):
                                         alt_name = tool_name.replace("-", "_")
                                         logger.info("Retrying tool %s as %s", tool_name, alt_name)
-                                        tool_result = await GatewayToolRegistry.execute(
-                                            gw_host, gw_port, gw_token, alt_name, real_args
+                                        tool_result = await _invoke_gateway_with_auth_fallback(
+                                            alt_name,
+                                            real_args,
                                         )
                                 tool_call_record["blocked"] = False
                                 tool_call_record["result_preview"] = tool_result[:200]

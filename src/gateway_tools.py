@@ -331,7 +331,12 @@ class GatewayToolRegistry:
                             f"{err.get('message', str(err))}"
                         )
                 elif resp.status_code == 401:
-                    return "[Gateway auth error]: Invalid or missing gateway token/password"
+                    if token:
+                        return "[Gateway auth error]: Invalid gateway token/password"
+                    return (
+                        "[Gateway auth error]: Missing gateway token/password "
+                        "(set OPENCLAW_GATEWAY_TOKEN or OPENCLAW_GATEWAY_PASSWORD)"
+                    )
                 else:
                     return f"[Gateway HTTP {resp.status_code}]: {resp.text[:500]}"
         except Exception as e:
