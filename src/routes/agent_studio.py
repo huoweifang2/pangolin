@@ -373,9 +373,7 @@ def _normalize_tool_events(raw_tool_calls: list[dict[str, Any]]) -> list[dict[st
 
         l2_confidence_value = raw.get("l2_confidence")
         l2_confidence = (
-            float(l2_confidence_value)
-            if isinstance(l2_confidence_value, (int, float))
-            else None
+            float(l2_confidence_value) if isinstance(l2_confidence_value, (int, float)) else None
         )
 
         l2_reasoning = raw.get("l2_reasoning")

@@ -1,7 +1,8 @@
 import os
+
 import lark_oapi as lark
-from lark_oapi.api.docx.v1 import CreateDocumentRequest, CreateDocumentRequestBody
 from dotenv import load_dotenv
+from lark_oapi.api.docx.v1 import CreateDocumentRequest, CreateDocumentRequestBody
 
 # Load .env from extension directory
 load_dotenv(".env")
@@ -42,7 +43,7 @@ def create_doc():
         return
 
     doc = response.data.document
-    print(f"Successfully created document!")
+    print("Successfully created document!")
     print(f"Title: {doc.title}")
     print(f"Document ID: {doc.document_id}")
     # Construct URL (assuming standard Lark/Feishu domain)

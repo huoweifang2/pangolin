@@ -352,8 +352,9 @@ Examples of BENIGN requests:
                 logger.warning("L2 LLM returned empty content — fail-open (no opinion)")
                 return L2Result(reasoning="LLM returned empty content — fail-open")
 
-            import orjson
             import re
+
+            import orjson
 
             reasoning_text = collected_reasoning.strip()
 

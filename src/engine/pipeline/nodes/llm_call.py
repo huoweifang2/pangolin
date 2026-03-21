@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from src.llm.client import llm_completion
 from src.engine.pipeline.nodes import timed_node
 from src.engine.pipeline.state import PipelineState
+from src.llm.client import llm_completion
 
 
 @timed_node("llm_call")

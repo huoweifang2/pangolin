@@ -2,8 +2,10 @@
 Tests for annotation system.
 """
 
-import pytest
 import time
+
+import pytest
+
 from src.models import Annotation
 
 

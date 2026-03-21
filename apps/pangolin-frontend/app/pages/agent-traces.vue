@@ -22,7 +22,6 @@ const {
   <v-container fluid>
     <div class="d-flex align-center mb-4">
       <div>
-        <h1 class="text-h5 font-weight-bold">Agent Traces</h1>
         <p class="text-body-2 text-medium-emphasis">
           {{ total }} trace{{ total === 1 ? '' : 's' }} recorded
         </p>

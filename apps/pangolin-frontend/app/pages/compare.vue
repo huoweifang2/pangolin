@@ -4,7 +4,6 @@
     <div class="compare-page__config">
       <div class="d-flex align-center flex-wrap ga-3 px-4 py-2">
         <v-icon size="20" color="primary">mdi-compare</v-icon>
-        <span class="text-subtitle-2 font-weight-bold">Compare Playground</span>
 
         <v-divider vertical class="mx-1" />
 

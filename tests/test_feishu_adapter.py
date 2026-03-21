@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.channels.feishu_adapter import FeishuAdapter, FeishuConfig
 
 

@@ -4,8 +4,8 @@ import base64
 import datetime as dt
 import json
 import os
-import random
 import re
+import secrets
 import sys
 import urllib.error
 import urllib.request
@@ -57,7 +57,7 @@ def pick_prompts(count: int) -> list[str]:
     prompts: list[str] = []
     for _ in range(count):
         prompts.append(
-            f"{random.choice(styles)} of {random.choice(subjects)}, {random.choice(lighting)}"
+            f"{secrets.choice(styles)} of {secrets.choice(subjects)}, {secrets.choice(lighting)}"
         )
     return prompts
 
@@ -109,7 +109,7 @@ def request_images(
         args["style"] = style
 
     body = json.dumps(args).encode("utf-8")
-    req = urllib.request.Request(
+    req = urllib.request.Request(  # noqa: S310
         url,
         method="POST",
         headers={
@@ -119,7 +119,7 @@ def request_images(
         data=body,
     )
     try:
-        with urllib.request.urlopen(req, timeout=300) as resp:
+        with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         payload = e.read().decode("utf-8", errors="replace")
@@ -165,12 +165,28 @@ def main() -> int:
     ap.add_argument("--prompt", help="Single prompt. If omitted, random prompts are generated.")
     ap.add_argument("--count", type=int, default=8, help="How many images to generate.")
     ap.add_argument("--model", default="gpt-image-1", help="Image model id.")
-    ap.add_argument("--size", default="", help="Image size (e.g. 1024x1024, 1536x1024). Defaults based on model if not specified.")
-    ap.add_argument("--quality", default="", help="Image quality (e.g. high, standard). Defaults based on model if not specified.")
-    ap.add_argument("--background", default="", help="Background transparency (GPT models only): transparent, opaque, or auto.")
-    ap.add_argument("--output-format", default="", help="Output format (GPT models only): png, jpeg, or webp.")
+    ap.add_argument(
+        "--size",
+        default="",
+        help="Image size (e.g. 1024x1024, 1536x1024). Defaults based on model if not specified.",
+    )
+    ap.add_argument(
+        "--quality",
+        default="",
+        help="Image quality (e.g. high, standard). Defaults based on model if not specified.",
+    )
+    ap.add_argument(
+        "--background",
+        default="",
+        help="Background transparency (GPT models only): transparent, opaque, or auto.",
+    )
+    ap.add_argument(
+        "--output-format", default="", help="Output format (GPT models only): png, jpeg, or webp."
+    )
     ap.add_argument("--style", default="", help="Image style (dall-e-3 only): vivid or natural.")
-    ap.add_argument("--out-dir", default="", help="Output directory (default: ./tmp/openai-image-gen-<ts>).")
+    ap.add_argument(
+        "--out-dir", default="", help="Output directory (default: ./tmp/openai-image-gen-<ts>)."
+    )
     args = ap.parse_args()
 
     api_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
@@ -185,7 +201,10 @@ def main() -> int:
 
     count = args.count
     if args.model == "dall-e-3" and count > 1:
-        print(f"Warning: dall-e-3 only supports generating 1 image at a time. Reducing count from {count} to 1.", file=sys.stderr)
+        print(
+            f"Warning: dall-e-3 only supports generating 1 image at a time. Reducing count from {count} to 1.",
+            file=sys.stderr,
+        )
         count = 1
 
     out_dir = Path(args.out_dir).expanduser() if args.out_dir else default_out_dir()
@@ -224,7 +243,7 @@ def main() -> int:
             filepath.write_bytes(base64.b64decode(image_b64))
         else:
             try:
-                urllib.request.urlretrieve(image_url, filepath)
+                urllib.request.urlretrieve(image_url, filepath)  # noqa: S310
             except urllib.error.URLError as e:
                 raise RuntimeError(f"Failed to download image from {image_url}: {e}") from e
 

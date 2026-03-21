@@ -25,7 +25,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -266,7 +265,7 @@ class JsonlStorage(StorageBackend):
 
     def _read_file_sync(self, file_path: Path) -> list[str]:
         """Synchronous file read (called in thread pool)."""
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             return f.readlines()
 
     def _matches_filters(self, data: dict[str, Any], filters: dict[str, Any]) -> bool:

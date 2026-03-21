@@ -26,7 +26,6 @@ const {
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-4">
       <div>
-        <h1 class="text-h4 font-weight-bold">Analytics</h1>
         <p class="text-body-2 text-medium-emphasis">
           Firewall performance and threat overview
         </p>

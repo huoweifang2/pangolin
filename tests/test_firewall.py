@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import time
 
 import pytest
 
@@ -22,7 +21,6 @@ from src.engine.interceptor import intercept_and_analyze
 from src.engine.semantic_analyzer import MockClassifier, SemanticAnalyzer
 from src.engine.static_analyzer import StaticAnalyzer
 from src.models import (
-    AnalysisResult,
     JsonRpcRequest,
     JsonRpcResponse,
     SessionContext,
@@ -30,7 +28,6 @@ from src.models import (
     Verdict,
 )
 from src.proxy.session_manager import SessionManager
-
 
 # ────────────────────────────────────────────────────────────────────
 # Fixtures

@@ -128,7 +128,7 @@ class PolicyEngine:
         )
         if not match:
             raise PolicyEvaluationError(
-                f"Invalid policy syntax. Expected: raise \"message\" if: <condition>"
+                "Invalid policy syntax. Expected: raise \"message\" if: <condition>"
             )
 
         message = match.group(1)

@@ -148,7 +148,6 @@ onBeforeUnmount(() => {
     >
 
     <div>
-      <h1 class="text-h5 font-weight-bold">MCP / Skill / Traffic Supplement</h1>
       <p class="text-body-2 text-medium-emphasis mb-1">
         Agent Firewall endpoint: {{ firewallSupplementService.baseURL }}
       </p>

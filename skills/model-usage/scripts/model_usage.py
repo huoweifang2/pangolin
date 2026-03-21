@@ -9,22 +9,22 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 
 def eprint(msg: str) -> None:
     print(msg, file=sys.stderr)
 
 
-def run_codexbar_cost(provider: str) -> List[Dict[str, Any]]:
+def run_codexbar_cost(provider: str) -> list[dict[str, Any]]:
     cmd = ["codexbar", "cost", "--format", "json", "--provider", provider]
     try:
-        output = subprocess.check_output(cmd, text=True)
+        output = subprocess.check_output(cmd, text=True)  # noqa: S603
     except FileNotFoundError:
         raise RuntimeError("codexbar not found on PATH. Install CodexBar CLI first.")
     except subprocess.CalledProcessError as exc:
@@ -38,12 +38,12 @@ def run_codexbar_cost(provider: str) -> List[Dict[str, Any]]:
     return payload
 
 
-def load_payload(input_path: Optional[str], provider: str) -> Dict[str, Any]:
+def load_payload(input_path: str | None, provider: str) -> dict[str, Any]:
     if input_path:
         if input_path == "-":
             raw = sys.stdin.read()
         else:
-            with open(input_path, "r", encoding="utf-8") as handle:
+            with open(input_path, encoding="utf-8") as handle:
                 raw = handle.read()
         data = json.loads(raw)
     else:
@@ -67,7 +67,7 @@ class ModelCost:
     cost: float
 
 
-def parse_daily_entries(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+def parse_daily_entries(payload: dict[str, Any]) -> list[dict[str, Any]]:
     daily = payload.get("daily")
     if not daily:
         return []
@@ -76,18 +76,18 @@ def parse_daily_entries(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     return [entry for entry in daily if isinstance(entry, dict)]
 
 
-def parse_date(value: str) -> Optional[date]:
+def parse_date(value: str) -> date | None:
     try:
         return datetime.strptime(value, "%Y-%m-%d").date()
     except Exception:
         return None
 
 
-def filter_by_days(entries: List[Dict[str, Any]], days: Optional[int]) -> List[Dict[str, Any]]:
+def filter_by_days(entries: list[dict[str, Any]], days: int | None) -> list[dict[str, Any]]:
     if not days:
         return entries
     cutoff = date.today() - timedelta(days=days - 1)
-    filtered: List[Dict[str, Any]] = []
+    filtered: list[dict[str, Any]] = []
     for entry in entries:
         day = entry.get("date")
         if not isinstance(day, str):
@@ -98,8 +98,8 @@ def filter_by_days(entries: List[Dict[str, Any]], days: Optional[int]) -> List[D
     return filtered
 
 
-def aggregate_costs(entries: Iterable[Dict[str, Any]]) -> Dict[str, float]:
-    totals: Dict[str, float] = {}
+def aggregate_costs(entries: Iterable[dict[str, Any]]) -> dict[str, float]:
+    totals: dict[str, float] = {}
     for entry in entries:
         breakdowns = entry.get("modelBreakdowns")
         if not breakdowns:
@@ -119,7 +119,7 @@ def aggregate_costs(entries: Iterable[Dict[str, Any]]) -> Dict[str, float]:
     return totals
 
 
-def pick_current_model(entries: List[Dict[str, Any]]) -> Tuple[Optional[str], Optional[str]]:
+def pick_current_model(entries: list[dict[str, Any]]) -> tuple[str | None, str | None]:
     if not entries:
         return None, None
     sorted_entries = sorted(
@@ -129,7 +129,7 @@ def pick_current_model(entries: List[Dict[str, Any]]) -> Tuple[Optional[str], Op
     for entry in reversed(sorted_entries):
         breakdowns = entry.get("modelBreakdowns")
         if isinstance(breakdowns, list) and breakdowns:
-            scored: List[ModelCost] = []
+            scored: list[ModelCost] = []
             for item in breakdowns:
                 if not isinstance(item, dict):
                     continue
@@ -139,7 +139,9 @@ def pick_current_model(entries: List[Dict[str, Any]]) -> Tuple[Optional[str], Op
                     scored.append(ModelCost(model=model, cost=float(cost)))
             if scored:
                 scored.sort(key=lambda item: item.cost, reverse=True)
-                return scored[0].model, entry.get("date") if isinstance(entry.get("date"), str) else None
+                return scored[0].model, entry.get("date") if isinstance(
+                    entry.get("date"), str
+                ) else None
         models_used = entry.get("modelsUsed")
         if isinstance(models_used, list) and models_used:
             last = models_used[-1]
@@ -148,13 +150,13 @@ def pick_current_model(entries: List[Dict[str, Any]]) -> Tuple[Optional[str], Op
     return None, None
 
 
-def usd(value: Optional[float]) -> str:
+def usd(value: float | None) -> str:
     if value is None:
         return "—"
     return f"${value:,.2f}"
 
 
-def latest_day_cost(entries: List[Dict[str, Any]], model: str) -> Tuple[Optional[str], Optional[float]]:
+def latest_day_cost(entries: list[dict[str, Any]], model: str) -> tuple[str | None, float | None]:
     if not entries:
         return None, None
     sorted_entries = sorted(
@@ -178,10 +180,10 @@ def latest_day_cost(entries: List[Dict[str, Any]], model: str) -> Tuple[Optional
 def render_text_current(
     provider: str,
     model: str,
-    latest_date: Optional[str],
-    total_cost: Optional[float],
-    latest_cost: Optional[float],
-    latest_cost_date: Optional[str],
+    latest_date: str | None,
+    total_cost: float | None,
+    latest_cost: float | None,
+    latest_cost_date: str | None,
     entry_count: int,
 ) -> str:
     lines = [f"Provider: {provider}", f"Current model: {model}"]
@@ -194,7 +196,7 @@ def render_text_current(
     return "\n".join(lines)
 
 
-def render_text_all(provider: str, totals: Dict[str, float]) -> str:
+def render_text_all(provider: str, totals: dict[str, float]) -> str:
     lines = [f"Provider: {provider}", "Models:"]
     for model, cost in sorted(totals.items(), key=lambda item: item[1], reverse=True):
         lines.append(f"- {model}: {usd(cost)}")
@@ -204,12 +206,12 @@ def render_text_all(provider: str, totals: Dict[str, float]) -> str:
 def build_json_current(
     provider: str,
     model: str,
-    latest_date: Optional[str],
-    total_cost: Optional[float],
-    latest_cost: Optional[float],
-    latest_cost_date: Optional[str],
+    latest_date: str | None,
+    total_cost: float | None,
+    latest_cost: float | None,
+    latest_cost_date: str | None,
     entry_count: int,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {
         "provider": provider,
         "mode": "current",
@@ -222,7 +224,7 @@ def build_json_current(
     }
 
 
-def build_json_all(provider: str, totals: Dict[str, float]) -> Dict[str, Any]:
+def build_json_all(provider: str, totals: dict[str, float]) -> dict[str, Any]:
     return {
         "provider": provider,
         "mode": "all",
@@ -234,7 +236,9 @@ def build_json_all(provider: str, totals: Dict[str, float]) -> Dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Summarize CodexBar model usage from local cost logs.")
+    parser = argparse.ArgumentParser(
+        description="Summarize CodexBar model usage from local cost logs."
+    )
     parser.add_argument("--provider", choices=["codex", "claude"], default="codex")
     parser.add_argument("--mode", choices=["current", "all"], default="current")
     parser.add_argument("--model", help="Explicit model name to report instead of auto-current.")
