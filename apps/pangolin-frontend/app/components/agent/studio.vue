@@ -164,6 +164,22 @@
                 <div class="text-caption text-medium-emphasis mb-2">
                   Tool calls: {{ result.tool_calls }} · Blocked: {{ result.blocked_tool_calls }}
                 </div>
+
+                <div v-if="result.tool_events?.length" class="agent-tool-events mb-3">
+                  <div class="text-caption text-medium-emphasis mb-2">Tool execution details</div>
+                  <div class="d-flex flex-wrap ga-2">
+                    <agent-tool-call-chip
+                      v-for="(tool, idx) in toolCallsForResult(result.tool_events)"
+                      :key="`${result.step_id}-tool-${idx}`"
+                      :tool="tool"
+                      :verdict="result.blocked_tool_calls > 0 ? 'BLOCK' : 'ALLOW'"
+                    />
+                  </div>
+                </div>
+                <div v-else-if="result.tool_calls > 0" class="text-caption text-disabled mb-3">
+                  Tool call details are not available for this historical run.
+                </div>
+
                 <div class="text-body-2 agent-result-content">{{ result.content || '(empty output)' }}</div>
               </template>
             </v-expansion-panel>
@@ -236,6 +252,8 @@
 import { computed, onMounted } from 'vue'
 import { useModels } from '~/composables/useModels'
 import { useAgentStudio } from '~/composables/useAgentStudio'
+import type { ToolCall } from '~/types/agent'
+import type { AgentStudioToolEvent } from '~/types/agentStudio'
 
 const {
   profiles,
@@ -332,6 +350,48 @@ function agentDotColor(agentId?: string): string {
   return resolveAgentColor(agentId).dot
 }
 
+function normalizeToolArgs(value: unknown): Record<string, unknown> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      return {}
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed) as unknown
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>
+      }
+    } catch {
+      // Ignore parse errors and fall back to empty args.
+    }
+  }
+
+  return {}
+}
+
+function toToolCall(event: AgentStudioToolEvent): ToolCall {
+  return {
+    tool: typeof event.tool === 'string' && event.tool.trim() ? event.tool : 'unknown',
+    args: normalizeToolArgs(event.args),
+    result_preview: typeof event.result_preview === 'string' ? event.result_preview : '',
+    allowed: Boolean(event.allowed ?? true),
+    blocked_reason: event.blocked_reason ?? null,
+  }
+}
+
+function toolCallsForResult(toolEvents?: AgentStudioToolEvent[]): ToolCall[] {
+  if (!toolEvents?.length) {
+    return []
+  }
+
+  return toolEvents.map((toolEvent) => toToolCall(toolEvent))
+}
+
 onMounted(async () => {
   await refreshAvailability()
   await bootstrap()
@@ -351,6 +411,12 @@ onMounted(async () => {
 .timeline-pane {
   max-height: 360px;
   overflow-y: auto;
+}
+
+.agent-tool-events {
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.18);
+  border-radius: 10px;
+  padding: 8px;
 }
 
 .agent-color-block {

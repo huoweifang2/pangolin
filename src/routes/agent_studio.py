@@ -340,6 +340,68 @@ async def _call_chat_send(
     }
 
 
+def _normalize_tool_events(raw_tool_calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+
+    for raw in raw_tool_calls:
+        if not isinstance(raw, dict):
+            continue
+
+        raw_args = raw.get("arguments")
+        if isinstance(raw_args, dict):
+            args = raw_args
+        else:
+            alt_args = raw.get("args")
+            args = alt_args if isinstance(alt_args, dict) else {}
+
+        blocked = bool(raw.get("blocked") or raw.get("l1_blocked") or raw.get("l2_blocked"))
+
+        blocked_reason = raw.get("blocked_reason")
+        if not isinstance(blocked_reason, str) or not blocked_reason.strip():
+            preview = raw.get("result_preview")
+            blocked_reason = preview if blocked and isinstance(preview, str) else None
+
+        tool_name = raw.get("tool_name")
+        if not isinstance(tool_name, str) or not tool_name.strip():
+            alt_tool = raw.get("tool")
+            tool_name = alt_tool if isinstance(alt_tool, str) and alt_tool.strip() else "unknown"
+
+        l1_patterns_value = raw.get("l1_patterns")
+        l1_patterns: list[str] = []
+        if isinstance(l1_patterns_value, list):
+            l1_patterns = [str(item) for item in l1_patterns_value if isinstance(item, str)]
+
+        l2_confidence_value = raw.get("l2_confidence")
+        l2_confidence = (
+            float(l2_confidence_value)
+            if isinstance(l2_confidence_value, (int, float))
+            else None
+        )
+
+        l2_reasoning = raw.get("l2_reasoning")
+        if not isinstance(l2_reasoning, str):
+            l2_reasoning = ""
+
+        result_preview = raw.get("result_preview")
+        if not isinstance(result_preview, str):
+            result_preview = ""
+
+        normalized.append(
+            {
+                "tool": tool_name,
+                "args": args,
+                "result_preview": result_preview,
+                "allowed": not blocked,
+                "blocked_reason": blocked_reason,
+                "l1_patterns": l1_patterns,
+                "l2_confidence": l2_confidence,
+                "l2_reasoning": l2_reasoning,
+            }
+        )
+
+    return normalized
+
+
 def _build_orchestrator_synthesis_prompt(task: str, artifacts: list[dict[str, Any]]) -> str:
     context = _compact_artifact_context(artifacts, max_items=12)
     return "\n\n".join(
@@ -481,12 +543,15 @@ async def run_orchestration(
                 )
                 ended = _utc_now_iso()
 
-            tool_calls = result.get("tool_calls", [])
+            raw_tool_calls = result.get("tool_calls", [])
+            tool_calls = raw_tool_calls if isinstance(raw_tool_calls, list) else []
             blocked_calls = [
                 call
                 for call in tool_calls
-                if bool(call.get("blocked") or call.get("l1_blocked") or call.get("l2_blocked"))
+                if isinstance(call, dict)
+                and bool(call.get("blocked") or call.get("l1_blocked") or call.get("l2_blocked"))
             ]
+            tool_events = _normalize_tool_events(tool_calls)
 
             artifact = {
                 "id": f"artifact-{step.id}-{uuid.uuid4().hex[:8]}",
@@ -498,6 +563,7 @@ async def run_orchestration(
                 "content": result.get("content", ""),
                 "tool_calls": len(tool_calls),
                 "blocked_tool_calls": len(blocked_calls),
+                "tool_events": tool_events,
                 "analysis": result.get("analysis", {}),
                 "started_at": started,
                 "ended_at": ended,
@@ -514,6 +580,7 @@ async def run_orchestration(
                 "analysis": result.get("analysis", {}),
                 "tool_calls": len(tool_calls),
                 "blocked_tool_calls": len(blocked_calls),
+                "tool_events": tool_events,
                 "started_at": started,
                 "ended_at": ended,
             }
