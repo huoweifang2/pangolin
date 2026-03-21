@@ -20,6 +20,7 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote_plus
 
 try:
     import yaml  # type: ignore[import-not-found]
@@ -64,9 +65,7 @@ def _extract_openclaw_metadata(raw_frontmatter: str) -> tuple[str, list[str], li
     )
     emoji = _strip_quoted(str(openclaw_meta.get("emoji", ""))) if openclaw_meta else ""
     os_list = (
-        [str(x) for x in openclaw_meta.get("os", []) if isinstance(x, str)]
-        if openclaw_meta
-        else []
+        [str(x) for x in openclaw_meta.get("os", []) if isinstance(x, str)] if openclaw_meta else []
     )
     required_bins = (
         [str(x) for x in openclaw_meta.get("requires", {}).get("bins", []) if isinstance(x, str)]
@@ -81,9 +80,7 @@ def _extract_openclaw_metadata(raw_frontmatter: str) -> tuple[str, list[str], li
         os_match = re.search(r"(?ms)^\s*os\s*:\s*\[(.*?)\]\s*$", raw_frontmatter)
         if os_match:
             os_list = [
-                _strip_quoted(part)
-                for part in os_match.group(1).split(",")
-                if _strip_quoted(part)
+                _strip_quoted(part) for part in os_match.group(1).split(",") if _strip_quoted(part)
             ]
 
     if not required_bins:
@@ -188,6 +185,26 @@ def _parse_skill_md(path: Path) -> SkillDef | None:
         skill_md_path=str(path),
         skill_md_content=body.strip(),
     )
+
+
+def _normalize_weather_command(command: str) -> str:
+    """Map natural-language weather invocations to a wttr.in curl command."""
+    raw = command.strip()
+    if not raw:
+        return command
+
+    lowered = raw.lower()
+    if "wttr.in" in lowered or "open-meteo.com" in lowered:
+        return command
+
+    match = re.match(r"^\s*weather(?:\s+(.+))?\s*$", raw, flags=re.IGNORECASE)
+    if not match:
+        return command
+
+    location = (match.group(1) or "").strip()
+    encoded_location = quote_plus(location) if location else ""
+    target = f"/{encoded_location}" if encoded_location else ""
+    return f'curl -s "wttr.in{target}?format=3"'
 
 
 class SkillRegistry:
@@ -425,18 +442,29 @@ class SkillRegistry:
             available = ", ".join(sorted(self._ready_skills.keys()))
             return f"[Error] Skill '{skill_name}' not available. Ready skills: {available}"
 
+        normalized_command = command
+        if skill_name == "weather":
+            normalized_command = _normalize_weather_command(command)
+            if normalized_command != command:
+                logger.info(
+                    "Normalized weather command for skill %s: %s -> %s",
+                    skill_name,
+                    command[:120],
+                    normalized_command[:120],
+                )
+
         # Security: reject obviously dangerous patterns
         dangerous = ["rm -rf /", "mkfs", "dd if=", "> /dev/sd", ":(){ :|:& };:"]
-        cmd_lower = command.lower()
+        cmd_lower = normalized_command.lower()
         for d in dangerous:
             if d in cmd_lower:
                 return f"[BLOCKED] Dangerous command pattern detected: {d}"
 
-        logger.info("Executing skill %s: %s", skill_name, command[:200])
+        logger.info("Executing skill %s: %s", skill_name, normalized_command[:200])
 
         try:
             proc = await asyncio.create_subprocess_shell(
-                command,
+                normalized_command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 env={**os.environ, "PATH": os.environ.get("PATH", "/usr/bin:/bin")},

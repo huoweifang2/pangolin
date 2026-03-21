@@ -43,7 +43,9 @@ class FirewallConfig:
             "AF_L2_MODEL_ENDPOINT", "https://openrouter.ai/api/v1/chat/completions"
         )
     )
-    l2_api_key: str = field(default_factory=lambda: os.getenv("AF_L2_API_KEY", ""))
+    l2_api_key: str = field(
+        default_factory=lambda: os.getenv("AF_L2_API_KEY") or os.getenv("OPENROUTER_API_KEY", "")
+    )
     l2_model: str = field(
         default_factory=lambda: os.getenv("AF_L2_MODEL", "deepseek/deepseek-v3.2-speciale")
     )

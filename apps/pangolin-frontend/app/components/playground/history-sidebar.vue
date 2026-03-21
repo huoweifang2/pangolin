@@ -6,11 +6,11 @@
     </v-card-title>
     
     <v-card-text class="pt-2">
-      <div class="d-flex ga-2 mb-4">
-        <v-btn flex-grow-1 prepend-icon="mdi-plus" color="primary" @click="newChat">
+      <div class="history-actions d-flex ga-2 mb-4">
+        <v-btn class="history-action-btn history-action-btn--primary" flex-grow-1 prepend-icon="mdi-plus" color="primary" @click="newChat">
           New Chat
         </v-btn>
-        <v-btn icon="mdi-content-save" variant="tonal" @click="saveCurrent" />
+        <v-btn class="history-action-btn history-action-btn--icon" icon="mdi-content-save" variant="tonal" @click="saveCurrent" />
       </div>
 
       <v-list density="compact" class="bg-transparent pa-0">
@@ -28,7 +28,7 @@
               {{ session.messages.length }} messages
             </div>
           </div>
-          <template v-slot:append>
+          <template #append>
             <div class="d-flex">
               <v-btn icon="mdi-download" size="x-small" variant="text" @click.stop="downloadAsJSON(session)" />
               <v-btn icon="mdi-delete" size="x-small" variant="text" color="error" @click.stop="deleteSession(session.id)" />
@@ -84,7 +84,9 @@ onMounted(() => {
 })
 
 const saveCurrent = () => {
-  if (props.currentMessages.length === 0) return
+  if (props.currentMessages.length === 0) {
+    return
+  }
   sessions.value.unshift({
     id: crypto.randomUUID(),
     timestamp: Date.now(),
@@ -125,6 +127,21 @@ const downloadAsJSON = (session: HistorySession) => {
   border-radius: 12px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
   background: rgb(var(--v-theme-surface));
+
+  .history-actions {
+    align-items: stretch;
+  }
+
+  .history-action-btn {
+    min-height: 56px;
+    height: 56px;
+  }
+
+  .history-action-btn--icon {
+    min-width: 56px;
+    width: 56px;
+    padding: 0;
+  }
 
   .main-icon {
     font-size: 24px;
