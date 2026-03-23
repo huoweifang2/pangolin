@@ -1,111 +1,178 @@
 # Pangolin
 
-Pangolin is a full-stack, secure Multi-Agent Gateway and Firewall Runtime.
+Pangolin 是一个面向 Multi-Agent 与 MCP 工具链的零信任安全网关与运维平台。当前仓库将三部分能力整合在一起：
 
-It combines a **TypeScript connection gateway and operations frontend** with a powerful **Python-based ML Security Engine** (integrated from `ai-protector`). This repository serves as the definitive hub for building, securing, and operating multi-agent operations and MCP tools in production.
+- Python 安全防火墙引擎（FastAPI）
+- TypeScript Gateway / CLI / 运行时工具链
+- Nuxt 运维前端（apps/pangolin-frontend）
 
-## 🛡️ Core Capabilities
+适用场景：MCP 工具调用审计、LLM 请求防护、Agent 运维可视化、策略管理与对抗测试。
 
-Pangolin unifies two distinct planes of execution:
+## 核心能力
 
-### 1. Advanced ML Security Engine (Python)
+### 1) 防火墙与策略引擎（Python）
 
-Ported directly from the industry-standard AI Protector, the Pangolin engine deeply sanitizes both raw LLM traffic and granular MCP tool execution:
+- 双层分析：L1 静态规则 + L2 语义判定
+- 支持 MCP/LLM 请求拦截、审计日志、Dashboard 推送
+- 内置策略、规则、数据集、追踪、场景与 Agent Studio 路由
+- 支持 JSONL 存储（可通过环境变量切换后端）
 
-- **Proxy Firewall (5-Layer Pipeline)**: A LangGraph-powered evaluation pipeline (Static Rules → Semantic Intent → LLM Guard → Presidio PII Redaction → NeMo Guardrails). Native proxy endpoints (e.g., `openai_adapter.py`) ensure safe upstreams.
-- **Agent Runtime Gates**:
-  - **RBAC**: Strict role-based access control for individual MCP tools.
-  - **Budget & Limits**: Token, cost, and rate-limit tracking to prevent abuse.
-  - **Schema Validation**: Pydantic-powered tool argument validation and runtime injection sanitization.
-- **Native Interception**: All MCP `tools/call` events are intercepted upstream, parsed, and scrubbed through the engine before reaching the agent.
+### 2) 网关与运行时（TypeScript）
 
-### 2. Operations & Gateway (TypeScript)
+- 网关会话与鉴权（token/password）
+- 技能调用、工具注册、协议与命令行集成
+- 多脚本编排（dev/build/test/doctor/audit）
 
-- **Channel & Plugin Integrations**: Seamlessly hook into Feishu, Slack, and other enterprise channels.
-- **MCP & Automation Skills**: Extensible skill catalog designed for rapid tool deployment.
-- **Nuxt Operations Frontend**: A rich dashboard (`apps/pangolin-frontend`) featuring real-time MCP Firewall streams and operations views.
+### 3) 运维前端（Nuxt + Vuetify）
 
-## 🎨 Brand Theme
+- 实时控制台：MCP Firewall、策略页、规则页、请求追踪
+- 前后端分离，默认通过 runtimeConfig 连接 9090 后端
 
-The Pangolin frontend theme is derived from the icon at `public/pangolin.svg`.
-
-- Brand anchor color: `#364548`
-- The visual direction is earthy and security-focused: dark teal surfaces for dense operations views, sand accents for action highlights, and textured gradient backgrounds.
-
-## 🏗️ Architecture Layout
+## 仓库结构（核心目录）
 
 ```text
 .
 ├── apps/
-│   └── pangolin-frontend/   # Nuxt 3 Operations Dashboard & Firewall UI
-├── channel/                 # Channel integrations (e.g., Feishu)
-├── skills/                  # Automation skills and legacy MCP wiring
+│   └── pangolin-frontend/        # 主前端（Nuxt）
 ├── src/
-│   ├── engine/              # (Python) ML Engine, LangGraph Pipeline, Interceptor, Agent Gates
-│   ├── proxy/               # (Python) OpenAI / SSE Adapters for LLM proxy traffic
-│   ├── gateway/             # (TypeScript) Core gateway and protocol handling
-│   └── security/            # (TypeScript) Audit utilities and dashboards
-├── package.json             # Node dependencies (pnpm)
-└── pyproject.toml           # Python dependencies (uv)
+│   ├── main.py                   # FastAPI 入口
+│   ├── config.py                 # 环境配置（AF_*）
+│   ├── engine/                   # L1/L2 分析引擎
+│   ├── proxy/                    # 代理与会话层
+│   ├── routes/                   # models/policies/rules/scenarios 等 API
+│   └── dashboard/                # WS Dashboard 推送
+├── scripts/
+│   └── pangolin-dev-up.sh        # 一键拉起后端+网关+前端
+├── package.json                  # Node 脚本与依赖
+├── pyproject.toml                # Python 依赖（uv）
+├── start-all.sh                  # 便捷启动脚本（可选）
+└── Makefile                      # Python 侧常用命令
 ```
 
-## 🚀 Quick Start
+说明：ai-protector-main 目录主要用于上游参考与历史对照，当前主运行入口是本仓库根目录 + apps/pangolin-frontend。
 
-Pangolin requires both Node.js (`pnpm`) for the gateway/frontend and Python (`uv`) for the ML Security Engine.
+## 环境要求
 
-### 1. Install Dependencies
+- Node.js >= 22.12
+- pnpm >= 10
+- Python >= 3.10（推荐 3.12）
+- uv
 
-**TypeScript Gateway & Frontend:**
+## 快速开始
+
+### 1. 安装依赖
 
 ```bash
 pnpm install
-```
-
-**Python Security Engine:**
-
-```bash
 uv sync
 ```
 
-### 2. Start the Stack
-
-**Terminal A: Python ML Engine (Firewall & Proxy)**
-
-```bash
-uv run python src/main.py
-```
-
-_The engine typically listens on port `9090`. Health check: `curl http://127.0.0.1:9090/health`_
-
-**Terminal B: TypeScript Gateway / Frontend**
-You can use the multi-service dev command:
+### 2. 启动整套服务（推荐）
 
 ```bash
 pnpm pangolin:dev:all
 ```
 
-Or start them individually:
+该命令会拉起：
+
+- 后端：127.0.0.1:9090
+- Gateway：ws://127.0.0.1:19001
+- 前端：默认 3000（若被占用会自动回退到 3001）
+
+### 3. 分开启动（调试时常用）
+
+终端 A：
+
+```bash
+uv run uvicorn src.main:app --host 127.0.0.1 --port 9090
+```
+
+终端 B：
 
 ```bash
 pnpm gateway:dev
+```
+
+终端 C：
+
+```bash
 pnpm pangolin:frontend:dev
 ```
 
-### 3. Access the Dashboard
+### 4. 可选便捷脚本
 
-- Operations Hub: http://localhost:3000
-- MCP Firewall Page: http://localhost:3000/mcp-firewall
+```bash
+bash start-all.sh
+```
 
-_(Ensure `NUXT_PUBLIC_FIREWALL_API_BASE=http://localhost:9090` is set so the frontend can stream live audit data from the Python Engine)._
+该脚本会尝试清理端口并启动服务。若你的系统缺少 lsof/xargs 或脚本权限受限，建议优先使用 pnpm pangolin:dev:all。
 
-## 🧪 Phase 6 Consolidation & Doctor
+## 常用命令
 
-Phase 6 focuses on capability retention and removing legacy coupling:
+### Node / 前端 / 网关
 
-- Keep production capability in active runtime paths.
-- Run `pnpm openclaw:doctor` to validate the core capability baseline.
-- Expected state is `CORE-ONLY MODE` or `FULL MODE`.
-- Run audits via `pnpm phase6:audit:legacy` to ensure structural paths are fully migrated.
+```bash
+pnpm pangolin:dev:all        # 一键开发模式
+pnpm gateway:dev             # 仅网关
+pnpm pangolin:frontend:dev   # 仅前端
+pnpm check                   # format + tsgo + lint
+pnpm tsgo                    # TS 类型检查
+pnpm lint                    # Oxlint
+pnpm test                    # Vitest（并行脚本）
+pnpm build                   # 构建
+pnpm openclaw:doctor         # 能力自检
+pnpm phase6:audit:legacy     # 结构审计
+```
+
+### Python / 防火墙
+
+```bash
+make dev                     # 后端热更新（9090）
+make test                    # pytest
+make attack                  # red team 对抗模拟
+make lint                    # ruff check
+make fmt                     # ruff format
+```
+
+## 关键环境变量
+
+可参考：.env.example、.env.agent-firewall.example。
+
+常用项如下：
+
+- OPENCLAW_GATEWAY_TOKEN：网关鉴权 token
+- OPENROUTER_API_KEY：OpenRouter 密钥（L2/聊天场景常用）
+- AF_LISTEN_HOST / AF_LISTEN_PORT：防火墙监听地址（默认 127.0.0.1:9090）
+- AF_UPSTREAM_HOST / AF_UPSTREAM_PORT：上游目标（本项目常见为 127.0.0.1:19001）
+- AF_L1_ENABLED / AF_L2_ENABLED：开关静态/语义层
+- AF_L2_MODEL_ENDPOINT / AF_L2_API_KEY / AF_L2_MODEL：L2 模型配置
+- AF_AUDIT_LOG：审计日志路径（默认 ./audit/firewall.jsonl）
+- AF_STORAGE_BACKEND / AF_STORAGE_PATH：存储后端与路径（默认 jsonl + ./data）
+
+## API 与页面入口
+
+- 后端健康检查：/health
+- OpenAPI：/openapi.json
+- 典型业务路由：/v1/models、/v1/policies、/v1/rules、/v1/scenarios、/api/v1/dataset、/api/v1/trace、/api/agent-studio/\*
+- Dashboard WS：/ws/dashboard
+- 前端主页面：/
+- 防火墙页面：/mcp-firewall
+
+## 常见问题
+
+### 为什么有时是 3000，有时是 3001？
+
+Nuxt 默认端口是 3000；当 3000 被占用时会自动回退到 3001。通常只会有一个前端进程，属于端口回退行为，不是两套前端同时必然运行。
+
+### 为什么策略页看起来没有保存？
+
+先确认后端进程是否为最新代码，再检查 /v1/policies 返回内容；必要时重启 9090 后端并刷新前端页面。
+
+## 开发建议
+
+- 提交前运行 pnpm check 与 make test（或对应子集）
+- 避免将 `audit/*.jsonl`、`data/*.jsonl` 运行时数据直接提交到功能 PR
+- 文档更新建议与代码改动同次提交，保持使用说明与实现一致
 
 ## License
 

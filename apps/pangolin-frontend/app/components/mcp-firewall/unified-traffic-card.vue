@@ -308,7 +308,7 @@ function applySelectedEntryToTriage(): void {
 }
 
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-family: 'Lora', 'Noto Serif SC', serif;
 }
 
 .payload-preview {

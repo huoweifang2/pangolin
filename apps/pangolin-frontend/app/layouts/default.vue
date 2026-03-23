@@ -58,7 +58,7 @@ onMounted(() => {
 }
 
 .app-bar-brand-title {
-  font-family: 'Space Grotesk', 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: 'Lora', 'Noto Serif SC', serif;
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.08em;

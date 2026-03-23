@@ -83,7 +83,7 @@
               <td>
                 <div class="d-flex flex-column py-1">
                   <span class="text-body-2 font-weight-medium">{{ friendlyName(p) }}</span>
-                  <span class="text-caption text-medium-emphasis" style="font-family: monospace; font-size: 11px">
+                  <span class="text-caption text-medium-emphasis" style="font-family: 'Lora', 'Noto Serif SC', serif; font-size: 11px">
                     {{ p.name }}
                   </span>
                 </div>

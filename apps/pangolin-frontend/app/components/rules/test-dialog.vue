@@ -99,7 +99,7 @@ function actionColor(action: string): string {
 
 <style scoped>
 .text-mono {
-  font-family: 'Roboto Mono', monospace;
+  font-family: 'Lora', 'Noto Serif SC', serif;
   font-size: 0.8rem;
 }
 </style>

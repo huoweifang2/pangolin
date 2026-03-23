@@ -59,8 +59,50 @@ const BUILTIN_POLICIES: Policy[] = [
   },
 ]
 
+const BUILTIN_POLICY_NAMES = new Set(BUILTIN_POLICIES.map(policy => policy.name.toLowerCase()))
+const LEGACY_DEFAULT_MARKERS = new Set(['default', 'default policy'])
+
 function nowIso(): string {
   return new Date().toISOString()
+}
+
+function isLegacyDefaultPolicy(policy: Policy): boolean {
+  const id = String(policy.id ?? '').trim().toLowerCase()
+  const name = String(policy.name ?? '').trim().toLowerCase()
+  const description = String(policy.description ?? '').trim().toLowerCase()
+
+  if (!name && !id) {
+    return false
+  }
+
+  return (
+    LEGACY_DEFAULT_MARKERS.has(name)
+    || LEGACY_DEFAULT_MARKERS.has(id)
+    || description.includes('default zero-trust policy')
+  )
+}
+
+function isLegacyDefaultList(policies: Policy[]): boolean {
+  return policies.length === 1 && isLegacyDefaultPolicy(policies[0]!)
+}
+
+function buildLocalPolicy(body: {
+  name: string
+  description?: string
+  config?: Record<string, unknown>
+  is_active?: boolean
+}): Policy {
+  const stamp = nowIso()
+  return {
+    id: `custom-${crypto.randomUUID()}`,
+    name: body.name,
+    description: body.description ?? null,
+    config: body.config ?? {},
+    is_active: body.is_active ?? true,
+    version: 1,
+    created_at: stamp,
+    updated_at: stamp,
+  }
 }
 
 function readLocalCustomPolicies(): Policy[] {
@@ -69,7 +111,23 @@ function readLocalCustomPolicies(): Policy[] {
     const raw = localStorage.getItem(LOCAL_POLICIES_KEY)
     if (!raw) {return []}
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed as Policy[] : []
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+
+    return (parsed as Policy[]).filter((policy) => {
+      const name = String(policy.name ?? '').trim().toLowerCase()
+      if (!name) {
+        return false
+      }
+      if (BUILTIN_POLICY_NAMES.has(name)) {
+        return false
+      }
+      if (isLegacyDefaultPolicy(policy)) {
+        return false
+      }
+      return true
+    })
   } catch {
     return []
   }
@@ -84,11 +142,60 @@ function mergePolicies(custom: Policy[]): Policy[] {
   return [...BUILTIN_POLICIES, ...custom]
 }
 
+function mergeServerAndLocalPolicies(serverPolicies: Policy[]): Policy[] {
+  const localCustom = readLocalCustomPolicies()
+  if (!localCustom.length) {
+    return serverPolicies
+  }
+
+  const mergedByName = new Map<string, Policy>()
+  for (const policy of serverPolicies) {
+    mergedByName.set(policy.name.trim().toLowerCase(), policy)
+  }
+  for (const policy of localCustom) {
+    const key = policy.name.trim().toLowerCase()
+    if (!mergedByName.has(key)) {
+      mergedByName.set(key, policy)
+    }
+  }
+
+  return [...mergedByName.values()]
+}
+
+function upsertLocalCustomPolicy(policy: Policy): Policy {
+  const name = policy.name.trim().toLowerCase()
+  if (!name || BUILTIN_POLICY_NAMES.has(name) || isLegacyDefaultPolicy(policy)) {
+    return policy
+  }
+
+  const custom = readLocalCustomPolicies()
+  const key = policy.name.trim().toLowerCase()
+  const index = custom.findIndex(item => item.id === policy.id || item.name.trim().toLowerCase() === key)
+  if (index >= 0) {
+    custom[index] = policy
+  } else {
+    custom.push(policy)
+  }
+  writeLocalCustomPolicies(custom)
+  return policy
+}
+
+function removeLocalCustomPolicy(policyId: string): void {
+  const custom = readLocalCustomPolicies()
+  const next = custom.filter(policy => policy.id !== policyId)
+  if (next.length !== custom.length) {
+    writeLocalCustomPolicies(next)
+  }
+}
+
 async function loadPolicies(): Promise<Policy[]> {
   try {
     const response = await api.get<Policy[]>('/v1/policies?active_only=false')
     if (Array.isArray(response.data)) {
-      return response.data
+      if (isLegacyDefaultList(response.data)) {
+        return mergePolicies(readLocalCustomPolicies())
+      }
+      return mergeServerAndLocalPolicies(response.data)
     }
     return mergePolicies(readLocalCustomPolicies())
   } catch {
@@ -106,24 +213,18 @@ export const usePolicies = () => {
   })
 
   const createMutation = useMutation({
-    mutationFn: async (body: { name: string; description?: string; config?: Record<string, unknown> }) => {
+    mutationFn: async (body: { name: string; description?: string; config?: Record<string, unknown>; is_active?: boolean }) => {
       try {
-        return await api.post<Policy>('/v1/policies', body).then(r => r.data)
-      } catch {
-        const custom = readLocalCustomPolicies()
-        const policy: Policy = {
-          id: `custom-${crypto.randomUUID()}`,
-          name: body.name,
-          description: body.description ?? null,
-          config: body.config ?? {},
-          is_active: true,
-          version: 1,
-          created_at: nowIso(),
-          updated_at: nowIso(),
+        const created = await api.post<Policy>('/v1/policies', body).then(r => r.data)
+        if (!isLegacyDefaultPolicy(created)) {
+          return created
         }
-        writeLocalCustomPolicies([...custom, policy])
-        return policy
+      } catch {
+        // Fall through to local persistence.
       }
+
+      const fallback = buildLocalPolicy(body)
+      return upsertLocalCustomPolicy(fallback)
     },
     onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['policies'] }) },
   })
@@ -131,32 +232,36 @@ export const usePolicies = () => {
   const updateMutation = useMutation({
     mutationFn: async ({ id, body }: { id: string; body: Record<string, unknown> }) => {
       try {
-        return await api.patch<Policy>(`/v1/policies/${id}`, body).then(r => r.data)
-      } catch {
-        const custom = readLocalCustomPolicies()
-        const foundInCustom = custom.find((policy) => policy.id === id)
-        if (foundInCustom) {
-          const updated = {
-            ...foundInCustom,
-            ...body,
-            version: foundInCustom.version + 1,
-            updated_at: nowIso(),
-          } as Policy
-          writeLocalCustomPolicies(custom.map((policy) => policy.id === id ? updated : policy))
+        const updated = await api.patch<Policy>(`/v1/policies/${id}`, body).then(r => r.data)
+        if (!isLegacyDefaultPolicy(updated)) {
           return updated
         }
+      } catch {
+        // Fall through to local persistence.
+      }
 
-        const builtin = BUILTIN_POLICIES.find((policy) => policy.id === id)
-        if (!builtin) {
-          throw new Error('Policy not found')
-        }
-        return {
-          ...builtin,
+      const custom = readLocalCustomPolicies()
+      const foundInCustom = custom.find((policy) => policy.id === id)
+      if (foundInCustom) {
+        const updated = {
+          ...foundInCustom,
           ...body,
-          version: builtin.version + 1,
+          version: foundInCustom.version + 1,
           updated_at: nowIso(),
         } as Policy
+        return upsertLocalCustomPolicy(updated)
       }
+
+      const builtin = BUILTIN_POLICIES.find((policy) => policy.id === id)
+      if (!builtin) {
+        throw new Error('Policy not found')
+      }
+      return {
+        ...builtin,
+        ...body,
+        version: builtin.version + 1,
+        updated_at: nowIso(),
+      } as Policy
     },
     onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['policies'] }) },
   })
@@ -164,11 +269,11 @@ export const usePolicies = () => {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       try {
-        return await api.delete(`/v1/policies/${id}`)
+        const response = await api.delete(`/v1/policies/${id}`)
+        removeLocalCustomPolicy(id)
+        return response
       } catch {
-        const custom = readLocalCustomPolicies()
-        const next = custom.filter((policy) => policy.id !== id)
-        writeLocalCustomPolicies(next)
+        removeLocalCustomPolicy(id)
         return { data: { ok: true } }
       }
     },

@@ -459,7 +459,7 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
     :deep(strong), :deep(b) { font-weight: 700; }
 
     :deep(code) {
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-family: 'Lora', 'Noto Serif SC', serif;
       font-size: 0.85em;
       padding: 1px 5px;
       border-radius: 3px;
@@ -467,7 +467,7 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
     }
 
     :deep(pre) {
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-family: 'Lora', 'Noto Serif SC', serif;
       font-size: 0.85em;
       padding: 8px 12px;
       border-radius: 6px;
@@ -533,7 +533,7 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
 }
 
 .tool-call-panel__name {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: 'Lora', 'Noto Serif SC', serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -561,7 +561,7 @@ const renderedRaw = computed(() => renderMarkdown(props.message.content ?? ''))
   background: rgba(var(--v-theme-on-surface), 0.04);
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: 'Lora', 'Noto Serif SC', serif;
   font-size: 0.75rem;
   line-height: 1.45;
 }

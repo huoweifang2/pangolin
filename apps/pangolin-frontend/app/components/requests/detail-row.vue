@@ -314,7 +314,7 @@ function getScannerFinding(result: unknown): string | null {
   background: rgba(var(--v-theme-on-surface), 0.04);
   border-radius: 6px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: 'Lora', 'Noto Serif SC', serif;
   font-size: 12.5px;
   line-height: 1.5;
   max-height: 100px;
@@ -412,7 +412,7 @@ function getScannerFinding(result: unknown): string | null {
   background: rgba(var(--v-theme-on-surface), 0.05);
   border-radius: 4px;
   font-size: 11px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: 'Lora', 'Noto Serif SC', serif;
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 150px;

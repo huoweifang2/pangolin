@@ -248,6 +248,6 @@ function showSnackbar(text: string, color = 'success') {
 
 <style scoped>
 .text-mono {
-  font-family: 'Roboto Mono', monospace;
+  font-family: 'Lora', 'Noto Serif SC', serif;
 }
 </style>

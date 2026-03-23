@@ -440,7 +440,7 @@ function shortId(id: unknown): string {
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: 'Roboto Mono', monospace;
+  font-family: 'Lora', 'Noto Serif SC', serif;
 }
 
 .message-user {

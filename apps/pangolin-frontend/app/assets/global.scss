@@ -1,4 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap');
+
 :root {
+  --pangolin-font-family: 'Lora', 'Noto Serif SC', serif;
   --pangolin-radius: 12px;
   --pangolin-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.08);
   --pangolin-shadow-deep: 0 20px 45px rgba(0, 0, 0, 0.16);
@@ -13,7 +16,7 @@ body,
 }
 
 body {
-  font-family: 'IBM Plex Sans', 'Noto Sans SC', 'Segoe UI', sans-serif;
+  font-family: var(--pangolin-font-family);
   letter-spacing: 0.01em;
 }
 
@@ -21,11 +24,12 @@ h1,
 h2,
 h3,
 .v-toolbar-title {
-  font-family: 'Space Grotesk', 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  font-family: var(--pangolin-font-family);
   letter-spacing: 0.01em;
 }
 
 .v-application {
+  font-family: var(--pangolin-font-family);
   position: relative;
   background: var(--pangolin-bg-light) !important;
 }

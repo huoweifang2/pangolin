@@ -246,7 +246,7 @@ const codeComment = computed(() =>
   }
 
   &__url {
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-family: 'Lora', 'Noto Serif SC', serif;
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.02em;
@@ -284,7 +284,7 @@ const codeComment = computed(() =>
   }
 
   &__timing {
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-family: 'Lora', 'Noto Serif SC', serif;
     font-size: 10px !important;
   }
 }
@@ -319,7 +319,7 @@ const codeComment = computed(() =>
 
 /* ─── Code snippet ─── */
 .code-snippet__block {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: 'Lora', 'Noto Serif SC', serif;
   font-size: 0.8rem;
   line-height: 1.6;
   margin: 0;
